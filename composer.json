@@ -1,0 +1,28 @@
+{
+    "name": "baobab/core",
+    "description": "Baobab CMS core — a modular, developer-first CMS built on Laravel.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "cms",
+        "laravel",
+        "baobab"
+    ],
+    "require": {
+        "php": "^8.3",
+        "laravel/framework": "^13.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Baobab\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Baobab\\BaobabServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable"
+}
