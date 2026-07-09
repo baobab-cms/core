@@ -9,8 +9,15 @@
         "baobab"
     ],
     "require": {
-        "php": "^8.3",
-        "laravel/framework": "^13.0"
+        "php": "^8.4",
+        "laravel/framework": "^13.0",
+        "ext-zip": "*",
+        "illuminate/support": "^13.0",
+        "illuminate/console": "^13.0",
+        "composer/semver": "^3.4",
+        "illuminate/database": "^13.0",
+        "opis/json-schema": "^2.6"
+        
     },
     "autoload": {
         "psr-4": {
@@ -24,5 +31,22 @@
             ]
         }
     },
-    "minimum-stability": "stable"
+    "minimum-stability": "stable",
+    "require-dev": {
+        "orchestra/testbench": "^11.1",
+        "pestphp/pest": "^4.7"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "scripts": {
+        "test": "pest"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Baobab\\Tests\\": "tests/"
+        }
+    }
 }
