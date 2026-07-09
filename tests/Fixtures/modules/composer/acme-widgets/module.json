@@ -1,0 +1,8 @@
+{
+  "name": "acme/widgets",
+  "title": "Widgets (composer)",
+  "description": "Fixture Composer — doit être masquée par la version locale du même nom.",
+  "version": "1.0.0",
+  "type": "module",
+  "provider": "Acme\\Widgets\\Providers\\WidgetsServiceProvider"
+}

@@ -33,6 +33,7 @@
     },
     "minimum-stability": "stable",
     "require-dev": {
+        "larastan/larastan": "^3.10",
         "orchestra/testbench": "^11.1",
         "pestphp/pest": "^4.7"
     },

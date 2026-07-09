@@ -1,0 +1,22 @@
+# Baobab CMS — Analyse statique du package baobab/core
+# Emplacement : packages/baobab/core/phpstan.neon
+#
+# Séparée du phpstan.neon racine : tests/ dépend d'orchestra/testbench, qui
+# n'existe que dans le vendor de ce package (pas dans celui de l'app racine).
+# Lancer depuis packages/baobab/core : vendor/bin/phpstan analyse
+
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 8
+
+    paths:
+        - src
+        - tests
+
+    excludePaths:
+        - database/migrations (?)
+
+    # Le niveau 8 est non négociable (CLAUDE.md) — les baselines sont interdites
+    # sauf décision explicite documentée au registre.

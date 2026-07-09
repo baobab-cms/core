@@ -1,0 +1,8 @@
+{
+  "name": "acme/widgets",
+  "title": "Widgets (local)",
+  "description": "Fixture locale — doit primer sur la version Composer du même nom.",
+  "version": "2.0.0",
+  "type": "module",
+  "provider": "Acme\\Widgets\\Providers\\WidgetsServiceProvider"
+}

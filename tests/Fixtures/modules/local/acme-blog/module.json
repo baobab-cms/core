@@ -1,0 +1,24 @@
+{
+  "name": "acme/blog",
+  "title": "Blog",
+  "description": "Fixture avec migrations, permissions et menus pour tester le cycle de vie complet.",
+  "version": "1.0.0",
+  "type": "module",
+  "provider": "Acme\\Blog\\Providers\\BlogServiceProvider",
+  "permissions": [
+    { "key": "acme.blog.posts.view", "label": "Voir les articles" },
+    { "key": "acme.blog.posts.create", "label": "Créer des articles" }
+  ],
+  "menus": {
+    "admin": [
+      {
+        "label": "Blog",
+        "route": "admin.blog.posts.index",
+        "order": 30,
+        "children": [
+          { "label": "Articles", "route": "admin.blog.posts.index" }
+        ]
+      }
+    ]
+  }
+}

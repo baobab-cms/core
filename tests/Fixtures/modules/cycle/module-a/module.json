@@ -1,0 +1,10 @@
+{
+  "name": "acme/cycle-a",
+  "title": "Cycle A",
+  "version": "1.0.0",
+  "type": "module",
+  "provider": "Acme\\CycleA\\Providers\\CycleAServiceProvider",
+  "requires": {
+    "modules": { "acme/cycle-b": "^1.0" }
+  }
+}

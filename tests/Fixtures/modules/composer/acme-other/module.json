@@ -1,0 +1,24 @@
+{
+  "name": "acme/other",
+  "title": "Other",
+  "description": "Fixture Composer sans équivalent local — doit être découverte normalement.",
+  "version": "1.2.3",
+  "type": "module",
+  "provider": "Acme\\Other\\Providers\\OtherServiceProvider",
+  "requires": {
+    "cms": "^0.1",
+    "php": "^8.3",
+    "modules": {
+      "acme/widgets": "^2.0"
+    }
+  },
+  "permissions": [
+    { "key": "acme.other.view", "label": "Voir" }
+  ],
+  "hooks": {
+    "emits": ["acme.other.created"],
+    "listens": {
+      "baobab.booted": "Acme\\Other\\Hooks\\OnBooted"
+    }
+  }
+}
