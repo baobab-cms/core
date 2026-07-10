@@ -9,6 +9,7 @@ use Baobab\Hooks\HookRegistry;
 use Baobab\Modules\DependencyResolver;
 use Baobab\Modules\Exceptions\ModuleNotFoundException;
 use Baobab\Modules\Models\Module;
+use Spatie\Permission\Models\Permission;
 
 /**
  * Active un module installé (spec 01 §3) : ses dépendances doivent être
@@ -44,6 +45,10 @@ final class ActivateModule
 
         foreach ($module->manifest['hooks']['listens'] ?? [] as $hook => $listener) {
             $this->registry->listen($hook, $listener);
+        }
+
+        foreach ($module->permissions as $perm) {
+            Permission::findOrCreate($perm->key, 'baobab');
         }
 
         Hook::action('baobab.module.activated', $module);

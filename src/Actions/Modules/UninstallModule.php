@@ -9,6 +9,7 @@ use Baobab\Modules\Exceptions\ModuleNotFoundException;
 use Baobab\Modules\Exceptions\ModuleStillActiveException;
 use Baobab\Modules\Models\Module;
 use Illuminate\Support\Facades\Artisan;
+use Spatie\Permission\Models\Permission;
 
 /**
  * Désinstalle un module inactif (spec 01 §3). Avec --purge, rejoue le
@@ -31,6 +32,7 @@ final class UninstallModule
 
         if ($purge) {
             $this->rollbackMigrations($module->path);
+            $this->purgePermissions($module);
         }
 
         $snapshot = $module->only(['name', 'title', 'version']);
@@ -53,5 +55,16 @@ final class UninstallModule
             '--realpath' => true,
             '--force' => true,
         ]);
+    }
+
+    private function purgePermissions(Module $module): void
+    {
+        $keys = $module->permissions->pluck('key');
+
+        if ($keys->isEmpty()) {
+            return;
+        }
+
+        Permission::whereIn('name', $keys)->where('guard_name', 'baobab')->delete();
     }
 }
