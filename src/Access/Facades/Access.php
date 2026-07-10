@@ -17,6 +17,8 @@ use Spatie\Permission\Contracts\Role;
  * @method static void grantPermission(User|Role $to, string $permission, string $guard = 'baobab')
  * @method static void revokePermission(User|Role $from, string $permission, string $guard = 'baobab')
  * @method static PermissionContract findOrCreatePermission(string $name, string $guard = 'baobab')
+ * @method static void assignRole(User $user, Role $role)
+ * @method static void removeRole(User $user, Role $role)
  *
  * @see AccessManager
  */

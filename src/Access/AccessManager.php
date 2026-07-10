@@ -61,4 +61,18 @@ final class AccessManager
     {
         return Permission::findOrCreate($name, $guard);
     }
+
+    public function assignRole(User $user, RoleContract $role): void
+    {
+        $user->assignRole($role);
+
+        Hook::action('baobab.access.role.assigned', $user, $role);
+    }
+
+    public function removeRole(User $user, RoleContract $role): void
+    {
+        $user->removeRole($role);
+
+        Hook::action('baobab.access.role.removed', $user, $role);
+    }
 }
