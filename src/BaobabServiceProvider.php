@@ -1,7 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Baobab;
 
+use Baobab\Console\Commands\ModuleActivateCommand;
+use Baobab\Console\Commands\ModuleDeactivateCommand;
+use Baobab\Console\Commands\ModuleInstallCommand;
+use Baobab\Console\Commands\ModuleListCommand;
+use Baobab\Console\Commands\ModuleUninstallCommand;
 use Baobab\Hooks\HookRegistry;
 use Baobab\Modules\ModuleDiscovery;
 use Illuminate\Contracts\Foundation\Application;
@@ -32,5 +39,15 @@ class BaobabServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/baobab.php' => config_path('baobab.php'),
         ], 'baobab-config');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                ModuleListCommand::class,
+                ModuleInstallCommand::class,
+                ModuleActivateCommand::class,
+                ModuleDeactivateCommand::class,
+                ModuleUninstallCommand::class,
+            ]);
+        }
     }
 }
