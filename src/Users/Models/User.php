@@ -62,4 +62,12 @@ class User extends Authenticatable
     {
         return $this->two_factor_confirmed_at !== null;
     }
+
+    /**
+     * Le niveau d'un utilisateur = le niveau maximal de ses rôles (spec 05 §4.1).
+     */
+    public function level(): int
+    {
+        return (int) $this->roles->max('level');
+    }
 }

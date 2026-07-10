@@ -111,6 +111,7 @@ it('toggles a permission for a role via POST and produces an audit entry', funct
 
 it('creates a role via the matrix screen and journalizes it', function () {
     $user = User::create(['name' => 'Manager', 'email' => 'manager4@example.com', 'password' => 'secret']);
+    $user->assignRole(Role::findByName('admin', 'baobab'));
     app(GrantPermission::class)($user, 'baobab.admin.access');
     app(GrantPermission::class)($user, 'baobab.access.manage');
 

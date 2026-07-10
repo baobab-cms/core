@@ -2,7 +2,9 @@
 
 use Baobab\Modules\Models\Module;
 use Baobab\Tests\TestCase;
+use Baobab\Users\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 
 pest()->extend(TestCase::class)->in('Unit');
 pest()->extend(TestCase::class)->use(RefreshDatabase::class)->in('Feature');
@@ -25,4 +27,22 @@ function makeActiveModule(string $name = 'acme/manual'): Module
         'manifest' => [],
         'status' => 'active',
     ]);
+}
+
+/**
+ * Creates a user assigned to the given role (for its `level`) and logs them
+ * in via the `baobab` guard. Used by hierarchy-related Feature tests.
+ */
+function actingAsLevel(string $roleName): User
+{
+    $user = User::create([
+        'name' => "Actor ({$roleName})",
+        'email' => strtolower($roleName).'-'.uniqid().'@example.com',
+        'password' => 'secret',
+    ]);
+    $user->assignRole(Role::findByName($roleName, 'baobab'));
+
+    test()->actingAs($user, 'baobab');
+
+    return $user;
 }

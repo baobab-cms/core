@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Access;
 
+use Baobab\Access\Exceptions\HierarchyViolationException;
 use Baobab\Facades\Hook;
 use Baobab\Users\Models\User;
 use Spatie\Permission\Contracts\Permission as PermissionContract;
@@ -13,6 +14,25 @@ use Spatie\Permission\Models\Role;
 
 final class AccessManager
 {
+    /**
+     * Spec 05 §4.1 : un acteur ne peut créer/modifier/supprimer (ou usurper)
+     * que des rôles/utilisateurs de niveau strictement inférieur au sien.
+     * No-op sans acteur (contexte système/CLI/tests) — même tolérance que
+     * les autres garde-fous (RemoveRole::isActingOnSelf()).
+     */
+    public function assertOutranks(?User $actor, int $targetLevel): void
+    {
+        if ($actor === null) {
+            return;
+        }
+
+        if ($targetLevel >= $actor->level()) {
+            throw new HierarchyViolationException(
+                "Cannot act on a role or user of level {$targetLevel}: actor's level ({$actor->level()}) is not strictly higher.",
+            );
+        }
+    }
+
     public function createRole(string $name, int $level, string $guard = 'baobab'): RoleContract
     {
         /** @var RoleContract $role */
