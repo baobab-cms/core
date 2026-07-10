@@ -10,11 +10,11 @@ return new class extends Migration
     /** @var array<string, int> */
     private const ROLES = [
         'super-admin' => 100,
-        'admin'       => 80,
-        'editor'      => 60,
-        'moderator'   => 40,
-        'author'      => 40,
-        'visitor'     => 10,
+        'admin' => 80,
+        'editor' => 60,
+        'moderator' => 40,
+        'author' => 40,
+        'visitor' => 10,
     ];
 
     public function up(): void

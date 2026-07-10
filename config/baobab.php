@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use Baobab\Users\Models\User;
 
 return [
 
@@ -50,7 +51,7 @@ return [
     |
     */
     'auth' => [
-        'user_model' => \Baobab\Users\Models\User::class,
+        'user_model' => User::class,
     ],
 
 ];
