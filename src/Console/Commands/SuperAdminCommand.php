@@ -23,6 +23,7 @@ final class SuperAdminCommand extends Command
         $user = User::where('email', $email)->first();
 
         $generated = false;
+        $password = null;
 
         if ($user === null) {
             $password = Str::password(16);

@@ -6,7 +6,7 @@ namespace Baobab\Access\Actions;
 
 use Baobab\Access\AccessManager;
 use Baobab\Access\Exceptions\ProtectedRoleException;
-use Spatie\Permission\Models\Role;
+use Spatie\Permission\Contracts\Role;
 
 final class DeleteRole
 {
@@ -14,8 +14,8 @@ final class DeleteRole
 
     public function __invoke(Role $role): void
     {
-        if ($role->name === 'super-admin') {
-            throw new ProtectedRoleException('The super-admin role cannot be deleted.');
+        if (in_array($role->name, ['super-admin', 'visitor'], true)) {
+            throw new ProtectedRoleException("The {$role->name} role cannot be deleted.");
         }
 
         $this->manager->deleteRole($role);

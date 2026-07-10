@@ -7,7 +7,7 @@ namespace Baobab\Access\Actions;
 use Baobab\Access\AccessManager;
 use Baobab\Access\Exceptions\AdminLockoutException;
 use Baobab\Users\Models\User;
-use Spatie\Permission\Models\Role;
+use Spatie\Permission\Contracts\Role;
 
 final class RevokePermission
 {

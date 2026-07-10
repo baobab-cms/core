@@ -87,6 +87,13 @@ it('DeleteRole refuses to delete super-admin', function () {
         ->toThrow(ProtectedRoleException::class);
 });
 
+it('DeleteRole refuses to delete visitor', function () {
+    $role = Role::findByName('visitor', 'baobab');
+
+    expect(fn () => app(DeleteRole::class)($role))
+        ->toThrow(ProtectedRoleException::class);
+});
+
 it('DeleteRole emits baobab.access.role.deleted hook for other roles', function () {
     $role = app(CreateRole::class)('deletable', 20);
     $fired = false;
@@ -139,7 +146,6 @@ it('UninstallModule --purge removes the module Spatie permissions', function () 
     app(ActivateModule::class)('acme/blog');
 
     // Deactivate first, then uninstall with purge
-    DeactivateModule::class;
     app(DeactivateModule::class)('acme/blog');
     app(UninstallModule::class)('acme/blog', purge: true);
 

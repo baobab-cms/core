@@ -6,7 +6,7 @@ namespace Baobab\Access\Actions;
 
 use Baobab\Access\AccessManager;
 use Baobab\Users\Models\User;
-use Spatie\Permission\Models\Role;
+use Spatie\Permission\Contracts\Role;
 
 final class GrantPermission
 {

@@ -10,10 +10,9 @@ it('creates a new user and assigns super-admin role', function () {
 
     expect($exitCode)->toBe(0);
 
-    $user = User::where('email', 'admin@example.com')->first();
+    $user = User::where('email', 'admin@example.com')->firstOrFail();
 
-    expect($user)->not->toBeNull()
-        ->and($user->hasRole('super-admin', 'baobab'))->toBeTrue();
+    expect($user->hasRole('super-admin', 'baobab'))->toBeTrue();
 });
 
 it('assigns super-admin role to an existing user without creating a duplicate', function () {
@@ -26,7 +25,7 @@ it('assigns super-admin role to an existing user without creating a duplicate', 
     Artisan::call('baobab:super-admin', ['email' => 'existing@example.com']);
     Artisan::call('baobab:super-admin', ['email' => 'existing@example.com']);
 
-    $user = User::where('email', 'existing@example.com')->first();
+    $user = User::where('email', 'existing@example.com')->firstOrFail();
 
     expect(User::where('email', 'existing@example.com')->count())->toBe(1)
         ->and($user->hasRole('super-admin', 'baobab'))->toBeTrue();
