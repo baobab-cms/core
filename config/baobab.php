@@ -54,4 +54,17 @@ return [
         'user_model' => User::class,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Interface d'administration
+    |--------------------------------------------------------------------------
+    |
+    | path : préfixe des routes admin, configurable (white-label, réduction de
+    | surface d'attaque — spec 04 §2). Défaut : /admin.
+    |
+    */
+    'admin' => [
+        'path' => env('BAOBAB_ADMIN_PATH', 'admin'),
+    ],
+
 ];

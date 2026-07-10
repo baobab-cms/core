@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="{{ app()->getLocale() }}" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@yield('title', __('baobab::admin.layout.default_title'))</title>
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    @stack('admin.head')
+</head>
+<body class="h-full bg-surface text-foreground antialiased" x-data="{ sidebarOpen: false }">
+    @include('baobab::layouts.partials.admin-topbar')
+
+    <div class="flex h-[calc(100%-4rem)]">
+        @include('baobab::layouts.partials.admin-sidebar')
+
+        <div class="flex flex-1 flex-col overflow-hidden">
+            <header class="flex items-center justify-between border-b border-border px-6 py-4">
+                <h1 class="text-lg font-semibold text-foreground">@yield('page-title')</h1>
+                <div>@yield('page-actions')</div>
+            </header>
+
+            @stack('admin.content.before')
+
+            <main class="flex-1 overflow-y-auto px-6 py-6">
+                @yield('content')
+            </main>
+        </div>
+    </div>
+
+    @include('baobab::layouts.partials.admin-footer')
+
+    @stack('admin.scripts')
+</body>
+</html>

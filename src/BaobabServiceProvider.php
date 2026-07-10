@@ -6,6 +6,7 @@ namespace Baobab;
 
 use Baobab\Access\AccessManager;
 use Baobab\Access\Facades\Access;
+use Baobab\Admin\Sidebar\SidebarBuilder;
 use Baobab\Auth\TwoFactorManager;
 use Baobab\Console\Commands\HookListCommand;
 use Baobab\Console\Commands\ModuleActivateCommand;
@@ -20,9 +21,12 @@ use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleDiscovery;
 use Baobab\Users\Models\User;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use PragmaRX\Google2FA\Google2FA;
 use Spatie\Permission\PermissionServiceProvider;
@@ -42,6 +46,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->app->singleton(AccessManager::class);
 
+        $this->app->singleton(SidebarBuilder::class);
+
         $this->app->singleton(TwoFactorManager::class, fn () => new TwoFactorManager(new Google2FA));
 
         $this->app->bind(ModuleDiscovery::class, function (Application $app) {
@@ -57,7 +63,10 @@ class BaobabServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
+        $this->loadAdminRoutes();
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'baobab');
+        $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'baobab');
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
         $this->publishes([
@@ -71,6 +80,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         // Alias facade.
         $this->app->alias(AccessManager::class, Access::class);
+
+        $this->registerAdminSidebarComposer();
 
         $this->bootstrapActiveModules();
 
@@ -87,6 +98,27 @@ class BaobabServiceProvider extends ServiceProvider
                 SuperAdminCommand::class,
             ]);
         }
+    }
+
+    private function loadAdminRoutes(): void
+    {
+        Route::middleware(['web', 'auth:baobab', 'verified', 'can:baobab.admin.access'])
+            ->prefix($this->app->make('config')->get('baobab.admin.path', 'admin'))
+            ->name('admin.')
+            ->group(__DIR__.'/../routes/admin.php');
+    }
+
+    private function registerAdminSidebarComposer(): void
+    {
+        View::composer('baobab::layouts.partials.admin-sidebar', function (ViewContract $view): void {
+            /** @var SidebarBuilder $builder */
+            $builder = $this->app->make(SidebarBuilder::class);
+
+            /** @var User|null $user */
+            $user = auth('baobab')->user();
+
+            $view->with('sidebar', $builder->build($user));
+        });
     }
 
     private function registerGuard(): void

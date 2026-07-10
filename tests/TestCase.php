@@ -10,6 +10,15 @@ use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // No Vite build exists in the Testbench skeleton — views using @vite
+        // (the admin layout) would otherwise throw a manifest-not-found error.
+        $this->withoutVite();
+    }
+
     /**
      * @return list<class-string>
      */
