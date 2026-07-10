@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace Baobab;
 
+use Baobab\Console\Commands\HookListCommand;
 use Baobab\Console\Commands\ModuleActivateCommand;
 use Baobab\Console\Commands\ModuleDeactivateCommand;
 use Baobab\Console\Commands\ModuleInstallCommand;
 use Baobab\Console\Commands\ModuleListCommand;
 use Baobab\Console\Commands\ModuleUninstallCommand;
 use Baobab\Hooks\HookRegistry;
+use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleDiscovery;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use Throwable;
 
 class BaobabServiceProvider extends ServiceProvider
 {
@@ -40,6 +44,8 @@ class BaobabServiceProvider extends ServiceProvider
             __DIR__.'/../config/baobab.php' => config_path('baobab.php'),
         ], 'baobab-config');
 
+        $this->wireDeclarativeHooks();
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ModuleListCommand::class,
@@ -47,7 +53,33 @@ class BaobabServiceProvider extends ServiceProvider
                 ModuleActivateCommand::class,
                 ModuleDeactivateCommand::class,
                 ModuleUninstallCommand::class,
+                HookListCommand::class,
             ]);
+        }
+    }
+
+    /**
+     * Wire declarative hook listeners for all active modules on every boot
+     * (handles server restarts with modules already active in the database).
+     * Runtime activation is handled separately by ActivateModule action.
+     */
+    private function wireDeclarativeHooks(): void
+    {
+        try {
+            if (! Schema::hasTable('modules')) {
+                return;
+            }
+
+            /** @var HookRegistry $registry */
+            $registry = $this->app->make(HookRegistry::class);
+
+            Module::where('status', 'active')->each(function (Module $module) use ($registry): void {
+                foreach ($module->manifest['hooks']['listens'] ?? [] as $hook => $listener) {
+                    $registry->listen($hook, $listener);
+                }
+            });
+        } catch (Throwable) {
+            // DB unavailable or not yet migrated — skip silently.
         }
     }
 }

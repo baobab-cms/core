@@ -5,18 +5,23 @@ declare(strict_types=1);
 namespace Baobab\Hooks;
 
 /**
- * Registre central des hooks (spec 01 §4). Version actuelle : le volet
- * "actions" (fire-and-forget), suffisant pour que le cycle de vie des modules
- * émette baobab.module.installed/activated/deactivated/uninstalled. Le volet
- * "filtres", le câblage déclaratif depuis les manifests et hook:list arrivent
- * avec le jalon dédié au système de hooks (roadmap M1, point 4).
+ * Registre central des hooks (spec 01 §4).
+ *
+ * Actions  : fire-and-forget, plusieurs listeners, payloads variadic.
+ * Filtres  : chaîne de transformation — chaque listener reçoit la valeur
+ *            courante + contexte optionnel et renvoie la valeur modifiée.
+ * Priorité : entier, défaut 10, ordre croissant (comme WordPress).
+ * Listeners: closure ou FQCN résolu via le conteneur IoC.
  */
 final class HookRegistry
 {
-    /**
-     * @var array<string, array<int, list<callable|string>>>
-     */
+    /** @var array<string, array<int, list<callable|string>>> */
     private array $actionListeners = [];
+
+    /** @var array<string, array<int, list<callable|string>>> */
+    private array $filterListeners = [];
+
+    // ── Actions ───────────────────────────────────────────────────────────────
 
     public function listen(string $name, callable|string $listener, int $priority = 10): void
     {
@@ -38,21 +43,37 @@ final class HookRegistry
      */
     public function actions(): array
     {
-        $result = [];
+        return $this->introspect($this->actionListeners);
+    }
 
-        foreach ($this->actionListeners as $name => $byPriority) {
-            foreach ($byPriority as $priority => $listeners) {
-                foreach ($listeners as $listener) {
-                    $result[$name][] = [
-                        'priority' => $priority,
-                        'listener' => is_string($listener) ? $listener : 'Closure',
-                    ];
-                }
+    // ── Filtres ───────────────────────────────────────────────────────────────
+
+    public function modify(string $name, callable|string $listener, int $priority = 10): void
+    {
+        $this->filterListeners[$name][$priority][] = $listener;
+        ksort($this->filterListeners[$name]);
+    }
+
+    public function filter(string $name, mixed $value, mixed ...$context): mixed
+    {
+        foreach ($this->filterListeners[$name] ?? [] as $listeners) {
+            foreach ($listeners as $listener) {
+                $value = $this->callFilter($listener, $value, array_values($context));
             }
         }
 
-        return $result;
+        return $value;
     }
+
+    /**
+     * @return array<string, list<array{priority: int, listener: string}>>
+     */
+    public function filters(): array
+    {
+        return $this->introspect($this->filterListeners);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**
      * @param  list<mixed>  $payload
@@ -65,5 +86,40 @@ final class HookRegistry
         }
 
         $listener(...$payload);
+    }
+
+    /**
+     * @param  list<mixed>  $context
+     */
+    private function callFilter(callable|string $listener, mixed $value, array $context): mixed
+    {
+        if (is_string($listener)) {
+            /** @var callable $listener */
+            $listener = app($listener);
+        }
+
+        return $listener($value, ...$context);
+    }
+
+    /**
+     * @param  array<string, array<int, list<callable|string>>>  $store
+     * @return array<string, list<array{priority: int, listener: string}>>
+     */
+    private function introspect(array $store): array
+    {
+        $result = [];
+
+        foreach ($store as $name => $byPriority) {
+            foreach ($byPriority as $priority => $listeners) {
+                foreach ($listeners as $listener) {
+                    $result[$name][] = [
+                        'priority' => $priority,
+                        'listener' => is_string($listener) ? $listener : 'Closure',
+                    ];
+                }
+            }
+        }
+
+        return $result;
     }
 }
