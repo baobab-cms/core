@@ -7,7 +7,6 @@ namespace Baobab\Console\Commands;
 use Baobab\Users\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
 use Spatie\Permission\Models\Role;
 
 final class SuperAdminCommand extends Command
@@ -19,10 +18,6 @@ final class SuperAdminCommand extends Command
     public function handle(): int
     {
         $email = $this->argument('email');
-
-        if (! is_string($email)) {
-            throw new InvalidArgumentException('The email argument must be a string.');
-        }
 
         /** @var User|null $user */
         $user = User::where('email', $email)->first();
