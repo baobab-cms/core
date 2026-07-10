@@ -58,6 +58,11 @@ return [
         'core_group' => 'Core',
         'inactive_module' => 'Module inactif',
         'always_granted' => 'Toujours accordé (Super Admin)',
+        'create_role_title' => 'Créer un rôle',
+        'create_role_name' => 'Nom',
+        'create_role_level' => 'Niveau',
+        'create_role_submit' => 'Créer',
+        'role_created' => 'Rôle « :name » créé.',
     ],
 
 ];

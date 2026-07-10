@@ -20,5 +20,6 @@ Route::middleware('can:baobab.access.manage')
     ->name('access.')
     ->group(function (): void {
         Route::get('/', [AccessMatrixController::class, 'index'])->name('index');
+        Route::post('/roles', [AccessMatrixController::class, 'store'])->name('roles.store');
         Route::post('/{role}/permissions/{permission}', [AccessMatrixController::class, 'toggle'])->name('toggle');
     });

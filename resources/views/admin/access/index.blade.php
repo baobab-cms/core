@@ -4,6 +4,20 @@
 
 @section('content')
     <x-baobab::page :title="__('baobab::admin.access.title')">
+        <x-baobab::card class="mb-6">
+            <x-slot:header>
+                <span class="font-medium text-foreground">{{ __('baobab::admin.access.create_role_title') }}</span>
+            </x-slot:header>
+
+            <x-baobab::form method="POST" action="{{ route('admin.access.roles.store') }}" class="flex flex-wrap items-end gap-2">
+                <x-baobab::field.text name="name" label="{{ __('baobab::admin.access.create_role_name') }}" />
+                <x-baobab::field.text name="level" type="number" label="{{ __('baobab::admin.access.create_role_level') }}" />
+                <x-baobab::button type="submit" variant="primary">
+                    {{ __('baobab::admin.access.create_role_submit') }}
+                </x-baobab::button>
+            </x-baobab::form>
+        </x-baobab::card>
+
         <div class="overflow-x-auto rounded-lg border border-border">
             <table class="w-full text-left text-sm">
                 <thead class="bg-surface-subtle text-xs uppercase text-muted">

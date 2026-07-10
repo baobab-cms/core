@@ -109,6 +109,38 @@ it('toggles a permission for a role via POST and produces an audit entry', funct
     )->toBeTrue();
 });
 
+it('creates a role via the matrix screen and journalizes it', function () {
+    $user = User::create(['name' => 'Manager', 'email' => 'manager4@example.com', 'password' => 'secret']);
+    app(GrantPermission::class)($user, 'baobab.admin.access');
+    app(GrantPermission::class)($user, 'baobab.access.manage');
+
+    $this->actingAs($user, 'baobab')
+        ->post('/admin/access/roles', ['name' => 'journalist', 'level' => 30])
+        ->assertRedirect();
+
+    expect(Role::where('name', 'journalist')->where('guard_name', 'baobab')->where('level', 30)->exists())->toBeTrue();
+    expect(AuditEntry::where('action', 'role.created')->where('data->name', 'journalist')->exists())->toBeTrue();
+});
+
+it('rejects creating a role with a duplicate name', function () {
+    $user = User::create(['name' => 'Manager', 'email' => 'manager5@example.com', 'password' => 'secret']);
+    app(GrantPermission::class)($user, 'baobab.admin.access');
+    app(GrantPermission::class)($user, 'baobab.access.manage');
+
+    $this->actingAs($user, 'baobab')
+        ->post('/admin/access/roles', ['name' => 'editor', 'level' => 30])
+        ->assertSessionHasErrors('name');
+});
+
+it('denies creating a role without baobab.access.manage', function () {
+    $user = User::create(['name' => 'Nobody', 'email' => 'nobody2@example.com', 'password' => 'secret']);
+    app(GrantPermission::class)($user, 'baobab.admin.access');
+
+    $this->actingAs($user, 'baobab')
+        ->post('/admin/access/roles', ['name' => 'journalist', 'level' => 30])
+        ->assertForbidden();
+});
+
 it('refuses to toggle a permission on the super-admin role', function () {
     $user = User::create(['name' => 'Manager', 'email' => 'manager3@example.com', 'password' => 'secret']);
     app(GrantPermission::class)($user, 'baobab.admin.access');
