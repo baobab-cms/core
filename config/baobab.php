@@ -39,4 +39,18 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Authentification
+    |--------------------------------------------------------------------------
+    |
+    | user_model : modèle Eloquent utilisé par le guard "baobab". Par défaut
+    | Baobab\Users\Models\User (table `users`). Remplacer par une classe
+    | étendant ce modèle pour ajouter des colonnes applicatives.
+    |
+    */
+    'auth' => [
+        'user_model' => \Baobab\Users\Models\User::class,
+    ],
+
 ];

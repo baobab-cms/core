@@ -18,6 +18,11 @@ abstract class TestCase extends Orchestra
         return [BaobabServiceProvider::class];
     }
 
+    protected function defineDatabaseMigrations(): void
+    {
+        $this->loadMigrationsFrom(__DIR__.'/Fixtures/migrations');
+    }
+
     protected function getEnvironmentSetUp($app): void
     {
         /** @var Application $app */
