@@ -27,4 +27,11 @@ return [
         'two_factor_invalid' => 'Le code saisi est invalide.',
     ],
 
+    'components' => [
+        'no_results' => 'Aucun résultat.',
+        'select_all' => 'Tout sélectionner',
+        'confirm_placeholder' => 'Retapez « :text » pour confirmer.',
+        'close' => 'Fermer',
+    ],
+
 ];

@@ -36,6 +36,8 @@ abstract class TestCase extends Orchestra
     {
         /** @var Application $app */
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+        $app['config']->set('app.locale', 'fr');
+        $app['config']->set('app.fallback_locale', 'fr');
         $app['config']->set('database.default', 'testing');
         $app['config']->set('database.connections.testing', [
             'driver' => 'sqlite',

@@ -16,10 +16,12 @@
         @include('baobab::layouts.partials.admin-sidebar')
 
         <div class="flex flex-1 flex-col overflow-hidden">
-            <header class="flex items-center justify-between border-b border-border px-6 py-4">
-                <h1 class="text-lg font-semibold text-foreground">@yield('page-title')</h1>
-                <div>@yield('page-actions')</div>
-            </header>
+            @hasSection('page-title')
+                <header class="flex items-center justify-between border-b border-border px-6 py-4">
+                    <h1 class="text-lg font-semibold text-foreground">@yield('page-title')</h1>
+                    <div>@yield('page-actions')</div>
+                </header>
+            @endif
 
             @stack('admin.content.before')
 
@@ -30,6 +32,8 @@
     </div>
 
     @include('baobab::layouts.partials.admin-footer')
+
+    <x-baobab::toasts />
 
     @stack('admin.scripts')
 </body>

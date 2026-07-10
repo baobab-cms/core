@@ -13,5 +13,7 @@
 
         @yield('content')
     </div>
+
+    <x-baobab::toasts />
 </body>
 </html>
