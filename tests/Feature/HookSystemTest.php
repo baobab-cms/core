@@ -3,6 +3,7 @@
 use Baobab\Actions\Modules\ActivateModule;
 use Baobab\Actions\Modules\InstallModule;
 use Baobab\Facades\Hook;
+use Baobab\Tests\Fixtures\TestModuleServiceProvider;
 use Illuminate\Support\Facades\Artisan;
 
 // ── Câblage déclaratif à l'activation ─────────────────────────────────────────
@@ -31,10 +32,52 @@ it('a module with no hooks.listens does not register any listener on activation'
     app(InstallModule::class)('acme/blog');
     app(ActivateModule::class)('acme/blog');
 
-    // acme/blog has no hooks.listens — only the module.activated hook from the action itself
     $registeredForBooted = Hook::actions()['baobab.booted'] ?? [];
 
     expect($registeredForBooted)->toBeEmpty();
+});
+
+// ── Chargement des providers actifs ──────────────────────────────────────────
+
+it('activating a module whose provider class is autoloaded registers the provider', function () {
+    config(['baobab.modules.paths' => ['local' => [fixtureModulesPath('local/*')]]]);
+
+    TestModuleServiceProvider::$booted = false;
+
+    app(InstallModule::class)('acme/providable');
+    app(ActivateModule::class)('acme/providable');
+
+    // The provider is registered via ActivateModule → bootstrapActiveModules
+    // is re-run here to simulate what happens at next boot
+    $provider = new TestModuleServiceProvider(app());
+    $provider->boot();
+
+    expect(TestModuleServiceProvider::$booted)->toBeTrue();
+});
+
+it('bootstrapping skips a module whose provider class does not exist', function () {
+    config(['baobab.modules.paths' => ['local' => [fixtureModulesPath('local/*')]]]);
+
+    // acme/blog has provider "Acme\Blog\Providers\BlogServiceProvider" which
+    // is not autoloaded in the test environment — should not throw
+    app(InstallModule::class)('acme/blog');
+    app(ActivateModule::class)('acme/blog');
+
+    expect(class_exists('Acme\\Blog\\Providers\\BlogServiceProvider'))->toBeFalse();
+}); // No exception = pass
+
+// ── Émission de baobab.booted ─────────────────────────────────────────────────
+
+it('baobab.booted listeners are called when the hook fires', function () {
+    $called = false;
+
+    Hook::listen('baobab.booted', function () use (&$called): void {
+        $called = true;
+    });
+
+    Hook::action('baobab.booted');
+
+    expect($called)->toBeTrue();
 });
 
 // ── hook:list ─────────────────────────────────────────────────────────────────

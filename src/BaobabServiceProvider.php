@@ -10,6 +10,7 @@ use Baobab\Console\Commands\ModuleDeactivateCommand;
 use Baobab\Console\Commands\ModuleInstallCommand;
 use Baobab\Console\Commands\ModuleListCommand;
 use Baobab\Console\Commands\ModuleUninstallCommand;
+use Baobab\Facades\Hook;
 use Baobab\Hooks\HookRegistry;
 use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleDiscovery;
@@ -44,7 +45,12 @@ class BaobabServiceProvider extends ServiceProvider
             __DIR__.'/../config/baobab.php' => config_path('baobab.php'),
         ], 'baobab-config');
 
-        $this->wireDeclarativeHooks();
+        // Load active module providers, wire declarative hooks, then signal the
+        // kernel is ready. Order matters: providers first (they may register
+        // bindings needed by listeners), then hook wiring, then the boot event.
+        $this->bootstrapActiveModules();
+
+        Hook::action('baobab.booted');
 
         if ($this->app->runningInConsole()) {
             $this->commands([
@@ -59,11 +65,13 @@ class BaobabServiceProvider extends ServiceProvider
     }
 
     /**
-     * Wire declarative hook listeners for all active modules on every boot
-     * (handles server restarts with modules already active in the database).
-     * Runtime activation is handled separately by ActivateModule action.
+     * For every active module (single DB query):
+     *   1. Register its ServiceProvider if the class is autoloadable.
+     *   2. Wire its manifest hooks.listens into the HookRegistry.
+     *
+     * Skipped silently when the DB is unavailable or not yet migrated.
      */
-    private function wireDeclarativeHooks(): void
+    private function bootstrapActiveModules(): void
     {
         try {
             if (! Schema::hasTable('modules')) {
@@ -74,6 +82,10 @@ class BaobabServiceProvider extends ServiceProvider
             $registry = $this->app->make(HookRegistry::class);
 
             Module::where('status', 'active')->each(function (Module $module) use ($registry): void {
+                if (class_exists($module->provider)) {
+                    $this->app->register($module->provider);
+                }
+
                 foreach ($module->manifest['hooks']['listens'] ?? [] as $hook => $listener) {
                     $registry->listen($hook, $listener);
                 }
