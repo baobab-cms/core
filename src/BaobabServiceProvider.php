@@ -6,7 +6,10 @@ namespace Baobab;
 
 use Baobab\Access\AccessManager;
 use Baobab\Access\Facades\Access;
+use Baobab\Admin\Access\PermissionMatrixBuilder;
 use Baobab\Admin\Sidebar\SidebarBuilder;
+use Baobab\Admin\Sidebar\SidebarItem;
+use Baobab\Audit\AuditLogger;
 use Baobab\Auth\TwoFactorManager;
 use Baobab\Console\Commands\HookListCommand;
 use Baobab\Console\Commands\ModuleActivateCommand;
@@ -22,6 +25,8 @@ use Baobab\Modules\ModuleDiscovery;
 use Baobab\Users\Models\User;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +34,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use PragmaRX\Google2FA\Google2FA;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionServiceProvider;
 use Throwable;
 
@@ -47,6 +53,10 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->singleton(AccessManager::class);
 
         $this->app->singleton(SidebarBuilder::class);
+
+        $this->app->singleton(AuditLogger::class);
+
+        $this->app->singleton(PermissionMatrixBuilder::class);
 
         $this->app->singleton(TwoFactorManager::class, fn () => new TwoFactorManager(new Google2FA));
 
@@ -83,6 +93,10 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerAdminSidebarComposer();
 
+        $this->registerAuditListeners();
+
+        $this->registerCoreSidebarItems();
+
         $this->bootstrapActiveModules();
 
         Hook::action('baobab.booted');
@@ -118,6 +132,89 @@ class BaobabServiceProvider extends ServiceProvider
             $user = auth('baobab')->user();
 
             $view->with('sidebar', $builder->build($user));
+        });
+    }
+
+    /**
+     * Journal d'audit (spec 04 §7, spec 05 §6.4) : écoute les hooks déjà émis
+     * par AccessManager plutôt que de modifier ses Actions — le service reste
+     * un consommateur du système de hooks comme n'importe quel autre listener.
+     */
+    private function registerAuditListeners(): void
+    {
+        /** @var HookRegistry $registry */
+        $registry = $this->app->make(HookRegistry::class);
+
+        $audit = fn (): AuditLogger => $this->app->make(AuditLogger::class);
+
+        $registry->listen('baobab.access.role.created', function (Role $role) use ($audit): void {
+            $audit()->record('role.created', $role, ['name' => $role->name, 'level' => $role->getAttribute('level')]);
+        });
+
+        $registry->listen('baobab.access.role.updated', function (Role $role, array $before) use ($audit): void {
+            $audit()->record('role.updated', $role, [
+                'before' => ['name' => $before['name'] ?? null, 'level' => $before['level'] ?? null],
+                'after' => ['name' => $role->name, 'level' => $role->getAttribute('level')],
+            ]);
+        });
+
+        $registry->listen('baobab.access.role.deleted', function (Role $role) use ($audit): void {
+            $audit()->record('role.deleted', null, ['name' => $role->name, 'level' => $role->getAttribute('level')]);
+        });
+
+        $registry->listen('baobab.access.granted', function (Model $to, string $permission) use ($audit): void {
+            $audit()->record('permission.granted', $to, ['permission' => $permission]);
+        });
+
+        $registry->listen('baobab.access.revoked', function (Model $from, string $permission) use ($audit): void {
+            $audit()->record('permission.revoked', $from, ['permission' => $permission]);
+        });
+
+        $registry->listen('baobab.access.role.assigned', function (User $user, Role $role) use ($audit): void {
+            $audit()->record('role.assigned', $user, ['role' => $role->name]);
+        });
+
+        $registry->listen('baobab.access.role.removed', function (User $user, Role $role) use ($audit): void {
+            $audit()->record('role.removed', $user, ['role' => $role->name]);
+        });
+    }
+
+    /**
+     * Le Core est son propre premier consommateur du hook d'extension de la
+     * sidebar (spec 04 §3.3) : les écrans Audit/Accès ne viennent pas d'un
+     * module, donc pas de module_menu_items — on les injecte comme le ferait
+     * n'importe quel listener externe.
+     */
+    private function registerCoreSidebarItems(): void
+    {
+        Hook::listen('baobab.admin.menu', function (Collection $items, ?User $user) {
+            if ($user === null) {
+                return $items;
+            }
+
+            $coreItems = [];
+
+            if ($user->can('baobab.access.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -1,
+                    label: __('baobab::admin.sidebar.access'),
+                    icon: null,
+                    url: route('admin.access.index'),
+                    order: -20,
+                );
+            }
+
+            if ($user->can('baobab.audit.view')) {
+                $coreItems[] = new SidebarItem(
+                    id: -2,
+                    label: __('baobab::admin.sidebar.audit'),
+                    icon: null,
+                    url: route('admin.audit.index'),
+                    order: -10,
+                );
+            }
+
+            return $items->concat($coreItems);
         });
     }
 

@@ -34,4 +34,30 @@ return [
         'close' => 'Fermer',
     ],
 
+    'sidebar' => [
+        'audit' => 'Journal d\'audit',
+        'access' => 'Rôles & permissions',
+    ],
+
+    'audit' => [
+        'title' => 'Journal d\'audit',
+        'filter_action' => 'Action',
+        'filter_actor' => 'Acteur (ID)',
+        'filter_submit' => 'Filtrer',
+        'column_date' => 'Date',
+        'column_actor' => 'Acteur',
+        'column_action' => 'Action',
+        'column_data' => 'Détails',
+        'column_ip' => 'IP',
+        'system_actor' => 'Système',
+    ],
+
+    'access' => [
+        'title' => 'Rôles & permissions',
+        'column_permission' => 'Permission',
+        'core_group' => 'Core',
+        'inactive_module' => 'Module inactif',
+        'always_granted' => 'Toujours accordé (Super Admin)',
+    ],
+
 ];

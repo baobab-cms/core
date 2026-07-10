@@ -26,10 +26,12 @@ final class AccessManager
     /** @param array<string, mixed> $data */
     public function updateRole(RoleContract $role, array $data): RoleContract
     {
+        $before = $role->getOriginal();
+
         $role->update($data);
         $role->refresh();
 
-        Hook::action('baobab.access.role.updated', $role);
+        Hook::action('baobab.access.role.updated', $role, $before);
 
         return $role;
     }

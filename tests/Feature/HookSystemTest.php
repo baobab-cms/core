@@ -82,12 +82,13 @@ it('baobab.booted listeners are called when the hook fires', function () {
 
 // ── hook:list ─────────────────────────────────────────────────────────────────
 
-it('hook:list outputs "no hooks registered" when registry is empty', function () {
+it('hook:list shows the Core\'s own baseline listeners (audit log, admin menu) with no module active', function () {
     $exitCode = Artisan::call('hook:list');
     $output = Artisan::output();
 
     expect($exitCode)->toBe(0)
-        ->and($output)->toContain('No hooks registered.');
+        ->and($output)->toContain('baobab.access.role.created')
+        ->and($output)->toContain('baobab.admin.menu');
 });
 
 it('hook:list shows registered actions and filters in a table', function () {
