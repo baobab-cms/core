@@ -13,6 +13,7 @@ use Baobab\Modules\Models\ModulePermission;
 use Baobab\Modules\ModuleDiscovery;
 use Baobab\Modules\ModuleManifest;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Installe un module découvert sur disque (spec 01 §3) : valide le manifest,
@@ -40,26 +41,31 @@ final class InstallModule
         $this->dependencies->assertCoreCompatible($manifest);
         $this->dependencies->assertNoCycle($manifest->name(), $manifest->requiresModules(), Module::all());
 
-        $module = Module::create([
-            'name' => $manifest->name(),
-            'title' => $manifest->title(),
-            'type' => $manifest->type(),
-            'version' => $manifest->version(),
-            'provider' => $manifest->provider(),
-            'source' => $discovered->source,
-            'path' => $discovered->path,
-            'manifest' => $manifest->toArray(),
-            'status' => 'installed',
-            'installed_at' => now(),
-        ]);
-
-        // Volontairement hors transaction : les migrations (DDL) provoquent
-        // un commit implicite sur MySQL, ce qui romprait l'atomicité promise
-        // par une transaction englobante.
+        // DDL migrations must run outside any transaction: on MySQL/MariaDB a
+        // CREATE TABLE causes an implicit commit that would silently break an
+        // enclosing transaction. Run them first so the schema is ready before
+        // we write the DML rows.
         $this->runMigrations($discovered->path);
 
-        $this->persistPermissions($module, $manifest);
-        $this->persistMenuItems($module, $manifest->adminMenuItems());
+        $module = DB::transaction(function () use ($manifest, $discovered): Module {
+            $module = Module::create([
+                'name' => $manifest->name(),
+                'title' => $manifest->title(),
+                'type' => $manifest->type(),
+                'version' => $manifest->version(),
+                'provider' => $manifest->provider(),
+                'source' => $discovered->source,
+                'path' => $discovered->path,
+                'manifest' => $manifest->toArray(),
+                'status' => 'installed',
+                'installed_at' => now(),
+            ]);
+
+            $this->persistPermissions($module, $manifest);
+            $this->persistMenuItems($module, $manifest->adminMenuItems());
+
+            return $module;
+        });
 
         Hook::action('baobab.module.installed', $module);
 

@@ -15,6 +15,7 @@ use Baobab\Hooks\HookRegistry;
 use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleDiscovery;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Throwable;
@@ -70,6 +71,7 @@ class BaobabServiceProvider extends ServiceProvider
      *   2. Wire its manifest hooks.listens into the HookRegistry.
      *
      * Skipped silently when the DB is unavailable or not yet migrated.
+     * Any unexpected error is logged as a warning so it stays visible.
      */
     private function bootstrapActiveModules(): void
     {
@@ -77,7 +79,12 @@ class BaobabServiceProvider extends ServiceProvider
             if (! Schema::hasTable('modules')) {
                 return;
             }
+        } catch (Throwable) {
+            // DB not reachable yet (fresh install, offline test env, etc.)
+            return;
+        }
 
+        try {
             /** @var HookRegistry $registry */
             $registry = $this->app->make(HookRegistry::class);
 
@@ -90,8 +97,8 @@ class BaobabServiceProvider extends ServiceProvider
                     $registry->listen($hook, $listener);
                 }
             });
-        } catch (Throwable) {
-            // DB unavailable or not yet migrated — skip silently.
+        } catch (Throwable $e) {
+            Log::warning('[Baobab] Could not bootstrap active modules: '.$e->getMessage());
         }
     }
 }
