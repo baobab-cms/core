@@ -15,16 +15,28 @@ it('accepts a minimal valid blueprint', function () {
         ->and($blueprint->relations())->toBe([]);
 });
 
-it('accepts a field of a known type and relations without deeply validating them', function () {
+it('accepts a field of a known type and a relation targeting a known core model', function () {
     $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
         'fields' => [['key' => 'brand', 'type' => 'text']],
-        'relations' => [['key' => 'brand', 'type' => 'belongs_to']],
+        'relations' => [['key' => 'reviewer', 'type' => 'one_to_many', 'target' => 'User']],
         'is_addressable' => true,
     ]));
 
     expect($blueprint->fields())->toBe([['key' => 'brand', 'type' => 'text']])
-        ->and($blueprint->relations())->toBe([['key' => 'brand', 'type' => 'belongs_to']])
+        ->and($blueprint->relations())->toBe([['key' => 'reviewer', 'type' => 'one_to_many', 'target' => 'User']])
         ->and($blueprint->isAddressable())->toBeTrue();
+});
+
+it('rejects a relation of an unknown type', function () {
+    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'relations' => [['key' => 'reviewer', 'type' => 'has_many', 'target' => 'User']],
+    ])))->toThrow(InvalidBlueprintException::class);
+});
+
+it('rejects a relation targeting an unresolvable target', function () {
+    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'relations' => [['key' => 'brand', 'type' => 'one_to_many', 'target' => 'DoesNotExist']],
+    ])))->toThrow(InvalidBlueprintException::class);
 });
 
 it('rejects a field of an unknown type', function () {

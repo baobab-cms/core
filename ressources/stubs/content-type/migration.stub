@@ -17,6 +17,7 @@ return new class extends Migration
 {{ slug_column }}
             $table->foreignId('author_id')->nullable()->constrained('users')->nullOnDelete();
 {{ field_columns }}
+{{ relation_columns }}
             $table->timestamps();
             $table->softDeletes();
         });

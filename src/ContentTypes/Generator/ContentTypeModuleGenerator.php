@@ -6,6 +6,8 @@ namespace Baobab\ContentTypes\Generator;
 
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Models\ContentType;
+use Baobab\ContentTypes\Relations\RelationDefinitionGenerator;
+use Baobab\ContentTypes\Relations\RelationTargetResolver;
 use Illuminate\Support\Str;
 
 /**
@@ -21,6 +23,8 @@ final class ContentTypeModuleGenerator
         private readonly StubRenderer $renderer,
         private readonly GeneratedFileChecksums $checksums,
         private readonly FieldRegistry $fields,
+        private readonly RelationTargetResolver $relationTargets,
+        private readonly RelationDefinitionGenerator $relationDefinitions,
     ) {}
 
     /**
@@ -44,15 +48,20 @@ final class ContentTypeModuleGenerator
 
         $this->checksums->write(
             $moduleDir,
-            'database/migrations/'.$this->migrationTimestamp()."_create_{$contentType->table_name}_table.php",
+            'database/migrations/'.MigrationTimestamp::generate()."_create_{$contentType->table_name}_table.php",
             $this->renderer->render(StubRenderer::stubPath('migration'), [
                 'table_name' => $contentType->table_name,
                 'slug_column' => $contentType->is_addressable
                     ? "            \$table->string('slug')->unique();\n"
                     : '',
                 'field_columns' => $this->fieldColumns($contentType),
+                'relation_columns' => $this->relationColumns($contentType),
             ]),
         );
+
+        foreach ($this->pivotMigrations($contentType) as $pivot) {
+            $this->checksums->write($moduleDir, $pivot['filename'], $pivot['contents']);
+        }
 
         $this->checksums->write($moduleDir, "src/Models/{$key}.php", $this->renderer->render(StubRenderer::stubPath('model'), [
             'namespace' => $namespace,
@@ -60,6 +69,7 @@ final class ContentTypeModuleGenerator
             'table_name' => $contentType->table_name,
             'fillable' => $this->fillableList($contentType),
             'casts' => $this->castsList($contentType),
+            'relations' => $this->relationMethods($contentType),
         ]));
 
         $this->checksums->write($moduleDir, "src/Policies/{$key}Policy.php", $this->renderer->render(StubRenderer::stubPath('policy'), [
@@ -102,18 +112,6 @@ final class ContentTypeModuleGenerator
         return (string) json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
-    /**
-     * `Y_m_d_His` seul peut entrer en collision entre deux Content Types
-     * générés dans la même seconde (tests, imports en rafale...) — Laravel
-     * traiterait alors la seconde migration comme « déjà exécutée ». Un
-     * suffixe aléatoire élimine la collision sans changer la convention de
-     * tri chronologique du nom de fichier.
-     */
-    private function migrationTimestamp(): string
-    {
-        return now()->format('Y_m_d_His').'_'.substr(bin2hex(random_bytes(3)), 0, 6);
-    }
-
     private function fieldColumns(ContentType $contentType): string
     {
         return collect((array) ($contentType->blueprint['fields'] ?? []))
@@ -150,8 +148,64 @@ final class ContentTypeModuleGenerator
             $columns[] = $field['key'];
         }
 
+        foreach ($this->ownColumnRelations($contentType) as $relation) {
+            if ($relation['type'] === 'polymorphic') {
+                $columns[] = "{$relation['key']}_type";
+            }
+
+            $columns[] = "{$relation['key']}_id";
+        }
+
         return collect($columns)
             ->map(fn (string $column): string => "        '{$column}',")
             ->implode("\n");
+    }
+
+    private function relationColumns(ContentType $contentType): string
+    {
+        return collect($this->ownColumnRelations($contentType))
+            ->map(fn (array $relation): string => $this->relationDefinitions->columnsDefinition(
+                $relation,
+                $this->relationTargets->resolve((string) $relation['target']),
+            ))
+            ->implode("\n");
+    }
+
+    private function relationMethods(ContentType $contentType): string
+    {
+        return collect((array) ($contentType->blueprint['relations'] ?? []))
+            ->map(fn (array $relation): string => $this->relationDefinitions->eloquentMethod(
+                $relation,
+                $this->relationTargets->resolve((string) $relation['target']),
+                $contentType,
+            ))
+            ->implode("\n\n");
+    }
+
+    /**
+     * @return list<array{filename: string, contents: string}>
+     */
+    private function pivotMigrations(ContentType $contentType): array
+    {
+        return array_values(array_filter(collect((array) ($contentType->blueprint['relations'] ?? []))
+            ->map(fn (array $relation) => $this->relationDefinitions->pivotMigration(
+                $relation,
+                $contentType,
+                $this->relationTargets->resolve((string) $relation['target']),
+            ))
+            ->all()));
+    }
+
+    /**
+     * Relations qui ajoutent une colonne côté déclarant (tout sauf many_to_many).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function ownColumnRelations(ContentType $contentType): array
+    {
+        return array_values(array_filter(
+            (array) ($contentType->blueprint['relations'] ?? []),
+            fn (array $relation): bool => $relation['type'] !== 'many_to_many',
+        ));
     }
 }

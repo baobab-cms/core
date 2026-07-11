@@ -87,13 +87,14 @@
         },
         "relations": {
             "type": "array",
-            "description": "Relation catalogue — deeply validated once relation handling exists (M3 point 3).",
+            "description": "Relation catalogue, validated at runtime against Baobab\\ContentTypes\\Relations\\RelationType and RelationTargetResolver (M3 point 3).",
             "default": [],
             "items": {
                 "type": "object",
                 "required": [
                     "key",
-                    "type"
+                    "type",
+                    "target"
                 ],
                 "properties": {
                     "key": {
@@ -101,7 +102,26 @@
                         "pattern": "^[a-z][a-z0-9_]*$"
                     },
                     "type": {
-                        "type": "string"
+                        "type": "string",
+                        "enum": [
+                            "one_to_one",
+                            "one_to_many",
+                            "many_to_many",
+                            "polymorphic"
+                        ]
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "Another Content Type's key, or a known Core model (e.g. User) — resolved by RelationTargetResolver."
+                    },
+                    "on_delete": {
+                        "type": "string",
+                        "enum": [
+                            "restrict",
+                            "cascade",
+                            "set_null"
+                        ],
+                        "default": "restrict"
                     }
                 }
             }

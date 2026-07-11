@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace Baobab\ContentTypes\Blueprint;
 
 use Baobab\ContentTypes\Exceptions\InvalidBlueprintException;
+use Baobab\ContentTypes\Exceptions\UnknownRelationTargetException;
 use Baobab\ContentTypes\Fields\FieldRegistry;
+use Baobab\ContentTypes\Relations\RelationTargetResolver;
 use Illuminate\Support\Facades\Validator;
 
 /**
  * Représentation validée d'un blueprint de Content Type (spec 02 §1.2, §9).
- * `relations()` n'est pas validé en profondeur ici — les relations (M3
- * point 3) durciront ce contrat sans changer cette enveloppe. `fields()` est
- * validé contre le FieldRegistry (M3 point 2) : type inconnu ou options
- * invalides pour le type déclaré sont rejetés.
+ * `fields()` est validé contre le FieldRegistry (M3 point 2) : type inconnu
+ * ou options invalides pour le type déclaré sont rejetés. `relations()` est
+ * validé contre RelationTargetResolver (M3 point 3) : le type est déjà
+ * contraint par le schéma JSON (enum fermé), seule la cible est vérifiée ici
+ * (dépend de l'état de la base — hors de portée du schéma JSON).
  */
 final readonly class ContentTypeBlueprint
 {
@@ -22,14 +25,19 @@ final readonly class ContentTypeBlueprint
      */
     private function __construct(private array $data) {}
 
-    public static function fromJson(string $json, ?BlueprintValidator $validator = null, ?FieldRegistry $fieldRegistry = null): self
-    {
+    public static function fromJson(
+        string $json,
+        ?BlueprintValidator $validator = null,
+        ?FieldRegistry $fieldRegistry = null,
+        ?RelationTargetResolver $relationTargets = null,
+    ): self {
         ($validator ?? new BlueprintValidator)->validate($json);
 
         /** @var array<string, mixed> $data */
         $data = json_decode($json, associative: true);
 
         self::validateFields($data['fields'] ?? [], $fieldRegistry ?? app(FieldRegistry::class));
+        self::validateRelations($data['relations'] ?? [], $relationTargets ?? app(RelationTargetResolver::class));
 
         return new self($data);
     }
@@ -62,6 +70,23 @@ final readonly class ContentTypeBlueprint
                 throw InvalidBlueprintException::forField(
                     "fields.{$field['key']}.options",
                     (string) $result->errors()->first()
+                );
+            }
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $relations
+     */
+    private static function validateRelations(array $relations, RelationTargetResolver $resolver): void
+    {
+        foreach ($relations as $relation) {
+            try {
+                $resolver->resolve((string) $relation['target']);
+            } catch (UnknownRelationTargetException $e) {
+                throw InvalidBlueprintException::forField(
+                    "relations.{$relation['key']}.target",
+                    $e->getMessage()
                 );
             }
         }

@@ -1,5 +1,6 @@
 <?php
 
+use Baobab\ContentTypes\Actions\BuildContentType;
 use Baobab\ContentTypes\Actions\CreateContentType;
 use Baobab\ContentTypes\Exceptions\GeneratedFileConflictException;
 use Baobab\ContentTypes\Generator\ContentTypeModuleGenerator;
@@ -8,6 +9,7 @@ use Illuminate\Support\Facades\File;
 beforeEach(function () {
     File::deleteDirectory(generatedModulesPath());
     config(['baobab.content_types.modules_path' => generatedModulesPath()]);
+    config(['baobab.modules.paths' => ['local' => [generatedModulesPath().'/*']]]);
 });
 
 afterEach(function () {
@@ -103,4 +105,55 @@ it('includes a cast in the generated model for a field whose type declares one',
 
     $modelContents = (string) file_get_contents(generatedModulesPath().'/content-cars/src/Models/Car.php');
     expect($modelContents)->toContain("'specs' => 'array',");
+});
+
+it('generates a real FK column and belongsTo method for a one_to_many relation to an existing content type', function () {
+    app(BuildContentType::class)((string) json_encode([
+        'key' => 'Brand',
+        'label' => ['singular' => 'Marque', 'plural' => 'Marques'],
+    ]));
+
+    $contentType = app(CreateContentType::class)(carBlueprintJson([
+        'relations' => [['key' => 'brand', 'type' => 'one_to_many', 'target' => 'Brand']],
+    ]));
+
+    app(ContentTypeModuleGenerator::class)($contentType);
+
+    $moduleDir = generatedModulesPath().'/content-cars';
+
+    $migrationFiles = File::glob($moduleDir.'/database/migrations/*.php');
+    $migrationContents = collect($migrationFiles)->map(fn (string $path) => (string) file_get_contents($path))->implode("\n");
+    expect($migrationContents)->toContain("\$table->foreignId('brand_id')->nullable()->constrained('ct_brands')->restrictOnDelete();");
+
+    $modelContents = (string) file_get_contents($moduleDir.'/src/Models/Car.php');
+    expect($modelContents)->toContain('public function brand(): \Illuminate\Database\Eloquent\Relations\BelongsTo')
+        ->and($modelContents)->toContain("'brand_id',");
+});
+
+it('generates a pivot migration and belongsToMany method for a many_to_many relation', function () {
+    app(BuildContentType::class)((string) json_encode([
+        'key' => 'Option',
+        'label' => ['singular' => 'Option', 'plural' => 'Options'],
+    ]));
+
+    $contentType = app(CreateContentType::class)(carBlueprintJson([
+        'relations' => [['key' => 'options', 'type' => 'many_to_many', 'target' => 'Option']],
+    ]));
+
+    app(ContentTypeModuleGenerator::class)($contentType);
+
+    $moduleDir = generatedModulesPath().'/content-cars';
+
+    $migrationFiles = File::glob($moduleDir.'/database/migrations/*.php');
+    expect($migrationFiles)->toHaveCount(2);
+
+    $pivotFile = collect($migrationFiles)->first(fn (string $path) => str_contains($path, 'ct_car_option'));
+    expect($pivotFile)->not->toBeNull()
+        ->and((string) file_get_contents($pivotFile))->toContain("Schema::create('ct_car_option'");
+
+    $carsMigration = collect($migrationFiles)->first(fn (string $path) => ! str_contains($path, 'ct_car_option'));
+    expect((string) file_get_contents($carsMigration))->not->toContain('options_id');
+
+    $modelContents = (string) file_get_contents($moduleDir.'/src/Models/Car.php');
+    expect($modelContents)->toContain('public function options(): \Illuminate\Database\Eloquent\Relations\BelongsToMany');
 });

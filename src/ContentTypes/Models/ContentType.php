@@ -49,4 +49,13 @@ class ContentType extends Model
     {
         return $this->belongsTo(Module::class);
     }
+
+    /**
+     * FQCN du modèle Eloquent généré (convention de ContentTypeModuleGenerator :
+     * namespace `Modules\{Key}`, classe `Models\{Key}`).
+     */
+    public function modelClass(): string
+    {
+        return "Modules\\{$this->key}\\Models\\{$this->key}";
+    }
 }
