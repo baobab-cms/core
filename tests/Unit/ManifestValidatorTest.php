@@ -27,6 +27,33 @@ it('parses a valid manifest', function () {
         ->and($manifest->hooksListened())->toBe(['baobab.booted' => 'Acme\\Blog\\Hooks\\OnBooted']);
 });
 
+it('parses a declared autoload.psr-4 mapping', function () {
+    $manifest = ModuleManifest::fromJson(json_encode([
+        'name' => 'acme/blog',
+        'title' => 'Blog',
+        'version' => '1.0.0',
+        'type' => 'module',
+        'provider' => 'Acme\\Blog\\Providers\\BlogServiceProvider',
+        'autoload' => [
+            'psr-4' => ['Acme\\Blog\\' => 'src/'],
+        ],
+    ], JSON_THROW_ON_ERROR));
+
+    expect($manifest->autoloadPsr4())->toBe(['Acme\\Blog\\' => 'src/']);
+});
+
+it('defaults autoloadPsr4 to an empty array when undeclared', function () {
+    $manifest = ModuleManifest::fromJson(json_encode([
+        'name' => 'acme/blog',
+        'title' => 'Blog',
+        'version' => '1.0.0',
+        'type' => 'module',
+        'provider' => 'Acme\\Blog\\Providers\\BlogServiceProvider',
+    ], JSON_THROW_ON_ERROR));
+
+    expect($manifest->autoloadPsr4())->toBe([]);
+});
+
 it('rejects a manifest missing a required field', function () {
     ModuleManifest::fromJson(json_encode([
         'name' => 'acme/broken',

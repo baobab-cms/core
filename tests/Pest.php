@@ -105,3 +105,13 @@ function carBlueprintJson(array $overrides = []): string
         'label' => ['singular' => 'Voiture', 'plural' => 'Voitures'],
     ], $overrides));
 }
+
+/**
+ * Répertoire temporaire cible du générateur de Content Types dans les tests
+ * (config baobab.content_types.modules_path). Utilisé par
+ * ContentTypeModuleGeneratorTest.php et BuildContentTypeTest.php.
+ */
+function generatedModulesPath(): string
+{
+    return sys_get_temp_dir().'/baobab-test-content-type-modules';
+}

@@ -93,4 +93,19 @@ return [
         'retention_days' => (int) env('BAOBAB_LOG_RETENTION_DAYS', 14),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Content Types
+    |--------------------------------------------------------------------------
+    |
+    | modules_path : racine où le moteur de génération écrit les modules de
+    | Content Types (spec 02 §1.2). Doit être couvert par un des patterns de
+    | modules.paths.local ci-dessus pour rester découvrable. Séparé pour rester
+    | surchargeable indépendamment en test (répertoire temporaire).
+    |
+    */
+    'content_types' => [
+        'modules_path' => env('BAOBAB_CONTENT_TYPES_PATH', base_path('modules')),
+    ],
+
 ];

@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }}\Policies;
+
+use Baobab\Users\Models\User;
+
+/**
+ * Squelette généré — la distinction own/any (spec 02 §6) sera affinée par
+ * le CRUD admin auto-généré (M3 point 5). Éditable à la main sans risque :
+ * une régénération respecte l'anti-écrasement par checksum.
+ */
+final class {{ key }}Policy
+{
+    public function viewAny(User $user): bool
+    {
+        return $user->can('{{ permission_prefix }}.view');
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->can('{{ permission_prefix }}.create');
+    }
+
+    public function update(User $user): bool
+    {
+        return $user->can('{{ permission_prefix }}.update');
+    }
+
+    public function delete(User $user): bool
+    {
+        return $user->can('{{ permission_prefix }}.delete');
+    }
+}

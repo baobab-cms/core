@@ -114,6 +114,14 @@ final readonly class ModuleManifest
     }
 
     /**
+     * @return array<string, string> Namespace (avec antislash final) → chemin relatif au module.
+     */
+    public function autoloadPsr4(): array
+    {
+        return $this->data['autoload']['psr-4'] ?? [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

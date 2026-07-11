@@ -231,6 +231,23 @@
             "type": "string",
             "description": "Route name of the module settings screen."
         },
+        "autoload": {
+            "type": "object",
+            "description": "PSR-4 mappings for classes shipped by this module, registered dynamically by ModuleAutoloader when the module is active (spec 01 §7.1 decision 1). Same syntax as composer.json's autoload.psr-4.",
+            "additionalProperties": false,
+            "properties": {
+                "psr-4": {
+                    "type": "object",
+                    "description": "Namespace prefix (with trailing backslash) → path relative to the module root.",
+                    "propertyNames": {
+                        "pattern": "^([A-Z][A-Za-z0-9_]*\\\\)+$"
+                    },
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "theme": {
             "type": "object",
             "description": "Theme-specific section, required when type = theme (spec 03 §2.1).",

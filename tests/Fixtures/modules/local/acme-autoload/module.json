@@ -1,0 +1,13 @@
+{
+  "name": "acme/autoload",
+  "title": "Autoload fixture",
+  "description": "Fixture déclarant autoload.psr-4, utilisée pour tester ModuleAutoloader.",
+  "version": "1.0.0",
+  "type": "module",
+  "provider": "Acme\\Autoload\\Providers\\AutoloadServiceProvider",
+  "autoload": {
+    "psr-4": {
+      "Acme\\Autoload\\": "src/"
+    }
+  }
+}

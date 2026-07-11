@@ -22,6 +22,7 @@ use Baobab\Console\Commands\SuperAdminCommand;
 use Baobab\Facades\Hook;
 use Baobab\Hooks\HookRegistry;
 use Baobab\Modules\Models\Module;
+use Baobab\Modules\ModuleAutoloader;
 use Baobab\Modules\ModuleDiscovery;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
@@ -329,8 +330,11 @@ class BaobabServiceProvider extends ServiceProvider
         try {
             /** @var HookRegistry $registry */
             $registry = $this->app->make(HookRegistry::class);
+            $autoloader = $this->app->make(ModuleAutoloader::class);
 
-            Module::where('status', 'active')->each(function (Module $module) use ($registry): void {
+            Module::where('status', 'active')->each(function (Module $module) use ($registry, $autoloader): void {
+                $autoloader->registerFor($module);
+
                 if (class_exists($module->provider)) {
                     $this->app->register($module->provider);
                 }
