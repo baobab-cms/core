@@ -68,6 +68,33 @@ return [
         'stop' => 'Revenir à mon compte',
     ],
 
+    'account' => [
+        'security' => [
+            'title' => 'Sécurité du compte',
+            'not_enabled_intro' => 'La vérification en deux étapes n\'est pas activée sur votre compte.',
+            'enable_action' => 'Activer la 2FA',
+            'pending_intro' => 'Scannez ce QR code avec votre application d\'authentification, puis saisissez le code généré pour confirmer l\'activation.',
+            'secret_fallback_label' => 'Vous ne pouvez pas scanner le code ? Saisissez cette clé manuellement :',
+            'confirm_code_label' => 'Code de vérification',
+            'confirm_action' => 'Confirmer',
+            'confirm_invalid' => 'Le code saisi est invalide.',
+            'enabled_since' => 'Activée depuis le :date.',
+            'recovery_codes_title' => 'Codes de récupération',
+            'recovery_codes_warning' => 'Conservez ces codes dans un endroit sûr : ils ne seront plus affichés après avoir quitté cette page.',
+            'regenerate_recovery_codes_action' => 'Régénérer les codes de récupération',
+            'regenerate_recovery_codes_confirm_title' => 'Régénérer les codes de récupération ?',
+            'regenerate_recovery_codes_confirm_description' => 'Les codes actuels seront invalidés et remplacés par 8 nouveaux codes.',
+            'disable_action' => 'Désactiver la 2FA',
+            'disable_confirm_title' => 'Désactiver la vérification en deux étapes ?',
+            'disable_confirm_description' => 'Ressaisissez votre mot de passe pour confirmer.',
+            'current_password_label' => 'Mot de passe actuel',
+            'enabled' => 'Vérification en deux étapes activée.',
+            'confirmed' => 'Vérification en deux étapes confirmée.',
+            'recovery_codes_regenerated' => 'Codes de récupération régénérés.',
+            'disabled' => 'Vérification en deux étapes désactivée.',
+        ],
+    ],
+
     'access' => [
         'title' => 'Rôles & permissions',
         'column_permission' => 'Permission',

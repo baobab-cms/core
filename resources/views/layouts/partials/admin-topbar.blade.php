@@ -34,9 +34,16 @@
                 x-cloak
                 class="absolute right-0 top-10 z-10 rounded-md border border-border bg-surface p-2 shadow-lg"
             >
+                <a
+                    href="{{ route('admin.account.security.show') }}"
+                    class="block whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle"
+                >
+                    {{ __('baobab::admin.account.security.title') }}
+                </a>
+
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button type="submit" class="w-full whitespace-nowrap text-left text-sm text-foreground">
+                    <button type="submit" class="w-full whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle">
                         {{ __('baobab::admin.layout.logout') }}
                     </button>
                 </form>

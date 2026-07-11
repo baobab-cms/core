@@ -14,15 +14,17 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Spec 04 §9.1 : (1) expiration automatique — retour silencieux à l'identité
  * réelle, pas d'erreur ; (2) actions interdites pendant une impersonation —
- * aujourd'hui seule la matrice rôles/permissions (admin.access.*) est une
- * surface réellement atteignable, la liste s'étendra au fur et à mesure que
- * d'autres écrans sensibles (tokens API, section Système...) seront construits.
+ * la matrice rôles/permissions (admin.access.*) et la sécurité du compte
+ * (admin.account.security.*, y compris le 2FA de l'utilisateur usurpé) sont
+ * bloquées ; la liste s'étendra au fur et à mesure que d'autres écrans
+ * sensibles (tokens API, section Système...) seront construits.
  */
 final class ImpersonationGuard
 {
     /** @var list<string> */
     private const BLOCKED_ROUTE_PREFIXES = [
         'admin.access.',
+        'admin.account.security.',
     ];
 
     public function handle(Request $request, Closure $next): Response

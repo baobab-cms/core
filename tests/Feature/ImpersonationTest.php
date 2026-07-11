@@ -106,6 +106,18 @@ it('blocks the access matrix while impersonating', function () {
     $this->get('/admin/access')->assertForbidden();
 });
 
+it('blocks the account security screen while impersonating', function () {
+    $actor = impersonationActor('admin');
+    $target = impersonationTarget('editor');
+    app(GrantPermission::class)($target, 'baobab.admin.access');
+
+    $this->actingAs($actor, 'baobab')
+        ->post("/admin/users/{$target->id}/impersonate");
+
+    $this->get('/admin/account/security')->assertForbidden();
+    $this->post('/admin/account/security/disable', ['current_password' => 'secret'])->assertForbidden();
+});
+
 it('records a user.impersonation.started audit entry naming the real actor', function () {
     $actor = impersonationActor('admin');
     $target = impersonationTarget('editor');

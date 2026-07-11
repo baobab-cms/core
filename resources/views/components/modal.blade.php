@@ -1,6 +1,7 @@
 @props([
     'name',
     'maxWidth' => 'md',
+    'open' => false,
 ])
 
 @php
@@ -13,7 +14,7 @@
 @endphp
 
 <div
-    x-data="{ show: false }"
+    x-data="{ show: @js($open) }"
     x-on:open-modal.window="show = ($event.detail === '{{ $name }}')"
     x-on:keydown.escape.window="show = false"
     x-show="show"

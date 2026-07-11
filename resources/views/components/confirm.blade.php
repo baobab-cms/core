@@ -2,9 +2,10 @@
     'name',
     'title' => null,
     'expectedText' => null,
+    'open' => false,
 ])
 
-<x-baobab::modal :name="$name">
+<x-baobab::modal :name="$name" :open="$open">
     <div x-data="{ typed: '' }">
         @if ($title)
             <h2 class="text-base font-semibold text-foreground">{{ $title }}</h2>
