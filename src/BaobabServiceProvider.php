@@ -23,7 +23,9 @@ use Baobab\Facades\Hook;
 use Baobab\Hooks\HookRegistry;
 use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleDiscovery;
+use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Model;
@@ -61,6 +63,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->app->singleton(TwoFactorManager::class, fn () => new TwoFactorManager(new Google2FA));
 
+        $this->app->singleton(SupportLogger::class);
+
         $this->app->bind(ModuleDiscovery::class, function (Application $app) {
             /** @var array<string, list<string>> $paths */
             $paths = $app->make('config')->get('baobab.modules.paths', []);
@@ -69,6 +73,8 @@ class BaobabServiceProvider extends ServiceProvider
         });
 
         $this->registerGuard();
+
+        $this->registerLogging();
     }
 
     public function boot(): void
@@ -253,6 +259,24 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->make('config')->set('auth.providers.baobab_users', [
             'driver' => 'eloquent',
             'model' => $userModel,
+        ]);
+    }
+
+    /**
+     * Journalisation technique (spec 12 §9) : channel dédié, isolé du `stack`
+     * de l'application hôte — enregistré programmatiquement, comme le guard
+     * et la config Spatie, pour ne rien exiger de la config publiée.
+     */
+    private function registerLogging(): void
+    {
+        /** @var Repository $config */
+        $config = $this->app->make('config');
+
+        $config->set('logging.channels.baobab', [
+            'driver' => 'daily',
+            'path' => storage_path('logs/baobab.log'),
+            'level' => $config->get('logging.channels.stack.level', 'debug'),
+            'days' => $config->get('baobab.logging.retention_days', 14),
         ]);
     }
 

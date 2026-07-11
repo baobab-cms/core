@@ -80,4 +80,17 @@ return [
         'duration_minutes' => (int) env('BAOBAB_IMPERSONATION_MINUTES', 60),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Journalisation technique
+    |--------------------------------------------------------------------------
+    |
+    | retention_days : nombre de jours conservés par le channel de log dédié
+    | `baobab` (driver "daily", spec 12 §9). Défaut : 14.
+    |
+    */
+    'logging' => [
+        'retention_days' => (int) env('BAOBAB_LOG_RETENTION_DAYS', 14),
+    ],
+
 ];
