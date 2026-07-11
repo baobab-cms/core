@@ -91,3 +91,17 @@ function baobabLogPath(): string
 {
     return storage_path('logs/baobab-'.now()->format('Y-m-d').'.log');
 }
+
+/**
+ * A minimal valid Content Type blueprint (JSON), key "Car" by default.
+ * Used by ContentTypeBlueprintTest.php and CreateContentTypeTest.php.
+ *
+ * @param  array<string, mixed>  $overrides
+ */
+function carBlueprintJson(array $overrides = []): string
+{
+    return (string) json_encode(array_replace([
+        'key' => 'Car',
+        'label' => ['singular' => 'Voiture', 'plural' => 'Voitures'],
+    ], $overrides));
+}

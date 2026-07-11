@@ -1,0 +1,90 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://baobabcms.com/schemas/content-type-blueprint.schema.json",
+    "title": "Baobab CMS Content Type blueprint",
+    "description": "Schema for a Content Type blueprint (spec 02 §1.2, §9). Describes a Content Type's identity, fields and relations independently of the generated module — spec reference: docs/specs/specification-content-types.md.",
+    "type": "object",
+    "required": [
+        "key",
+        "label"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "key": {
+            "type": "string",
+            "description": "Technical key, English singular PascalCase (spec 02 §9 decision 3).",
+            "pattern": "^[A-Z][A-Za-z0-9]*$"
+        },
+        "label": {
+            "type": "object",
+            "description": "Displayed label, translatable and independent from the key (spec 02 §4.1).",
+            "required": [
+                "singular",
+                "plural"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "singular": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "plural": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "is_addressable": {
+            "type": "boolean",
+            "description": "Whether this Content Type has public front URLs (spec 02 §4.3).",
+            "default": false
+        },
+        "blueprint_version": {
+            "type": "integer",
+            "description": "Blueprint format version (spec 01 §7.1 decision 5) — not to be confused with the per-type evolution counter (spec 02 §2.2), which lives on the content_types.version column.",
+            "const": 1
+        },
+        "fields": {
+            "type": "array",
+            "description": "Field catalogue — deeply validated once the field registry exists (M3 point 2).",
+            "default": [],
+            "items": {
+                "type": "object",
+                "required": [
+                    "key",
+                    "type"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_]*$"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "relations": {
+            "type": "array",
+            "description": "Relation catalogue — deeply validated once relation handling exists (M3 point 3).",
+            "default": [],
+            "items": {
+                "type": "object",
+                "required": [
+                    "key",
+                    "type"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_]*$"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}

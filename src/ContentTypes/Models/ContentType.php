@@ -1,0 +1,52 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Baobab\ContentTypes\Models;
+
+use Baobab\Modules\Models\Module;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+/**
+ * @property int $id
+ * @property string $key
+ * @property string $table_name
+ * @property bool $is_addressable
+ * @property int|null $module_id
+ * @property int $version
+ * @property array<string, mixed> $blueprint
+ */
+class ContentType extends Model
+{
+    /**
+     * @var list<string>
+     */
+    protected $fillable = [
+        'key',
+        'table_name',
+        'is_addressable',
+        'module_id',
+        'version',
+        'blueprint',
+    ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'is_addressable' => 'boolean',
+            'blueprint' => 'array',
+        ];
+    }
+
+    /**
+     * @return BelongsTo<Module, $this>
+     */
+    public function module(): BelongsTo
+    {
+        return $this->belongsTo(Module::class);
+    }
+}
