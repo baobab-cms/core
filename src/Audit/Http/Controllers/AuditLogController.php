@@ -13,7 +13,7 @@ final class AuditLogController
     public function index(Request $request): View
     {
         $entries = AuditEntry::query()
-            ->with('actor')
+            ->with(['actor', 'impersonator'])
             ->when($request->filled('action'), fn ($query) => $query->where('action', $request->string('action')))
             ->when($request->filled('actor_id'), fn ($query) => $query->where('actor_id', $request->integer('actor_id')))
             ->orderByDesc('created_at')

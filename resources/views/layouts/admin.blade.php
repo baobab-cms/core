@@ -9,10 +9,12 @@
 
     @stack('admin.head')
 </head>
-<body class="h-full bg-surface text-foreground antialiased" x-data="{ sidebarOpen: false }">
+<body class="flex h-full flex-col bg-surface text-foreground antialiased" x-data="{ sidebarOpen: false }">
+    @include('baobab::layouts.partials.impersonation-banner')
+
     @include('baobab::layouts.partials.admin-topbar')
 
-    <div class="flex h-[calc(100%-4rem)]">
+    <div class="flex flex-1 overflow-hidden">
         @include('baobab::layouts.partials.admin-sidebar')
 
         <div class="flex flex-1 flex-col overflow-hidden">

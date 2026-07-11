@@ -81,7 +81,9 @@
 
                             @foreach ($columns as $column)
                                 <td class="px-3 py-2 text-foreground">
-                                    @if (isset($column['render']))
+                                    @if (isset($column['render']) && ($column['raw'] ?? false))
+                                        {!! ($column['render'])($row) !!}
+                                    @elseif (isset($column['render']))
                                         {{ ($column['render'])($row) }}
                                     @else
                                         {{ data_get($row, $column['key']) }}

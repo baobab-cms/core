@@ -6,6 +6,7 @@ namespace Baobab;
 
 use Baobab\Access\AccessManager;
 use Baobab\Access\Facades\Access;
+use Baobab\Access\Http\Middleware\ImpersonationGuard;
 use Baobab\Admin\Access\PermissionMatrixBuilder;
 use Baobab\Admin\Sidebar\SidebarBuilder;
 use Baobab\Admin\Sidebar\SidebarItem;
@@ -116,7 +117,7 @@ class BaobabServiceProvider extends ServiceProvider
 
     private function loadAdminRoutes(): void
     {
-        Route::middleware(['web', 'auth:baobab', 'verified', 'can:baobab.admin.access'])
+        Route::middleware(['web', 'auth:baobab', 'verified', 'can:baobab.admin.access', ImpersonationGuard::class])
             ->prefix($this->app->make('config')->get('baobab.admin.path', 'admin'))
             ->name('admin.')
             ->group(__DIR__.'/../routes/admin.php');
@@ -177,6 +178,14 @@ class BaobabServiceProvider extends ServiceProvider
         $registry->listen('baobab.access.role.removed', function (User $user, Role $role) use ($audit): void {
             $audit()->record('role.removed', $user, ['role' => $role->name]);
         });
+
+        $registry->listen('baobab.user.impersonation.started', function (User $actor, User $target) use ($audit): void {
+            $audit()->record('user.impersonation.started', $target, ['actor' => $actor->name]);
+        });
+
+        $registry->listen('baobab.user.impersonation.ended', function (User $actor, ?User $target, string $reason) use ($audit): void {
+            $audit()->record('user.impersonation.ended', $target, ['reason' => $reason]);
+        });
     }
 
     /**
@@ -211,6 +220,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: null,
                     url: route('admin.audit.index'),
                     order: -10,
+                );
+            }
+
+            if ($user->can('baobab.users.impersonate')) {
+                $coreItems[] = new SidebarItem(
+                    id: -3,
+                    label: __('baobab::admin.sidebar.users'),
+                    icon: null,
+                    url: route('admin.users.index'),
+                    order: -30,
                 );
             }
 

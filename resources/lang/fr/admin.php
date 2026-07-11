@@ -37,6 +37,7 @@ return [
     'sidebar' => [
         'audit' => 'Journal d\'audit',
         'access' => 'Rôles & permissions',
+        'users' => 'Utilisateurs',
     ],
 
     'audit' => [
@@ -46,10 +47,25 @@ return [
         'filter_submit' => 'Filtrer',
         'column_date' => 'Date',
         'column_actor' => 'Acteur',
+        'column_impersonator' => 'Pour le compte de',
         'column_action' => 'Action',
         'column_data' => 'Détails',
         'column_ip' => 'IP',
         'system_actor' => 'Système',
+    ],
+
+    'users' => [
+        'title' => 'Utilisateurs',
+        'column_name' => 'Nom',
+        'column_email' => 'E-mail',
+        'column_roles' => 'Rôles',
+        'column_level' => 'Niveau',
+        'impersonate_action' => 'Se connecter en tant que',
+    ],
+
+    'impersonation' => [
+        'banner' => 'Vous naviguez en tant que :name.',
+        'stop' => 'Revenir à mon compte',
     ],
 
     'access' => [

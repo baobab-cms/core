@@ -67,4 +67,17 @@ return [
         'path' => env('BAOBAB_ADMIN_PATH', 'admin'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Impersonation
+    |--------------------------------------------------------------------------
+    |
+    | duration_minutes : durée maximale d'une session d'impersonation avant
+    | retour automatique à l'identité réelle (spec 04 §9.1). Défaut : 60.
+    |
+    */
+    'impersonation' => [
+        'duration_minutes' => (int) env('BAOBAB_IMPERSONATION_MINUTES', 60),
+    ],
+
 ];

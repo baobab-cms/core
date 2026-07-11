@@ -1,5 +1,6 @@
 <?php
 
+use Baobab\Access\Actions\GrantPermission;
 use Baobab\Modules\Models\Module;
 use Baobab\Tests\TestCase;
 use Baobab\Users\Models\User;
@@ -45,4 +46,48 @@ function actingAsLevel(string $roleName): User
     test()->actingAs($user, 'baobab');
 
     return $user;
+}
+
+/**
+ * A user assigned to the given role, granted baobab.admin.access and
+ * baobab.users.impersonate directly. Used as the acting party in
+ * ImpersonationTest.php.
+ */
+function impersonationActor(string $roleName): User
+{
+    $user = User::create([
+        'name' => "Actor ({$roleName})",
+        'email' => strtolower($roleName).'-actor-'.uniqid().'@example.com',
+        'password' => 'secret',
+    ]);
+    $user->assignRole(Role::findByName($roleName, 'baobab'));
+    app(GrantPermission::class)($user, 'baobab.admin.access');
+    app(GrantPermission::class)($user, 'baobab.users.impersonate');
+
+    return $user;
+}
+
+/**
+ * A user assigned to the given role, with no permissions granted — the
+ * impersonation target in ImpersonationTest.php.
+ */
+function impersonationTarget(string $roleName): User
+{
+    $user = User::create([
+        'name' => "Target ({$roleName})",
+        'email' => strtolower($roleName).'-target-'.uniqid().'@example.com',
+        'password' => 'secret',
+    ]);
+    $user->assignRole(Role::findByName($roleName, 'baobab'));
+
+    return $user;
+}
+
+/**
+ * Path of today's baobab technical log file (daily channel, spec 12 §9).
+ * Used by LoggerTest.php.
+ */
+function baobabLogPath(): string
+{
+    return storage_path('logs/baobab-'.now()->format('Y-m-d').'.log');
 }

@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Baobab\Admin\Access\Http\Controllers\AccessMatrixController;
+use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
+use Baobab\Admin\Users\Http\Controllers\UserController;
 use Baobab\Audit\Http\Controllers\AuditLogController;
 use Illuminate\Support\Facades\Route;
 
@@ -22,4 +24,12 @@ Route::middleware('can:baobab.access.manage')
         Route::get('/', [AccessMatrixController::class, 'index'])->name('index');
         Route::post('/roles', [AccessMatrixController::class, 'store'])->name('roles.store');
         Route::post('/{role}/permissions/{permission}', [AccessMatrixController::class, 'toggle'])->name('toggle');
+    });
+
+Route::middleware('can:baobab.users.impersonate')
+    ->prefix('users')
+    ->name('users.')
+    ->group(function (): void {
+        Route::get('/', [UserController::class, 'index'])->name('index');
+        Route::post('/{user}/impersonate', [ImpersonationController::class, 'store'])->name('impersonate');
     });

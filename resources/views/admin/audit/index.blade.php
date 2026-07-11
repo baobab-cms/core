@@ -23,6 +23,11 @@
                     'render' => fn ($entry) => $entry->actor?->name ?? __('baobab::admin.audit.system_actor'),
                 ],
                 [
+                    'key' => 'impersonator',
+                    'label' => __('baobab::admin.audit.column_impersonator'),
+                    'render' => fn ($entry) => $entry->impersonator?->name ?? '—',
+                ],
+                [
                     'key' => 'action',
                     'label' => __('baobab::admin.audit.column_action'),
                 ],
