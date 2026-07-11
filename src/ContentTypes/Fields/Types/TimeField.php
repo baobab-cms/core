@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Baobab\ContentTypes\Fields\Types;
+
+use Baobab\ContentTypes\Fields\FieldType;
+
+final class TimeField extends FieldType
+{
+    public static function key(): string
+    {
+        return 'time';
+    }
+
+    public function columnDefinition(string $name, array $options): string
+    {
+        return "\$table->time('{$name}')->nullable();";
+    }
+
+    public function rules(string $name, array $options): array
+    {
+        return ['date_format:H:i:s'];
+    }
+
+    public function cast(array $options): ?string
+    {
+        return null;
+    }
+
+    public function formComponent(): string
+    {
+        return 'baobab::fields.time';
+    }
+
+    public function displayComponent(): string
+    {
+        return 'baobab::fields.time-display';
+    }
+
+    public function toApi(mixed $value, array $options): mixed
+    {
+        return $value;
+    }
+
+    public function graphqlType(array $options): string
+    {
+        return 'Time';
+    }
+}

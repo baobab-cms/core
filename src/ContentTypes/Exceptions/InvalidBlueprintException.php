@@ -34,6 +34,11 @@ final class InvalidBlueprintException extends RuntimeException
         return new self("Blueprint de Content Type invalide — JSON malformé ({$reason})", []);
     }
 
+    public static function forField(string $path, string $reason): self
+    {
+        return new self("Blueprint de Content Type invalide — {$path}: {$reason}", [$path => [$reason]]);
+    }
+
     /**
      * @return array<string, list<string>>
      */

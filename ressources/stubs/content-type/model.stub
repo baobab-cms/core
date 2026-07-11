@@ -27,6 +27,7 @@ final class {{ key }} extends Model
     {
         return [
             'published_at' => 'datetime',
+{{ casts }}
         ];
     }
 }

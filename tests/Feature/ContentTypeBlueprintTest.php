@@ -15,7 +15,7 @@ it('accepts a minimal valid blueprint', function () {
         ->and($blueprint->relations())->toBe([]);
 });
 
-it('accepts non-empty fields and relations without deeply validating them', function () {
+it('accepts a field of a known type and relations without deeply validating them', function () {
     $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
         'fields' => [['key' => 'brand', 'type' => 'text']],
         'relations' => [['key' => 'brand', 'type' => 'belongs_to']],
@@ -25,6 +25,28 @@ it('accepts non-empty fields and relations without deeply validating them', func
     expect($blueprint->fields())->toBe([['key' => 'brand', 'type' => 'text']])
         ->and($blueprint->relations())->toBe([['key' => 'brand', 'type' => 'belongs_to']])
         ->and($blueprint->isAddressable())->toBeTrue();
+});
+
+it('rejects a field of an unknown type', function () {
+    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'fields' => [['key' => 'brand', 'type' => 'does_not_exist']],
+    ])))->toThrow(InvalidBlueprintException::class);
+});
+
+it("rejects a field whose options fail its type's optionsRules", function () {
+    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'fields' => [['key' => 'status', 'type' => 'select', 'options' => []]],
+    ])))->toThrow(InvalidBlueprintException::class);
+});
+
+it('accepts a field whose options satisfy its type optionsRules', function () {
+    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'fields' => [['key' => 'status', 'type' => 'select', 'options' => ['choices' => ['draft', 'published']]]],
+    ]));
+
+    expect($blueprint->fields())->toBe([
+        ['key' => 'status', 'type' => 'select', 'options' => ['choices' => ['draft', 'published']]],
+    ]);
 });
 
 it('rejects a key that is not PascalCase', function () {

@@ -19,6 +19,21 @@ use Baobab\Console\Commands\ModuleInstallCommand;
 use Baobab\Console\Commands\ModuleListCommand;
 use Baobab\Console\Commands\ModuleUninstallCommand;
 use Baobab\Console\Commands\SuperAdminCommand;
+use Baobab\ContentTypes\Fields\FieldRegistry;
+use Baobab\ContentTypes\Fields\Types\BooleanField;
+use Baobab\ContentTypes\Fields\Types\DateField;
+use Baobab\ContentTypes\Fields\Types\DateTimeField;
+use Baobab\ContentTypes\Fields\Types\DecimalField;
+use Baobab\ContentTypes\Fields\Types\IntegerField;
+use Baobab\ContentTypes\Fields\Types\JsonField;
+use Baobab\ContentTypes\Fields\Types\MultiSelectField;
+use Baobab\ContentTypes\Fields\Types\RadioField;
+use Baobab\ContentTypes\Fields\Types\RichTextField;
+use Baobab\ContentTypes\Fields\Types\SelectField;
+use Baobab\ContentTypes\Fields\Types\SlugField;
+use Baobab\ContentTypes\Fields\Types\TextareaField;
+use Baobab\ContentTypes\Fields\Types\TextField;
+use Baobab\ContentTypes\Fields\Types\TimeField;
 use Baobab\Facades\Hook;
 use Baobab\Hooks\HookRegistry;
 use Baobab\Modules\Models\Module;
@@ -37,6 +52,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Mews\Purifier\PurifierServiceProvider;
 use PragmaRX\Google2FA\Google2FA;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionServiceProvider;
@@ -51,6 +67,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerSpatieConfig();
 
         $this->app->register(PermissionServiceProvider::class);
+        $this->app->register(PurifierServiceProvider::class);
 
         $this->app->singleton(HookRegistry::class);
 
@@ -65,6 +82,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->singleton(TwoFactorManager::class, fn () => new TwoFactorManager(new Google2FA));
 
         $this->app->singleton(SupportLogger::class);
+
+        $this->app->singleton(FieldRegistry::class);
 
         $this->app->bind(ModuleDiscovery::class, function (Application $app) {
             /** @var array<string, list<string>> $paths */
@@ -104,6 +123,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerAuditListeners();
 
         $this->registerCoreSidebarItems();
+
+        $this->registerCoreFieldTypes();
 
         $this->bootstrapActiveModules();
 
@@ -242,6 +263,35 @@ class BaobabServiceProvider extends ServiceProvider
 
             return $items->concat($coreItems);
         });
+    }
+
+    /**
+     * Catalogue de champs Core, vague 1 (spec 02 §3.2). Un module peut en
+     * ajouter d'autres via FieldRegistry::register() dans son provider.
+     */
+    private function registerCoreFieldTypes(): void
+    {
+        /** @var FieldRegistry $registry */
+        $registry = $this->app->make(FieldRegistry::class);
+
+        foreach ([
+            TextField::class,
+            TextareaField::class,
+            RichTextField::class,
+            SlugField::class,
+            IntegerField::class,
+            DecimalField::class,
+            BooleanField::class,
+            DateField::class,
+            DateTimeField::class,
+            TimeField::class,
+            SelectField::class,
+            MultiSelectField::class,
+            RadioField::class,
+            JsonField::class,
+        ] as $fieldType) {
+            $registry->register($fieldType);
+        }
     }
 
     private function registerGuard(): void

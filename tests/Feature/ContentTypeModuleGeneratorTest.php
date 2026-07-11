@@ -77,3 +77,30 @@ it('refuses to overwrite a generated file that was hand-edited', function () {
     expect(fn () => app(ContentTypeModuleGenerator::class)($contentType))
         ->toThrow(GeneratedFileConflictException::class);
 });
+
+it('generates a real column and validation-friendly fillable for a declared field', function () {
+    $contentType = app(CreateContentType::class)(carBlueprintJson([
+        'fields' => [['key' => 'brand', 'type' => 'text']],
+    ]));
+
+    app(ContentTypeModuleGenerator::class)($contentType);
+
+    $moduleDir = generatedModulesPath().'/content-cars';
+
+    $migrationFiles = File::glob($moduleDir.'/database/migrations/*.php');
+    expect(file_get_contents($migrationFiles[0]))->toContain("\$table->string('brand', 255);");
+
+    $modelContents = (string) file_get_contents($moduleDir.'/src/Models/Car.php');
+    expect($modelContents)->toContain("'brand',");
+});
+
+it('includes a cast in the generated model for a field whose type declares one', function () {
+    $contentType = app(CreateContentType::class)(carBlueprintJson([
+        'fields' => [['key' => 'specs', 'type' => 'json']],
+    ]));
+
+    app(ContentTypeModuleGenerator::class)($contentType);
+
+    $modelContents = (string) file_get_contents(generatedModulesPath().'/content-cars/src/Models/Car.php');
+    expect($modelContents)->toContain("'specs' => 'array',");
+});

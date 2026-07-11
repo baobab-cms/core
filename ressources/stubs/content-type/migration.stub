@@ -16,6 +16,7 @@ return new class extends Migration
             $table->timestamp('published_at')->nullable();
 {{ slug_column }}
             $table->foreignId('author_id')->nullable()->constrained('users')->nullOnDelete();
+{{ field_columns }}
             $table->timestamps();
             $table->softDeletes();
         });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\ContentTypes\Generator;
 
+use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Models\ContentType;
 use Illuminate\Support\Str;
 
@@ -19,6 +20,7 @@ final class ContentTypeModuleGenerator
     public function __construct(
         private readonly StubRenderer $renderer,
         private readonly GeneratedFileChecksums $checksums,
+        private readonly FieldRegistry $fields,
     ) {}
 
     /**
@@ -42,12 +44,13 @@ final class ContentTypeModuleGenerator
 
         $this->checksums->write(
             $moduleDir,
-            'database/migrations/'.now()->format('Y_m_d_His')."_create_{$contentType->table_name}_table.php",
+            'database/migrations/'.$this->migrationTimestamp()."_create_{$contentType->table_name}_table.php",
             $this->renderer->render(StubRenderer::stubPath('migration'), [
                 'table_name' => $contentType->table_name,
                 'slug_column' => $contentType->is_addressable
                     ? "            \$table->string('slug')->unique();\n"
                     : '',
+                'field_columns' => $this->fieldColumns($contentType),
             ]),
         );
 
@@ -56,6 +59,7 @@ final class ContentTypeModuleGenerator
             'key' => $key,
             'table_name' => $contentType->table_name,
             'fillable' => $this->fillableList($contentType),
+            'casts' => $this->castsList($contentType),
         ]));
 
         $this->checksums->write($moduleDir, "src/Policies/{$key}Policy.php", $this->renderer->render(StubRenderer::stubPath('policy'), [
@@ -96,6 +100,42 @@ final class ContentTypeModuleGenerator
         ];
 
         return (string) json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * `Y_m_d_His` seul peut entrer en collision entre deux Content Types
+     * générés dans la même seconde (tests, imports en rafale...) — Laravel
+     * traiterait alors la seconde migration comme « déjà exécutée ». Un
+     * suffixe aléatoire élimine la collision sans changer la convention de
+     * tri chronologique du nom de fichier.
+     */
+    private function migrationTimestamp(): string
+    {
+        return now()->format('Y_m_d_His').'_'.substr(bin2hex(random_bytes(3)), 0, 6);
+    }
+
+    private function fieldColumns(ContentType $contentType): string
+    {
+        return collect((array) ($contentType->blueprint['fields'] ?? []))
+            ->map(function (array $field): string {
+                $fieldType = $this->fields->resolve($field['type']);
+
+                return '            '.$fieldType->columnDefinition($field['key'], $field['options'] ?? []);
+            })
+            ->implode("\n");
+    }
+
+    private function castsList(ContentType $contentType): string
+    {
+        return collect((array) ($contentType->blueprint['fields'] ?? []))
+            ->map(function (array $field): ?string {
+                $fieldType = $this->fields->resolve($field['type']);
+                $cast = $fieldType->cast($field['options'] ?? []);
+
+                return $cast === null ? null : "            '{$field['key']}' => '{$cast}',";
+            })
+            ->filter()
+            ->implode("\n");
     }
 
     private function fillableList(ContentType $contentType): string

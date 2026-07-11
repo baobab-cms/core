@@ -46,7 +46,7 @@
         },
         "fields": {
             "type": "array",
-            "description": "Field catalogue — deeply validated once the field registry exists (M3 point 2).",
+            "description": "Field catalogue, validated against Baobab\\ContentTypes\\Fields\\FieldRegistry at runtime (M3 point 2) — `type` must be a registered key, `options` must satisfy that type's optionsRules().",
             "default": [],
             "items": {
                 "type": "object",
@@ -60,7 +60,27 @@
                         "pattern": "^[a-z][a-z0-9_]*$"
                     },
                     "type": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Field type key, checked against the FieldRegistry — not a fixed enum here so modules can register their own types."
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "default": {
+                        "description": "Default value, shape depends on the field type."
+                    },
+                    "unique": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "indexed": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "options": {
+                        "type": "object",
+                        "description": "Type-specific options (e.g. max_length for text, choices for select) — see each FieldType::optionsRules()."
                     }
                 }
             }
