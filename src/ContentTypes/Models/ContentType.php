@@ -7,6 +7,7 @@ namespace Baobab\ContentTypes\Models;
 use Baobab\Modules\Models\Module;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
@@ -57,5 +58,16 @@ class ContentType extends Model
     public function modelClass(): string
     {
         return "Modules\\{$this->key}\\Models\\{$this->key}";
+    }
+
+    /**
+     * Répertoire du module généré (convention de ContentTypeModuleGenerator :
+     * racine `baobab.content_types.modules_path`, dossier `content-{slug}`).
+     */
+    public function moduleDir(): string
+    {
+        $dirSlug = Str::kebab(Str::plural($this->key));
+
+        return rtrim((string) config('baobab.content_types.modules_path'), '/')."/content-{$dirSlug}";
     }
 }

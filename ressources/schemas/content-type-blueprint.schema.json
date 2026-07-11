@@ -81,6 +81,10 @@
                     "options": {
                         "type": "object",
                         "description": "Type-specific options (e.g. max_length for text, choices for select) — see each FieldType::optionsRules()."
+                    },
+                    "renamed_from": {
+                        "type": "string",
+                        "description": "Previous field key, when this field is the result of a rename (spec 02 §2.2, M3 point 4). Consumed by BlueprintDiffer at evolution time, then kept as a permanent rename history entry for import/export."
                     }
                 }
             }

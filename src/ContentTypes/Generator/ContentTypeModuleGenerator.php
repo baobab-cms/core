@@ -37,7 +37,7 @@ final class ContentTypeModuleGenerator
         $moduleName = "content-types/{$dirSlug}";
         $namespace = "Modules\\{$key}";
         $permissionPrefix = 'content_types.'.Str::snake($key);
-        $moduleDir = rtrim((string) config('baobab.content_types.modules_path'), '/')."/content-{$dirSlug}";
+        $moduleDir = $contentType->moduleDir();
 
         $this->checksums->write($moduleDir, 'module.json', $this->moduleJson(
             $contentType,
@@ -63,14 +63,7 @@ final class ContentTypeModuleGenerator
             $this->checksums->write($moduleDir, $pivot['filename'], $pivot['contents']);
         }
 
-        $this->checksums->write($moduleDir, "src/Models/{$key}.php", $this->renderer->render(StubRenderer::stubPath('model'), [
-            'namespace' => $namespace,
-            'key' => $key,
-            'table_name' => $contentType->table_name,
-            'fillable' => $this->fillableList($contentType),
-            'casts' => $this->castsList($contentType),
-            'relations' => $this->relationMethods($contentType),
-        ]));
+        $this->writeModel($contentType, $moduleDir);
 
         $this->checksums->write($moduleDir, "src/Policies/{$key}Policy.php", $this->renderer->render(StubRenderer::stubPath('policy'), [
             'namespace' => $namespace,
@@ -84,6 +77,32 @@ final class ContentTypeModuleGenerator
         ]));
 
         return $moduleName;
+    }
+
+    /**
+     * Régénère uniquement le modèle Eloquent (fillable/casts/relations à
+     * jour) — utilisé par EvolveContentType (M3 point 4) après une migration
+     * incrémentale, sans retoucher module.json/policy/provider ni la
+     * migration de création d'origine. Passe par le même anti-écrasement par
+     * checksum que le reste du générateur.
+     */
+    public function regenerateModel(ContentType $contentType): void
+    {
+        $this->writeModel($contentType, $contentType->moduleDir());
+    }
+
+    private function writeModel(ContentType $contentType, string $moduleDir): void
+    {
+        $key = $contentType->key;
+
+        $this->checksums->write($moduleDir, "src/Models/{$key}.php", $this->renderer->render(StubRenderer::stubPath('model'), [
+            'namespace' => "Modules\\{$key}",
+            'key' => $key,
+            'table_name' => $contentType->table_name,
+            'fillable' => $this->fillableList($contentType),
+            'casts' => $this->castsList($contentType),
+            'relations' => $this->relationMethods($contentType),
+        ]));
     }
 
     private function moduleJson(ContentType $contentType, string $moduleName, string $namespace, string $permissionPrefix): string
