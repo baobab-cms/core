@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('label');
             $table->string('icon')->nullable();
             $table->string('route')->nullable();
+            $table->json('route_params')->nullable();
             $table->string('permission')->nullable();
             $table->unsignedInteger('order')->default(0);
             $table->timestamps();

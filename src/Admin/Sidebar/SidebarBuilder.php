@@ -72,18 +72,21 @@ final class SidebarBuilder
             id: $item->id,
             label: $item->label,
             icon: $item->icon,
-            url: $this->resolveUrl($item->route),
+            url: $this->resolveUrl($item->route, $item->route_params ?? []),
             order: $item->order,
             children: array_values($children->all()),
         );
     }
 
-    private function resolveUrl(?string $routeName): ?string
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    private function resolveUrl(?string $routeName, array $params = []): ?string
     {
         if ($routeName === null || ! Route::has($routeName)) {
             return null;
         }
 
-        return route($routeName);
+        return route($routeName, $params);
     }
 }

@@ -81,6 +81,27 @@ it('drops a parent whose route is null once all its children are filtered out', 
     expect(app(SidebarBuilder::class)->build($user))->toBeEmpty();
 });
 
+// ── route_params ──────────────────────────────────────────────────────────────
+
+it('resolves a parameterized route for a menu item declaring route_params', function () {
+    $module = makeActiveModule();
+    ModuleMenuItem::create([
+        'module_id' => $module->id,
+        'label' => 'Voitures',
+        'route' => 'admin.content.index',
+        'route_params' => ['contentType' => 'cars'],
+        'permission' => null,
+        'order' => 10,
+    ]);
+
+    $user = User::create(['name' => 'Viewer', 'email' => 'viewer4@example.com', 'password' => 'secret']);
+
+    $sidebar = app(SidebarBuilder::class)->build($user);
+
+    expect($sidebar)->toHaveCount(1)
+        ->and($sidebar->first()->url)->toBe(route('admin.content.index', ['contentType' => 'cars']));
+});
+
 // ── Extension via le hook baobab.admin.menu ───────────────────────────────────
 
 it('lets the baobab.admin.menu filter inject an extra sidebar item', function () {

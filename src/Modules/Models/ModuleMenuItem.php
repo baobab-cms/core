@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $label
  * @property string|null $icon
  * @property string|null $route
+ * @property array<string, mixed>|null $route_params
  * @property string|null $permission
  * @property int $order
  */
@@ -29,9 +30,20 @@ class ModuleMenuItem extends Model
         'label',
         'icon',
         'route',
+        'route_params',
         'permission',
         'order',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'route_params' => 'array',
+        ];
+    }
 
     /**
      * @return BelongsTo<Module, $this>

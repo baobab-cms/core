@@ -111,6 +111,7 @@ final class InstallModule
                 'label' => $item['label'],
                 'icon' => $item['icon'] ?? null,
                 'route' => $item['route'] ?? null,
+                'route_params' => $item['route_params'] ?? null,
                 'permission' => $item['permission'] ?? null,
                 'order' => $item['order'] ?? 0,
             ]);
