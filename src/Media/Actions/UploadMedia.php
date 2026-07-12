@@ -6,6 +6,7 @@ namespace Baobab\Media\Actions;
 
 use Baobab\Audit\AuditLogger;
 use Baobab\Facades\Hook;
+use Baobab\Media\Conversions\GenerateMediaConversions;
 use Baobab\Media\Exceptions\DuplicateMediaDetectedException;
 use Baobab\Media\Exceptions\InvalidMediaUploadException;
 use Baobab\Media\Exceptions\MediaTooLargeException;
@@ -112,6 +113,10 @@ final class UploadMedia
         $this->audit->record('media.uploaded', $media, ['mime_type' => $mimeType, 'size' => $media->size]);
 
         Hook::action('baobab.media.uploaded', $media);
+
+        if ($mimeType !== 'image/svg+xml' && str_starts_with($mimeType, 'image/')) {
+            GenerateMediaConversions::dispatch($media);
+        }
 
         return $media;
     }

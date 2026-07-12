@@ -15,6 +15,7 @@ use Baobab\Auth\TwoFactorManager;
 use Baobab\Console\Commands\ContentTypeBuildCommand;
 use Baobab\Console\Commands\ContentTypeMakeCommand;
 use Baobab\Console\Commands\HookListCommand;
+use Baobab\Console\Commands\MediaRegenerateCommand;
 use Baobab\Console\Commands\ModuleActivateCommand;
 use Baobab\Console\Commands\ModuleDeactivateCommand;
 use Baobab\Console\Commands\ModuleInstallCommand;
@@ -38,6 +39,7 @@ use Baobab\ContentTypes\Fields\Types\TextField;
 use Baobab\ContentTypes\Fields\Types\TimeField;
 use Baobab\Facades\Hook;
 use Baobab\Hooks\HookRegistry;
+use Baobab\Media\Conversions\PresetRegistry;
 use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
 use Baobab\Modules\ModuleDiscovery;
@@ -54,6 +56,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Intervention\Image\ImageManager;
 use Mews\Purifier\PurifierServiceProvider;
 use PragmaRX\Google2FA\Google2FA;
 use Spatie\Permission\Models\Role;
@@ -86,6 +89,15 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->singleton(SupportLogger::class);
 
         $this->app->singleton(FieldRegistry::class);
+
+        $this->app->singleton(PresetRegistry::class);
+
+        $this->app->singleton(ImageManager::class, function (Application $app): ImageManager {
+            /** @var string $driver */
+            $driver = $app->make('config')->get('baobab.media.image_driver', 'gd');
+
+            return $driver === 'imagick' ? ImageManager::imagick() : ImageManager::gd();
+        });
 
         $this->app->bind(ModuleDiscovery::class, function (Application $app) {
             /** @var array<string, list<string>> $paths */
@@ -128,6 +140,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerCoreFieldTypes();
 
+        $this->registerCorePresets();
+
         $this->bootstrapActiveModules();
 
         Hook::action('baobab.booted');
@@ -145,6 +159,7 @@ class BaobabServiceProvider extends ServiceProvider
                 SuperAdminCommand::class,
                 ContentTypeBuildCommand::class,
                 ContentTypeMakeCommand::class,
+                MediaRegenerateCommand::class,
             ]);
         }
     }
@@ -326,6 +341,22 @@ class BaobabServiceProvider extends ServiceProvider
         }
     }
 
+    /**
+     * Trois presets Core (spec 06 §4.1) : recadrage non destructif, ratios
+     * conservés (`fit: contain`, jamais d'agrandissement). Modules/thèmes
+     * ajoutent les leurs via `media_presets` de leur manifest, câblé aux
+     * côtés des hooks dans bootstrapActiveModules().
+     */
+    private function registerCorePresets(): void
+    {
+        /** @var PresetRegistry $registry */
+        $registry = $this->app->make(PresetRegistry::class);
+
+        $registry->register('thumb', ['width' => 300, 'fit' => 'contain']);
+        $registry->register('medium', ['width' => 768, 'fit' => 'contain']);
+        $registry->register('large', ['width' => 1600, 'fit' => 'contain']);
+    }
+
     private function registerGuard(): void
     {
         /** @var string $userModel */
@@ -413,8 +444,10 @@ class BaobabServiceProvider extends ServiceProvider
             /** @var HookRegistry $registry */
             $registry = $this->app->make(HookRegistry::class);
             $autoloader = $this->app->make(ModuleAutoloader::class);
+            /** @var PresetRegistry $presets */
+            $presets = $this->app->make(PresetRegistry::class);
 
-            Module::where('status', 'active')->each(function (Module $module) use ($registry, $autoloader): void {
+            Module::where('status', 'active')->each(function (Module $module) use ($registry, $autoloader, $presets): void {
                 $autoloader->registerFor($module);
 
                 if (class_exists($module->provider)) {
@@ -423,6 +456,10 @@ class BaobabServiceProvider extends ServiceProvider
 
                 foreach ($module->manifest['hooks']['listens'] ?? [] as $hook => $listener) {
                     $registry->listen($hook, $listener);
+                }
+
+                foreach ($module->manifest['media_presets'] ?? [] as $name => $definition) {
+                    $presets->register($name, $definition);
                 }
             });
         } catch (Throwable $e) {

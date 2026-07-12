@@ -132,6 +132,28 @@ function createTestJpeg(int $width = 20, int $height = 10): string
 }
 
 /**
+ * Écrit un JPEG large (défaut 200x100) coupé en deux couleurs franches
+ * (gauche rouge, droite bleue) — sert à vérifier qu'un recadrage `fit: crop`
+ * pilote réellement par le point focal et pas juste par un centrage fixe :
+ * un point focal à gauche doit produire un recadré majoritairement rouge, un
+ * point focal à droite majoritairement bleu. Utilisé par
+ * GenerateMediaConversionsTest.php.
+ */
+function createSplitColorTestJpeg(int $width = 200, int $height = 100): string
+{
+    $path = sys_get_temp_dir().'/baobab-test-split-'.bin2hex(random_bytes(6)).'.jpg';
+    $image = imagecreatetruecolor($width, $height);
+    $red = (int) imagecolorallocate($image, 220, 20, 20);
+    $blue = (int) imagecolorallocate($image, 20, 20, 220);
+    imagefilledrectangle($image, 0, 0, (int) ($width / 2) - 1, $height - 1, $red);
+    imagefilledrectangle($image, (int) ($width / 2), 0, $width - 1, $height - 1, $blue);
+    imagejpeg($image, $path, 95);
+    imagedestroy($image);
+
+    return $path;
+}
+
+/**
  * Écrit un JPEG minimal contenant un segment EXIF (TIFF) fait main —
  * orientation + un tag GPS minimal (GPSVersionID, ne nécessite pas de bloc
  * de données externe) — pas de bibliothèque de test capable d'écrire de

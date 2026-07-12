@@ -128,6 +128,15 @@ return [
     | duplicate_behavior : comportement par défaut à l'upload d'un fichier de
     | checksum déjà connu — "ask" (demander), "reuse" (réutiliser
     | silencieusement) ou "allow" (autoriser le doublon), spec 06 §2.
+    | image_driver : pilote Intervention Image ("gd" ou "imagick", spec 06
+    | §1.1) — "gd" par défaut, seule extension image disponible ici.
+    | avif_enabled : désactivé par défaut (coût CPU documenté, registre
+    | décision #4) — les variantes restent jpg/png + webp tant que c'est faux.
+    | job_memory_limit : memory_limit PHP appliqué le temps du job de
+    | génération de variantes (GenerateMediaConversions) — un bitmap décodé
+    | par GD pour une photo réelle dépasse vite le memory_limit web par
+    | défaut (souvent 128 Mo), taillé pour une requête HTTP, pas du
+    | traitement d'image. Relevé uniquement pour ce job, pas globalement.
     |
     */
     'media' => [
@@ -148,6 +157,9 @@ return [
         'chunk_size' => (int) env('BAOBAB_MEDIA_CHUNK_SIZE', 5_242_880),
         'chunk_threshold' => (int) env('BAOBAB_MEDIA_CHUNK_THRESHOLD', 5_242_880),
         'duplicate_behavior' => env('BAOBAB_MEDIA_DUPLICATE_BEHAVIOR', 'ask'),
+        'image_driver' => env('BAOBAB_MEDIA_IMAGE_DRIVER', 'gd'),
+        'avif_enabled' => (bool) env('BAOBAB_MEDIA_AVIF_ENABLED', false),
+        'job_memory_limit' => env('BAOBAB_MEDIA_JOB_MEMORY_LIMIT', '512M'),
     ],
 
 ];

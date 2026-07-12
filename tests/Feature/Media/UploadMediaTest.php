@@ -2,10 +2,12 @@
 
 use Baobab\Facades\Hook;
 use Baobab\Media\Actions\UploadMedia;
+use Baobab\Media\Conversions\GenerateMediaConversions;
 use Baobab\Media\Exceptions\InvalidMediaUploadException;
 use Baobab\Media\Exceptions\MediaTooLargeException;
 use Baobab\Users\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
@@ -106,4 +108,24 @@ it('strips EXIF GPS data and applies orientation when uploading a JPEG', functio
     $exifAfter = @exif_read_data($storedPath);
 
     expect(is_array($exifAfter) ? ($exifAfter['GPSVersion'] ?? null) : null)->toBeNull();
+});
+
+it('dispatches GenerateMediaConversions for a raster image but not for an SVG', function () {
+    Queue::fake();
+
+    $jpeg = new UploadedFile(createTestJpeg(), 'photo.jpg', 'image/jpeg', null, true);
+    $jpegMedia = app(UploadMedia::class)($jpeg, uploadActor());
+
+    Queue::assertPushed(GenerateMediaConversions::class);
+
+    $svgPath = sys_get_temp_dir().'/baobab-test-no-conversions.svg';
+    file_put_contents($svgPath, '<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1" /></svg>');
+    $svg = new UploadedFile($svgPath, 'icon.svg', 'image/svg+xml', null, true);
+
+    Queue::fake();
+    app(UploadMedia::class)($svg, uploadActor());
+
+    Queue::assertNotPushed(GenerateMediaConversions::class);
+
+    expect($jpegMedia)->not->toBeNull();
 });

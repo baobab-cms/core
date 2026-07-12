@@ -122,6 +122,14 @@ final readonly class ModuleManifest
     }
 
     /**
+     * @return array<string, array{width?: int, height?: int, fit?: string, quality?: int}>
+     */
+    public function mediaPresets(): array
+    {
+        return $this->data['media_presets'] ?? [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

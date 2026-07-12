@@ -20,7 +20,8 @@
         "spatie/laravel-permission": "^6.0",
         "pragmarx/google2fa-laravel": "^2.0",
         "bacon/bacon-qr-code": "^3.0",
-        "mews/purifier": "^3.4"
+        "mews/purifier": "^3.4",
+        "intervention/image": "^3.0"
     },
     "autoload": {
         "psr-4": {
