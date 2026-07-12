@@ -78,6 +78,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->register(PermissionServiceProvider::class);
         $this->app->register(PurifierServiceProvider::class);
 
+        $this->configurePurifier();
+
         $this->app->singleton(HookRegistry::class);
 
         $this->app->singleton(AccessManager::class);
@@ -205,6 +207,29 @@ class BaobabServiceProvider extends ServiceProvider
         if (PHP_OS_FAMILY === 'Windows' && function_exists('sapi_windows_cp_set')) {
             sapi_windows_cp_set(65001);
         }
+    }
+
+    /**
+     * Liste blanche HTML nettoyée à la sauvegarde d'un champ `richtext`
+     * (spec 02 §3.2, `RichTextField::cast()` → `CleanHtml`). La config par
+     * défaut de mews/purifier n'autorisait ni les titres, ni les citations,
+     * ni le texte barré — pourtant déjà proposés par la toolbar Tiptap
+     * (M4 point 4a) : ils étaient silencieusement supprimés à
+     * l'enregistrement. Étendue pour couvrir exactement ce que la toolbar
+     * produit (gras/italique/souligné/barré/code, surlignage `<mark>`,
+     * titres H2-H4, citation, listes, lien, séparateur, alignement via
+     * `style` sur les blocs) — jamais au-delà, la liste blanche reste le
+     * garde-fou contre l'injection.
+     */
+    private function configurePurifier(): void
+    {
+        /** @var Repository $config */
+        $config = $this->app->make('config');
+
+        $config->set(
+            'purifier.settings.default.HTML.Allowed',
+            'div,p[style],br,h2[style],h3[style],h4[style],blockquote,b,strong,i,em,u,s,mark,code,ul,ol,li,a[href|title],img[width|height|alt|src],hr,span[style]',
+        );
     }
 
     private function loadAdminRoutes(): void

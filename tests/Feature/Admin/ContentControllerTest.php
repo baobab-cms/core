@@ -103,6 +103,26 @@ it('shows the create form to a user with content.car.create', function () {
         ->assertSee('Brand');
 });
 
+it('renders a real Tiptap editor container for a richtext field, not a plain textarea', function () {
+    $contentType = app(BuildContentType::class)((string) json_encode([
+        'key' => 'BlogPost',
+        'label' => ['singular' => 'BlogPost', 'plural' => 'BlogPosts'],
+        'fields' => [
+            ['key' => 'title', 'type' => 'text', 'required' => true],
+            ['key' => 'body', 'type' => 'richtext'],
+        ],
+    ]));
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    $user = contentCrudActor(['content.blog_post.view', 'content.blog_post.create']);
+
+    $this->actingAs($user, 'baobab')
+        ->get(route('admin.content.create', ['contentType' => 'blog_posts']))
+        ->assertOk()
+        ->assertSee('data-tiptap-editor', false);
+});
+
 it('wires the title field to auto-fill the slug field on an addressable content type', function () {
     $contentType = app(BuildContentType::class)((string) json_encode([
         'key' => 'Post',

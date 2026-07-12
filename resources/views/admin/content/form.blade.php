@@ -54,8 +54,16 @@
                                 @break
 
                             @case('textarea')
-                            @case('richtext')
                                 <x-baobab::field.textarea
+                                    :name="$field['key']"
+                                    :label="$field['label']"
+                                    :value="$field['value']"
+                                    x-on:input="{{ $field['auto_slug_handler'] }}"
+                                />
+                                @break
+
+                            @case('richtext')
+                                <x-baobab::field.richtext
                                     :name="$field['key']"
                                     :label="$field['label']"
                                     :value="$field['value']"

@@ -65,6 +65,48 @@ it('RichTextField cast strips disallowed tags and attributes on save', function 
     expect($cleaned)->not->toContain('onclick');
 });
 
+it('RichTextField cast keeps every tag the Tiptap toolbar produces (M4 point 4a)', function () {
+    $model = new class extends Model
+    {
+        protected $table = 'ct_cars';
+
+        protected $fillable = ['body'];
+
+        protected function casts(): array
+        {
+            return ['body' => CleanHtml::class];
+        }
+    };
+
+    $model->setAttribute('body', implode('', [
+        '<h2>Titre</h2><h3>Sous-titre</h3><h4>Sous-sous-titre</h4>',
+        '<p style="text-align: center">Texte <u>souligné</u> et <s>barré</s> et <mark>surligné</mark>.</p>',
+        '<blockquote>Citation</blockquote>',
+        '<ul><li>Un</li></ul><ol><li>Deux</li></ol>',
+        '<p><a href="https://example.com" title="Exemple">lien</a></p>',
+        // Tiptap insère toujours <hr> comme sibling de niveau bloc, jamais collé à du
+        // texte nu — un <hr> non encadré par des blocs se fait fusionner/supprimer par
+        // l'auto-paragraphe de HTMLPurifier, ce n'est pas un cas réaliste à couvrir ici.
+        '<hr>',
+        '<p>Fin.</p>',
+    ]));
+
+    $cleaned = (string) $model->getAttribute('body');
+
+    expect($cleaned)->toContain('<h2>')
+        ->toContain('<h3>')
+        ->toContain('<h4>')
+        ->toContain('<u>')
+        ->toContain('<s>')
+        ->toContain('<mark>')
+        ->toContain('<blockquote>')
+        ->toContain('<ul>')
+        ->toContain('<ol>')
+        ->toContain('href="https://example.com"')
+        ->toContain('<hr')
+        ->toContain('text-align');
+});
+
 // ── slug ─────────────────────────────────────────────────────────────────────
 
 it('SlugField builds a unique string column', function () {
