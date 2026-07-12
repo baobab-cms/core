@@ -121,6 +121,13 @@ return [
     | max_size` (UploadMedia) est le point d'extension prévu par la spec.
     | allowed_mime_types : liste blanche, vérifiée par contenu (jamais la
     | seule extension).
+    | chunk_size / chunk_threshold : un fichier plus gros que chunk_threshold
+    | est découpé côté client en morceaux de chunk_size (M4 point 1b) —
+    | nécessaire dès que max_upload_size dépasse upload_max_filesize/
+    | post_max_size de PHP, pas seulement pour le confort.
+    | duplicate_behavior : comportement par défaut à l'upload d'un fichier de
+    | checksum déjà connu — "ask" (demander), "reuse" (réutiliser
+    | silencieusement) ou "allow" (autoriser le doublon), spec 06 §2.
     |
     */
     'media' => [
@@ -138,6 +145,9 @@ return [
             'audio/mpeg',
             'audio/wav',
         ],
+        'chunk_size' => (int) env('BAOBAB_MEDIA_CHUNK_SIZE', 5_242_880),
+        'chunk_threshold' => (int) env('BAOBAB_MEDIA_CHUNK_THRESHOLD', 5_242_880),
+        'duplicate_behavior' => env('BAOBAB_MEDIA_DUPLICATE_BEHAVIOR', 'ask'),
     ],
 
 ];

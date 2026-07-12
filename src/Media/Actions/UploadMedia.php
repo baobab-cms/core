@@ -6,6 +6,7 @@ namespace Baobab\Media\Actions;
 
 use Baobab\Audit\AuditLogger;
 use Baobab\Facades\Hook;
+use Baobab\Media\Exceptions\DuplicateMediaDetectedException;
 use Baobab\Media\Exceptions\InvalidMediaUploadException;
 use Baobab\Media\Exceptions\MediaTooLargeException;
 use Baobab\Media\Models\Media;
@@ -17,13 +18,14 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Upload d'un fichier vers la bibliothèque de médias (spec 06 §1-3, M4 point
- * 1a). Valide le MIME par contenu (jamais la seule extension) et la taille,
- * désinfecte les SVG, normalise l'orientation EXIF des JPEG et supprime le
- * reste de leurs métadonnées, puis stocke via l'abstraction Storage — jamais
- * de chemin absolu manipulé à la main (spec 06 §1.1). L'autorisation
- * (permission d'upload, SVG réservé à un rôle) est vérifiée par l'appelant
- * (policy) ; cette Action ne valide que le contenu du fichier lui-même.
+ * Upload d'un fichier vers la bibliothèque de médias (spec 06 §1-3, M4 points
+ * 1a/1b). Valide le MIME par contenu (jamais la seule extension) et la
+ * taille, désinfecte les SVG, normalise l'orientation EXIF des JPEG et
+ * supprime le reste de leurs métadonnées, puis stocke via l'abstraction
+ * Storage — jamais de chemin absolu manipulé à la main (spec 06 §1.1).
+ * L'autorisation (permission d'upload, SVG réservé à un rôle) est vérifiée
+ * par l'appelant (policy) ; cette Action ne valide que le contenu du fichier
+ * lui-même.
  */
 final class UploadMedia
 {
@@ -35,8 +37,11 @@ final class UploadMedia
 
     /**
      * @param  array<string, mixed>  $metadata
+     * @param  'reuse'|'new'|null  $duplicateAction  Décision explicite de l'appelant
+     *                                               face à un doublon détecté (spec 06 §2) ; null = appliquer
+     *                                               `baobab.media.duplicate_behavior`.
      */
-    public function __invoke(UploadedFile $file, User $actor, array $metadata = []): Media
+    public function __invoke(UploadedFile $file, User $actor, array $metadata = [], ?string $duplicateAction = null): Media
     {
         $mimeType = (string) $file->getMimeType();
 
@@ -62,6 +67,27 @@ final class UploadMedia
         }
 
         [$width, $height] = $this->dimensions($absolutePath, $mimeType);
+        $checksum = hash('sha256', (string) file_get_contents($absolutePath));
+
+        $existing = $duplicateAction === 'new' ? null : Media::where('checksum', $checksum)->first();
+
+        if ($existing !== null) {
+            $decision = $duplicateAction ?? (string) config('baobab.media.duplicate_behavior', 'ask');
+
+            if ($decision === 'reuse') {
+                Storage::disk($disk)->delete($path);
+
+                return $existing;
+            }
+
+            if ($decision === 'ask') {
+                Storage::disk($disk)->delete($path);
+
+                throw DuplicateMediaDetectedException::forExisting($existing);
+            }
+
+            // 'allow' : le doublon est accepté sciemment, on continue la création.
+        }
 
         $media = Media::create([
             'uuid' => $uuid,
@@ -76,7 +102,7 @@ final class UploadMedia
             'alt' => $metadata['alt'] ?? null,
             'caption' => $metadata['caption'] ?? null,
             'description' => $metadata['description'] ?? null,
-            'checksum' => hash('sha256', (string) file_get_contents($absolutePath)),
+            'checksum' => $checksum,
             'folder_id' => $metadata['folder_id'] ?? null,
             'author_id' => $actor->getKey(),
             'conversions' => [],

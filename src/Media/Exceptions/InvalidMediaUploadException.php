@@ -22,4 +22,9 @@ final class InvalidMediaUploadException extends RuntimeException
     {
         return new self("L'import de SVG n'est pas autorisé pour cet utilisateur.");
     }
+
+    public static function invalidUploadId(): self
+    {
+        return new self("Identifiant de session d'upload invalide.");
+    }
 }

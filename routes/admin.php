@@ -6,6 +6,7 @@ use Baobab\Admin\Access\Http\Controllers\AccessMatrixController;
 use Baobab\Admin\Account\Http\Controllers\SecurityController;
 use Baobab\Admin\Content\Http\Controllers\ContentController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
+use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
 use Baobab\Audit\Http\Controllers\AuditLogController;
@@ -50,7 +51,13 @@ Route::middleware('can:baobab.users.impersonate')
 Route::prefix('media')
     ->name('media.')
     ->group(function (): void {
+        Route::get('/', [MediaController::class, 'index'])->name('index');
         Route::post('/', [MediaController::class, 'store'])->name('store');
+        Route::post('/chunk', [MediaController::class, 'storeChunk'])->name('chunk');
+        Route::post('/move', [MediaController::class, 'move'])->name('move');
+        Route::post('/folders', [MediaFolderController::class, 'store'])->name('folders.store');
+        Route::put('/folders/{folder}', [MediaFolderController::class, 'update'])->name('folders.update');
+        Route::delete('/folders/{folder}', [MediaFolderController::class, 'destroy'])->name('folders.destroy');
     });
 
 Route::prefix('content/{contentType}')

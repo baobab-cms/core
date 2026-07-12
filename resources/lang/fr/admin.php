@@ -38,6 +38,7 @@ return [
         'audit' => 'Journal d\'audit',
         'access' => 'Rôles & permissions',
         'users' => 'Utilisateurs',
+        'media' => 'Médiathèque',
     ],
 
     'audit' => [
@@ -112,6 +113,31 @@ return [
         'created' => 'Élément créé.',
         'updated' => 'Élément modifié.',
         'deleted' => 'Élément supprimé.',
+    ],
+
+    'media' => [
+        'title' => 'Médiathèque',
+        'search_placeholder' => 'Rechercher…',
+        'search_submit' => 'Rechercher',
+        'filter_all_types' => 'Tous les types',
+        'root_folder' => 'Médiathèque',
+        'new_folder_action' => 'Nouveau dossier',
+        'new_folder_name_label' => 'Nom du dossier',
+        'rename_folder_action' => 'Renommer',
+        'delete_folder_action' => 'Supprimer le dossier',
+        'delete_folder_confirm_title' => 'Supprimer ce dossier ?',
+        'delete_folder_confirm_description' => 'Les médias qu\'il contient seront déplacés à la racine.',
+        'dropzone_hint' => 'Glissez-déposez des fichiers ici, ou cliquez pour en choisir.',
+        'upload_action' => 'Choisir des fichiers',
+        'view_action' => 'Voir le fichier',
+        'upload_pending' => 'Envoi en cours…',
+        'upload_failed' => 'Échec de l\'envoi.',
+        'move_to_folder_action' => 'Déplacer vers…',
+        'empty' => 'Aucun média pour l\'instant.',
+        'duplicate_found_title' => 'Ce fichier existe déjà',
+        'duplicate_found_description' => 'Un média identique est déjà dans la bibliothèque.',
+        'duplicate_reuse_action' => 'Réutiliser l\'existant',
+        'duplicate_upload_anyway_action' => 'Importer quand même',
     ],
 
     'access' => [
