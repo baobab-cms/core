@@ -137,6 +137,9 @@ return [
     | par GD pour une photo réelle dépasse vite le memory_limit web par
     | défaut (souvent 128 Mo), taillé pour une requête HTTP, pas du
     | traitement d'image. Relevé uniquement pour ce job, pas globalement.
+    | trash_retention_days : un média mis à la corbeille est purgé (fichiers
+    | + ligne) après ce délai par `media:purge-trash` (M4 point 3, spec 06
+    | §1.2), configurable, défaut 30.
     |
     */
     'media' => [
@@ -160,6 +163,7 @@ return [
         'image_driver' => env('BAOBAB_MEDIA_IMAGE_DRIVER', 'gd'),
         'avif_enabled' => (bool) env('BAOBAB_MEDIA_AVIF_ENABLED', false),
         'job_memory_limit' => env('BAOBAB_MEDIA_JOB_MEMORY_LIMIT', '512M'),
+        'trash_retention_days' => (int) env('BAOBAB_MEDIA_TRASH_RETENTION_DAYS', 30),
     ],
 
 ];

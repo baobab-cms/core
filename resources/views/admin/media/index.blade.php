@@ -19,18 +19,23 @@
             })"
         >
             {{-- Fil d'Ariane --}}
-            <nav class="mb-4 flex items-center gap-1 text-sm text-muted">
-                <a href="{{ route('admin.media.index') }}" class="hover:text-foreground">{{ __('baobab::admin.media.root_folder') }}</a>
-                @foreach ($breadcrumb as $crumb)
-                    <span aria-hidden="true">/</span>
-                    <a href="{{ route('admin.media.index', ['folder' => $crumb->id]) }}" class="hover:text-foreground">{{ $crumb->name }}</a>
-                @endforeach
-            </nav>
+            @unless ($trashed)
+                <nav class="mb-4 flex items-center gap-1 text-sm text-muted">
+                    <a href="{{ route('admin.media.index') }}" class="hover:text-foreground">{{ __('baobab::admin.media.root_folder') }}</a>
+                    @foreach ($breadcrumb as $crumb)
+                        <span aria-hidden="true">/</span>
+                        <a href="{{ route('admin.media.index', ['folder' => $crumb->id]) }}" class="hover:text-foreground">{{ $crumb->name }}</a>
+                    @endforeach
+                </nav>
+            @endunless
 
             <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <form method="GET" action="{{ route('admin.media.index') }}" class="flex flex-wrap items-end gap-2">
                     @if ($currentFolder)
                         <input type="hidden" name="folder" value="{{ $currentFolder->id }}">
+                    @endif
+                    @if ($trashed)
+                        <input type="hidden" name="trashed" value="1">
                     @endif
                     <x-baobab::field.text name="q" label="" :value="request('q')" placeholder="{{ __('baobab::admin.media.search_placeholder') }}" />
                     <x-baobab::field.select
@@ -38,17 +43,33 @@
                         :options="['' => __('baobab::admin.media.filter_all_types'), 'image' => 'image', 'video' => 'video', 'audio' => 'audio', 'application' => 'document']"
                         :value="request('type')"
                     />
+                    <label class="mb-4 flex items-center gap-1 text-sm text-foreground">
+                        <input type="checkbox" name="unused" value="1" @checked($unused)>
+                        {{ __('baobab::admin.media.unused_filter_label') }}
+                    </label>
                     <x-baobab::button type="submit" variant="secondary">{{ __('baobab::admin.media.search_submit') }}</x-baobab::button>
                 </form>
 
-                @if ($canUpload)
-                    <x-baobab::button type="button" variant="secondary" x-on:click="$dispatch('open-modal', 'new-media-folder')">
-                        {{ __('baobab::admin.media.new_folder_action') }}
-                    </x-baobab::button>
-                @endif
+                <div class="flex items-center gap-2">
+                    @if ($trashed)
+                        <x-baobab::button variant="secondary" :href="route('admin.media.index')">
+                            {{ __('baobab::admin.media.back_to_library_action') }}
+                        </x-baobab::button>
+                    @else
+                        <x-baobab::button variant="secondary" :href="route('admin.media.index', ['trashed' => 1])">
+                            {{ __('baobab::admin.media.trash_action') }}
+                        </x-baobab::button>
+                    @endif
+
+                    @if ($canUpload && ! $trashed)
+                        <x-baobab::button type="button" variant="secondary" x-on:click="$dispatch('open-modal', 'new-media-folder')">
+                            {{ __('baobab::admin.media.new_folder_action') }}
+                        </x-baobab::button>
+                    @endif
+                </div>
             </div>
 
-            @if ($canUpload)
+            @if ($canUpload && ! $trashed)
                 {{-- Zone de dépôt --}}
                 <div
                     class="mb-6 rounded-lg border-2 border-dashed border-border p-6 text-center text-sm text-muted"
@@ -94,27 +115,83 @@
 
             {{-- Grille de médias --}}
             @if ($media->isEmpty())
-                <x-baobab::empty-state :message="__('baobab::admin.media.empty')" />
+                <x-baobab::empty-state :message="$trashed ? __('baobab::admin.media.trash_empty') : __('baobab::admin.media.empty')" />
             @else
-                <form method="POST" action="{{ route('admin.media.move') }}" class="mb-4 flex items-center gap-2">
+                {{--
+                    Formulaire d'actions groupées détaché de la grille (pas englobant) — les
+                    éléments individuels (restaurer/purger en mode corbeille) rendent leurs
+                    propres formulaires, et imbriquer un <form> dans un autre est invalide en
+                    HTML (cf. table.blade.php). Cases à cocher et bouton s'y rattachent via
+                    l'attribut form="".
+                --}}
+                <form id="media-bulk-actions" method="POST" action="{{ $trashed ? route('admin.media.bulk-restore') : route('admin.media.move') }}">
                     @csrf
-                    <select name="folder_id" class="rounded-md border border-border bg-surface px-2 py-1 text-sm">
-                        <option value="">{{ __('baobab::admin.media.root_folder') }}</option>
-                        @foreach ($allFolders as $folder)
-                            <option value="{{ $folder->id }}">{{ $folder->name }}</option>
-                        @endforeach
-                    </select>
-                    <button type="submit" class="rounded-md border border-border bg-surface px-2 py-1 text-xs font-medium text-foreground hover:bg-surface-subtle">
-                        {{ __('baobab::admin.media.move_to_folder_action') }}
-                    </button>
+                </form>
 
-                    <div class="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                        @foreach ($media as $item)
-                            <div class="group relative block overflow-hidden rounded-lg border border-border bg-surface">
-                                <label class="absolute left-2 top-2 z-10 rounded bg-surface/80 p-0.5">
-                                    <input type="checkbox" name="ids[]" value="{{ $item->id }}">
-                                </label>
+                <div class="mb-4 flex flex-wrap items-center gap-2">
+                    @if ($trashed)
+                        <button type="submit" form="media-bulk-actions" formaction="{{ route('admin.media.bulk-restore') }}" class="rounded-md border border-border bg-surface px-2 py-1 text-xs font-medium text-foreground hover:bg-surface-subtle">
+                            {{ __('baobab::admin.media.bulk_restore_action') }}
+                        </button>
+                        <button
+                            type="submit"
+                            form="media-bulk-actions"
+                            formaction="{{ route('admin.media.bulk-force-destroy') }}"
+                            onclick="return confirm('{{ __('baobab::admin.media.bulk_purge_confirm_title') }}')"
+                            class="rounded-md border border-danger/30 bg-surface px-2 py-1 text-xs font-medium text-danger hover:bg-danger/5"
+                        >
+                            {{ __('baobab::admin.media.bulk_purge_action') }}
+                        </button>
+                    @else
+                        <select name="folder_id" form="media-bulk-actions" class="rounded-md border border-border bg-surface px-2 py-1 text-sm">
+                            <option value="">{{ __('baobab::admin.media.root_folder') }}</option>
+                            @foreach ($allFolders as $folder)
+                                <option value="{{ $folder->id }}">{{ $folder->name }}</option>
+                            @endforeach
+                        </select>
+                        <button type="submit" form="media-bulk-actions" formaction="{{ route('admin.media.move') }}" class="rounded-md border border-border bg-surface px-2 py-1 text-xs font-medium text-foreground hover:bg-surface-subtle">
+                            {{ __('baobab::admin.media.move_to_folder_action') }}
+                        </button>
+                        <button type="submit" form="media-bulk-actions" formaction="{{ route('admin.media.bulk-delete') }}" class="rounded-md border border-border bg-surface px-2 py-1 text-xs font-medium text-foreground hover:bg-surface-subtle">
+                            {{ __('baobab::admin.media.bulk_trash_action') }}
+                        </button>
+                    @endif
+                </div>
 
+                <div class="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                    @foreach ($media as $item)
+                        <div class="group relative block overflow-hidden rounded-lg border border-border bg-surface">
+                            <label class="absolute left-2 top-2 z-10 rounded bg-surface/80 p-0.5">
+                                <input type="checkbox" name="ids[]" value="{{ $item->id }}" form="media-bulk-actions">
+                            </label>
+
+                            @if ($trashed)
+                                @if ($item->isImage())
+                                    <img src="{{ $item->url() }}" alt="{{ $item->alt ?? $item->file_name }}" class="h-24 w-full object-cover">
+                                @else
+                                    <div class="flex h-24 w-full items-center justify-center bg-surface-subtle text-xs text-muted">
+                                        {{ strtoupper(pathinfo($item->file_name, PATHINFO_EXTENSION)) }}
+                                    </div>
+                                @endif
+
+                                <span class="block truncate px-2 py-1 text-xs text-foreground">{{ $item->file_name }}</span>
+
+                                <div class="flex gap-2 px-2 pb-2">
+                                    <form method="POST" action="{{ route('admin.media.restore', ['media' => $item->id]) }}">
+                                        @csrf
+                                        <button type="submit" class="text-xs font-medium text-primary hover:underline">
+                                            {{ __('baobab::admin.media.restore_action') }}
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.media.force-destroy', ['media' => $item->id]) }}" onsubmit="return confirm('{{ __('baobab::admin.media.purge_confirm_title') }}')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs font-medium text-danger hover:underline">
+                                            {{ __('baobab::admin.media.purge_action') }}
+                                        </button>
+                                    </form>
+                                </div>
+                            @else
                                 <a href="{{ route('admin.media.show', ['media' => $item->id]) }}" class="block" title="{{ __('baobab::admin.media.view_action') }}">
                                     @if ($item->isImage())
                                         <img
@@ -130,10 +207,10 @@
 
                                     <span class="block truncate px-2 py-1 text-xs text-foreground">{{ $item->file_name }}</span>
                                 </a>
-                            </div>
-                        @endforeach
-                    </div>
-                </form>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
 
                 <div class="mt-4">{{ $media->links() }}</div>
             @endif

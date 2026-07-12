@@ -8,6 +8,7 @@ use Baobab\Media\Conversions\MediaVariantResolver;
 use Baobab\Users\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -108,6 +109,18 @@ class Media extends Model
     public function folder(): BelongsTo
     {
         return $this->belongsTo(MediaFolder::class, 'folder_id');
+    }
+
+    /**
+     * Modèles qui référencent ce média (spec 06 §5) — matérialisée en table
+     * réelle (`media_usages`), alimentée par SyncMediaUsagesFromEntry pour
+     * les champs `richtext`.
+     *
+     * @return HasMany<MediaUsage, $this>
+     */
+    public function usages(): HasMany
+    {
+        return $this->hasMany(MediaUsage::class);
     }
 
     /**

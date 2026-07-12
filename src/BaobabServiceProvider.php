@@ -15,6 +15,7 @@ use Baobab\Auth\TwoFactorManager;
 use Baobab\Console\Commands\ContentTypeBuildCommand;
 use Baobab\Console\Commands\ContentTypeMakeCommand;
 use Baobab\Console\Commands\HookListCommand;
+use Baobab\Console\Commands\MediaPurgeTrashCommand;
 use Baobab\Console\Commands\MediaRegenerateCommand;
 use Baobab\Console\Commands\ModuleActivateCommand;
 use Baobab\Console\Commands\ModuleDeactivateCommand;
@@ -37,14 +38,17 @@ use Baobab\ContentTypes\Fields\Types\SlugField;
 use Baobab\ContentTypes\Fields\Types\TextareaField;
 use Baobab\ContentTypes\Fields\Types\TextField;
 use Baobab\ContentTypes\Fields\Types\TimeField;
+use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
 use Baobab\Hooks\HookRegistry;
+use Baobab\Media\Actions\SyncMediaUsagesFromEntry;
 use Baobab\Media\Conversions\PresetRegistry;
 use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
 use Baobab\Modules\ModuleDiscovery;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\View as ViewContract;
@@ -138,6 +142,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerAuditListeners();
 
+        $this->registerMediaUsageListener();
+
         $this->registerCoreSidebarItems();
 
         $this->registerCoreFieldTypes();
@@ -162,8 +168,27 @@ class BaobabServiceProvider extends ServiceProvider
                 ContentTypeBuildCommand::class,
                 ContentTypeMakeCommand::class,
                 MediaRegenerateCommand::class,
+                MediaPurgeTrashCommand::class,
             ]);
         }
+
+        $this->registerMediaPurgeSchedule();
+    }
+
+    /**
+     * `media:purge-trash` (M4 point 3) embarquée directement par le package
+     * plutôt que documentée pour ajout manuel au Kernel de l'app
+     * consommatrice — patron standard Laravel pour qu'un package fournisse
+     * sa propre tâche planifiée.
+     */
+    private function registerMediaPurgeSchedule(): void
+    {
+        $this->app->booted(function (): void {
+            /** @var Schedule $schedule */
+            $schedule = $this->app->make(Schedule::class);
+
+            $schedule->command(MediaPurgeTrashCommand::class)->daily();
+        });
     }
 
     /**
@@ -262,6 +287,18 @@ class BaobabServiceProvider extends ServiceProvider
 
         $registry->listen('baobab.user.impersonation.ended', function (User $actor, ?User $target, string $reason) use ($audit): void {
             $audit()->record('user.impersonation.ended', $target, ['reason' => $reason]);
+        });
+    }
+
+    /**
+     * Resynchronise les usages de médias (M4 point 3, spec 06 §5) à chaque
+     * sauvegarde de contenu — écoute le hook déjà déclenché par
+     * SaveContentEntry (M3), rien à changer côté Content Types.
+     */
+    private function registerMediaUsageListener(): void
+    {
+        Hook::listen('baobab.content.saved', function (ContentType $contentType, Model $entry): void {
+            app(SyncMediaUsagesFromEntry::class)($contentType, $entry);
         });
     }
 

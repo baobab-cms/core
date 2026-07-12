@@ -55,6 +55,9 @@ Route::prefix('media')
         Route::post('/', [MediaController::class, 'store'])->name('store');
         Route::post('/chunk', [MediaController::class, 'storeChunk'])->name('chunk');
         Route::post('/move', [MediaController::class, 'move'])->name('move');
+        Route::post('/bulk-delete', [MediaController::class, 'bulkDestroy'])->name('bulk-delete');
+        Route::post('/bulk-restore', [MediaController::class, 'bulkRestore'])->name('bulk-restore');
+        Route::post('/bulk-force-destroy', [MediaController::class, 'bulkForceDestroy'])->name('bulk-force-destroy');
         Route::post('/folders', [MediaFolderController::class, 'store'])->name('folders.store');
         Route::put('/folders/{folder}', [MediaFolderController::class, 'update'])->name('folders.update');
         Route::delete('/folders/{folder}', [MediaFolderController::class, 'destroy'])->name('folders.destroy');
@@ -63,6 +66,8 @@ Route::prefix('media')
         Route::patch('/{media}/focal-point', [MediaController::class, 'updateFocalPoint'])->name('focal-point.update');
         Route::post('/{media}/transform', [MediaController::class, 'storeTransform'])->name('transform.store');
         Route::delete('/{media}/transform', [MediaController::class, 'destroyTransform'])->name('transform.destroy');
+        Route::post('/{media}/restore', [MediaController::class, 'restore'])->name('restore')->withTrashed();
+        Route::delete('/{media}/force', [MediaController::class, 'forceDestroy'])->name('force-destroy')->withTrashed();
         Route::delete('/{media}', [MediaController::class, 'destroy'])->name('destroy');
     });
 

@@ -1,17 +1,54 @@
 <?php
 
 use Baobab\Access\Actions\GrantPermission;
+use Baobab\ContentTypes\Actions\BuildContentType;
+use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Media\Actions\CreateMediaFolder;
+use Baobab\Media\Actions\SyncMediaUsagesFromEntry;
 use Baobab\Media\Models\Media;
 use Baobab\Media\Models\MediaFolder;
+use Baobab\Modules\Models\Module;
+use Baobab\Modules\ModuleAutoloader;
 use Baobab\Users\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
     Storage::fake('public');
+    File::deleteDirectory(generatedModulesPath());
+    config(['baobab.content_types.modules_path' => generatedModulesPath()]);
+    config(['baobab.modules.paths' => ['local' => [generatedModulesPath().'/*']]]);
 });
+
+afterEach(function () {
+    File::deleteDirectory(generatedModulesPath());
+});
+
+/**
+ * @return array{0: ContentType, 1: Model}
+ */
+function mediaControllerUsageEntry(string $key, Media $media): array
+{
+    $contentType = app(BuildContentType::class)(carBlueprintJson([
+        'key' => $key,
+        'label' => ['singular' => $key, 'plural' => $key.'s'],
+        'fields' => [['key' => 'body', 'type' => 'richtext']],
+    ]));
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    /** @var class-string<Model> $modelClass */
+    $modelClass = $contentType->modelClass();
+    /** @var Model $entry */
+    $entry = new $modelClass(['body' => "<img src=\"{$media->url()}\">"]);
+    $entry->save();
+    app(SyncMediaUsagesFromEntry::class)($contentType, $entry->fresh());
+
+    return [$contentType, $entry];
+}
 
 /**
  * @param  list<string>  $permissions
@@ -425,4 +462,200 @@ it('allows deleting another user\'s media with delete_any', function () {
         ->assertRedirect(route('admin.media.index'));
 
     expect(Media::find($media->id))->toBeNull();
+});
+
+// ── suppression protégée, corbeille (M4 point 3) ───────────────────────────────
+
+it('redirects back to the show page with the usage list when deleting a used media without force', function () {
+    $user = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'guarded.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'guarded.jpg')->firstOrFail();
+    mediaControllerUsageEntry('GuardedArticle', $media);
+
+    $this->actingAs($user, 'baobab')
+        ->delete(route('admin.media.destroy', ['media' => $media->id]))
+        ->assertRedirect(route('admin.media.show', ['media' => $media->id]));
+
+    expect(Media::find($media->id))->not->toBeNull();
+});
+
+it('returns a 409 with the usage list over JSON when deleting a used media without force', function () {
+    $user = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'json-guarded.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'json-guarded.jpg')->firstOrFail();
+    mediaControllerUsageEntry('JsonGuardedArticle', $media);
+
+    $this->actingAs($user, 'baobab')
+        ->delete(route('admin.media.destroy', ['media' => $media->id]), [], ['Accept' => 'application/json'])
+        ->assertStatus(409);
+});
+
+it('deletes a used media when force is set', function () {
+    $user = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'forced.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'forced.jpg')->firstOrFail();
+    mediaControllerUsageEntry('ForcedArticle', $media);
+
+    $this->actingAs($user, 'baobab')
+        ->delete(route('admin.media.destroy', ['media' => $media->id]), ['force' => 1])
+        ->assertRedirect(route('admin.media.index'));
+
+    expect(Media::find($media->id))->toBeNull();
+});
+
+it('lists only trashed media when the trashed filter is set', function () {
+    $user = mediaActor(['baobab.media.upload', 'baobab.media.view', 'baobab.media.delete']);
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'kept.jpg', 'image/jpeg', null, true),
+    ]);
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'trashed.jpg', 'image/jpeg', null, true),
+        'duplicate_action' => 'new',
+    ]);
+    $trashed = Media::where('file_name', 'trashed.jpg')->firstOrFail();
+    $this->actingAs($user, 'baobab')->delete(route('admin.media.destroy', ['media' => $trashed->id]));
+
+    $response = $this->actingAs($user, 'baobab')->get(route('admin.media.index', ['trashed' => 1]));
+
+    $response->assertOk()->assertSee('trashed.jpg')->assertDontSee('kept.jpg');
+});
+
+it('lists only unused media when the unused filter is set', function () {
+    $user = mediaActor(['baobab.media.upload', 'baobab.media.view']);
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'free.jpg', 'image/jpeg', null, true),
+    ]);
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'used.jpg', 'image/jpeg', null, true),
+        'duplicate_action' => 'new',
+    ]);
+    $used = Media::where('file_name', 'used.jpg')->firstOrFail();
+    mediaControllerUsageEntry('UnusedFilterArticle', $used);
+
+    $response = $this->actingAs($user, 'baobab')->get(route('admin.media.index', ['unused' => 1]));
+
+    $response->assertOk()->assertSee('free.jpg')->assertDontSee('used.jpg');
+});
+
+it('restores a trashed media for its owner', function () {
+    $user = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'to-restore.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'to-restore.jpg')->firstOrFail();
+    $this->actingAs($user, 'baobab')->delete(route('admin.media.destroy', ['media' => $media->id]));
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.media.restore', ['media' => $media->id]))
+        ->assertRedirect(route('admin.media.index'));
+
+    expect(Media::find($media->id))->not->toBeNull();
+});
+
+it('forbids restoring another user\'s trashed media without delete_any', function () {
+    $owner = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'guarded-restore.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'guarded-restore.jpg')->firstOrFail();
+    $this->actingAs($owner, 'baobab')->delete(route('admin.media.destroy', ['media' => $media->id]));
+
+    $stranger = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($stranger, 'baobab')
+        ->post(route('admin.media.restore', ['media' => $media->id]))
+        ->assertForbidden();
+});
+
+it('forbids permanently purging without delete_any even for the owner', function () {
+    $owner = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'owner-purge.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'owner-purge.jpg')->firstOrFail();
+    $this->actingAs($owner, 'baobab')->delete(route('admin.media.destroy', ['media' => $media->id]));
+
+    $this->actingAs($owner, 'baobab')
+        ->delete(route('admin.media.force-destroy', ['media' => $media->id]))
+        ->assertForbidden();
+});
+
+it('permanently purges a trashed media with delete_any', function () {
+    $owner = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'admin-purge.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'admin-purge.jpg')->firstOrFail();
+    $path = $media->path;
+    $this->actingAs($owner, 'baobab')->delete(route('admin.media.destroy', ['media' => $media->id]));
+
+    $manager = mediaActor(['baobab.media.delete_any']);
+    $this->actingAs($manager, 'baobab')
+        ->delete(route('admin.media.force-destroy', ['media' => $media->id]))
+        ->assertRedirect(route('admin.media.index', ['trashed' => 1]));
+
+    expect(Media::withTrashed()->find($media->id))->toBeNull();
+    Storage::disk('public')->assertMissing($path);
+});
+
+it('bulk deletes selected media, skipping used ones', function () {
+    $user = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'bulk-free.jpg', 'image/jpeg', null, true),
+    ]);
+    $free = Media::where('file_name', 'bulk-free.jpg')->firstOrFail();
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'bulk-used.jpg', 'image/jpeg', null, true),
+        'duplicate_action' => 'new',
+    ]);
+    $used = Media::where('file_name', 'bulk-used.jpg')->firstOrFail();
+    mediaControllerUsageEntry('BulkGuardedArticle', $used);
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.media.bulk-delete'), ['ids' => [$free->id, $used->id]])
+        ->assertRedirect();
+
+    expect(Media::find($free->id))->toBeNull()
+        ->and(Media::find($used->id))->not->toBeNull();
+});
+
+it('bulk restores selected trashed media', function () {
+    $user = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'bulk-restore.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'bulk-restore.jpg')->firstOrFail();
+    $this->actingAs($user, 'baobab')->delete(route('admin.media.destroy', ['media' => $media->id]));
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.media.bulk-restore'), ['ids' => [$media->id]])
+        ->assertRedirect();
+
+    expect(Media::find($media->id))->not->toBeNull();
+});
+
+it('bulk purges selected trashed media with delete_any only', function () {
+    $owner = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'bulk-purge.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'bulk-purge.jpg')->firstOrFail();
+    $this->actingAs($owner, 'baobab')->delete(route('admin.media.destroy', ['media' => $media->id]));
+
+    $this->actingAs($owner, 'baobab')
+        ->post(route('admin.media.bulk-force-destroy'), ['ids' => [$media->id]])
+        ->assertRedirect();
+    expect(Media::withTrashed()->find($media->id))->not->toBeNull();
+
+    $manager = mediaActor(['baobab.media.delete_any']);
+    $this->actingAs($manager, 'baobab')
+        ->post(route('admin.media.bulk-force-destroy'), ['ids' => [$media->id]])
+        ->assertRedirect();
+
+    expect(Media::withTrashed()->find($media->id))->toBeNull();
 });

@@ -40,4 +40,19 @@ final class MediaPolicy
         return $user->can('baobab.media.delete_any')
             || ($user->can('baobab.media.delete') && $media->author_id === $user->id);
     }
+
+    public function restore(User $user, Media $media): bool
+    {
+        return $this->delete($user, $media);
+    }
+
+    /**
+     * Purge définitive (M4 point 3) — irréversible, réservée à `delete_any`
+     * même pour le propriétaire : barre plus haute que la simple mise à la
+     * corbeille.
+     */
+    public function forceDelete(User $user, Media $media): bool
+    {
+        return $user->can('baobab.media.delete_any');
+    }
 }

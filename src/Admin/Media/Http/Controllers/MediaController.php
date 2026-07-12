@@ -6,12 +6,15 @@ namespace Baobab\Admin\Media\Http\Controllers;
 
 use Baobab\Media\Actions\DeleteMedia;
 use Baobab\Media\Actions\MoveMedia;
+use Baobab\Media\Actions\PurgeMedia;
+use Baobab\Media\Actions\RestoreMediaFromTrash;
 use Baobab\Media\Actions\RestoreOriginalMedia;
 use Baobab\Media\Actions\TransformMedia;
 use Baobab\Media\Actions\UpdateMediaFocalPoint;
 use Baobab\Media\Actions\UpdateMediaMetadata;
 use Baobab\Media\Actions\UploadMedia;
 use Baobab\Media\Exceptions\DuplicateMediaDetectedException;
+use Baobab\Media\Exceptions\MediaInUseException;
 use Baobab\Media\Models\Media;
 use Baobab\Media\Models\MediaFolder;
 use Baobab\Media\Support\ChunkedUploadAssembler;
@@ -25,9 +28,10 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Bibliothèque de médias (M4 points 1a/1b/2b) : grille + upload direct ou
- * chunké (délégués à UploadMedia, même pipeline, même validation) + écran
- * détail (métadonnées, point focal, édition non destructive).
+ * Bibliothèque de médias (M4 points 1a/1b/2b/3) : grille + upload direct ou
+ * chunké (délégués à UploadMedia, même pipeline, même validation), écran
+ * détail (métadonnées, point focal, édition non destructive), corbeille et
+ * suppression protégée (suivi d'usage).
  */
 final class MediaController
 {
@@ -37,9 +41,10 @@ final class MediaController
 
         abort_unless($actor->can('viewAny', Media::class), 403);
 
-        $folderId = $request->filled('folder') ? $request->integer('folder') : null;
+        $trashed = $request->boolean('trashed');
+        $folderId = $trashed || ! $request->filled('folder') ? null : $request->integer('folder');
 
-        $query = Media::query()->where('folder_id', $folderId);
+        $query = $trashed ? Media::onlyTrashed() : Media::query()->where('folder_id', $folderId);
 
         if ($request->filled('q')) {
             $query->where('file_name', 'like', '%'.$request->string('q').'%');
@@ -49,19 +54,25 @@ final class MediaController
             $query->where('mime_type', 'like', $request->string('type').'/%');
         }
 
+        if ($request->boolean('unused')) {
+            $query->whereDoesntHave('usages');
+        }
+
         /** @var LengthAwarePaginator<int, Media> $media */
         $media = $query->orderByDesc('id')->paginate(24)->withQueryString();
 
-        $currentFolder = $folderId !== null ? MediaFolder::find($folderId) : null;
+        $currentFolder = ($trashed || $folderId === null) ? null : MediaFolder::find($folderId);
 
         return view('baobab::admin.media.index', [
             'media' => $media,
-            'folders' => MediaFolder::where('parent_id', $folderId)->orderBy('name')->get(),
+            'folders' => $trashed ? collect() : MediaFolder::where('parent_id', $folderId)->orderBy('name')->get(),
             'allFolders' => MediaFolder::orderBy('name')->get(),
             'currentFolder' => $currentFolder,
             'breadcrumb' => $this->breadcrumb($currentFolder),
             'canUpload' => $actor->can('create', Media::class),
             'canUploadSvg' => $actor->can('baobab.media.upload_svg'),
+            'trashed' => $trashed,
+            'unused' => $request->boolean('unused'),
         ]);
     }
 
@@ -156,6 +167,7 @@ final class MediaController
             'media' => $media,
             'canUpdate' => $this->actor()->can('update', $media),
             'canDelete' => $this->actor()->can('delete', $media),
+            'blockedUsages' => session('mediaUsages'),
         ]);
     }
 
@@ -214,15 +226,105 @@ final class MediaController
         return response()->json($updated);
     }
 
-    public function destroy(Media $media): RedirectResponse
+    public function destroy(Request $request, Media $media): RedirectResponse|JsonResponse
     {
         abort_unless($this->actor()->can('delete', $media), 403);
 
-        app(DeleteMedia::class)($media);
+        try {
+            app(DeleteMedia::class)($media, $request->boolean('force'));
+        } catch (MediaInUseException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage(), 'usages' => $e->usages], 409);
+            }
+
+            return redirect()->route('admin.media.show', ['media' => $media->id])->with('mediaUsages', $e->usages);
+        }
 
         session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.media.show.deleted')]);
 
         return redirect()->route('admin.media.index');
+    }
+
+    public function restore(Media $media): RedirectResponse
+    {
+        abort_unless($this->actor()->can('restore', $media), 403);
+
+        app(RestoreMediaFromTrash::class)($media);
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.media.show.restored')]);
+
+        return redirect()->route('admin.media.index');
+    }
+
+    public function forceDestroy(Media $media): RedirectResponse
+    {
+        abort_unless($this->actor()->can('forceDelete', $media), 403);
+
+        app(PurgeMedia::class)($media);
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.media.show.purged')]);
+
+        return redirect()->route('admin.media.index', ['trashed' => 1]);
+    }
+
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $actor = $this->actor();
+
+        /** @var list<int> $ids */
+        $ids = (array) $request->input('ids', []);
+
+        $deleted = 0;
+        $skipped = 0;
+
+        foreach (Media::query()->findMany($ids) as $media) {
+            if (! $actor->can('delete', $media)) {
+                continue;
+            }
+
+            try {
+                app(DeleteMedia::class)($media);
+                $deleted++;
+            } catch (MediaInUseException) {
+                $skipped++;
+            }
+        }
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.media.show.bulk_deleted', ['deleted' => $deleted, 'skipped' => $skipped])]);
+
+        return back();
+    }
+
+    public function bulkRestore(Request $request): RedirectResponse
+    {
+        $actor = $this->actor();
+
+        /** @var list<int> $ids */
+        $ids = (array) $request->input('ids', []);
+
+        foreach (Media::onlyTrashed()->findMany($ids) as $media) {
+            if ($actor->can('restore', $media)) {
+                app(RestoreMediaFromTrash::class)($media);
+            }
+        }
+
+        return back();
+    }
+
+    public function bulkForceDestroy(Request $request): RedirectResponse
+    {
+        $actor = $this->actor();
+
+        /** @var list<int> $ids */
+        $ids = (array) $request->input('ids', []);
+
+        foreach (Media::onlyTrashed()->findMany($ids) as $media) {
+            if ($actor->can('forceDelete', $media)) {
+                app(PurgeMedia::class)($media);
+            }
+        }
+
+        return back();
     }
 
     private function attemptUpload(UploadedFile $file, User $actor, Request $request): JsonResponse

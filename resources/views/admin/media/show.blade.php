@@ -31,6 +31,34 @@
             @endif
         </x-slot:actions>
 
+        @if ($blockedUsages)
+            <x-baobab::card class="mb-6 border-danger/30 bg-danger/5" :header="__('baobab::admin.media.show.in_use_title')">
+                <p class="text-sm text-muted">{{ __('baobab::admin.media.show.in_use_description') }}</p>
+
+                <ul class="mt-2 list-inside list-disc text-sm text-foreground">
+                    @foreach ($blockedUsages as $usage)
+                        <li>{{ class_basename($usage->usable_type) }} #{{ $usage->usable_id }}</li>
+                    @endforeach
+                </ul>
+
+                @if ($canDelete)
+                    <form
+                        method="POST"
+                        action="{{ route('admin.media.destroy', ['media' => $media->id]) }}"
+                        onsubmit="return confirm('{{ __('baobab::admin.media.show.delete_confirm_title') }}')"
+                        class="mt-4"
+                    >
+                        @csrf
+                        @method('DELETE')
+                        <input type="hidden" name="force" value="1">
+                        <x-baobab::button type="submit" variant="danger">
+                            {{ __('baobab::admin.media.show.delete_anyway_action') }}
+                        </x-baobab::button>
+                    </form>
+                @endif
+            </x-baobab::card>
+        @endif
+
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div class="space-y-6">
                 <x-baobab::card>
