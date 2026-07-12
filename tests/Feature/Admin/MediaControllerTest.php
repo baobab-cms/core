@@ -260,3 +260,169 @@ it('reuses the existing media over HTTP when duplicate_action is reuse', functio
 
     expect(Media::count())->toBe(1);
 });
+
+// ── écran détail (M4 point 2b) ─────────────────────────────────────────────────
+
+it('shows the media detail screen to a user with baobab.media.view', function () {
+    $user = mediaActor(['baobab.media.view', 'baobab.media.upload']);
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'detail.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'detail.jpg')->firstOrFail();
+
+    $this->actingAs($user, 'baobab')
+        ->get(route('admin.media.show', ['media' => $media->id]))
+        ->assertOk()
+        ->assertSee('detail.jpg');
+});
+
+it('denies the media detail screen without baobab.media.view', function () {
+    $owner = mediaActor(['baobab.media.upload']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'private.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'private.jpg')->firstOrFail();
+
+    $stranger = mediaActor([]);
+    $this->actingAs($stranger, 'baobab')
+        ->get(route('admin.media.show', ['media' => $media->id]))
+        ->assertForbidden();
+});
+
+it('updates title/alt/caption/description over HTTP for the owner', function () {
+    $owner = mediaActor(['baobab.media.upload', 'baobab.media.update']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'meta.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'meta.jpg')->firstOrFail();
+
+    $this->actingAs($owner, 'baobab')
+        ->patch(route('admin.media.update', ['media' => $media->id]), ['alt' => 'Texte alternatif'])
+        ->assertRedirect(route('admin.media.show', ['media' => $media->id]));
+
+    expect($media->fresh()?->alt)->toBe('Texte alternatif');
+});
+
+it('forbids updating metadata on another user\'s media without update_any', function () {
+    $owner = mediaActor(['baobab.media.upload']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'other.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'other.jpg')->firstOrFail();
+
+    $stranger = mediaActor(['baobab.media.upload', 'baobab.media.update']);
+    $this->actingAs($stranger, 'baobab')
+        ->patch(route('admin.media.update', ['media' => $media->id]), ['alt' => 'Tentative'])
+        ->assertForbidden();
+});
+
+it('sets the focal point over HTTP and returns it as JSON', function () {
+    $owner = mediaActor(['baobab.media.upload', 'baobab.media.update']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'focal.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'focal.jpg')->firstOrFail();
+
+    $this->actingAs($owner, 'baobab')
+        ->patch(route('admin.media.focal-point.update', ['media' => $media->id]), ['focal_x' => 0.25, 'focal_y' => 0.75])
+        ->assertOk()
+        ->assertJson(['focal_x' => 0.25, 'focal_y' => 0.75]);
+
+    expect($media->fresh()?->focal_x)->toBe(0.25);
+});
+
+it('applies an edit over HTTP, storing it as edited_path without touching the original', function () {
+    $owner = mediaActor(['baobab.media.upload', 'baobab.media.update']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(40, 20), 'edit.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'edit.jpg')->firstOrFail();
+    $originalPath = $media->path;
+
+    $this->actingAs($owner, 'baobab')
+        ->post(route('admin.media.transform.store', ['media' => $media->id]), [
+            'file' => new UploadedFile(createTestJpeg(15, 15), 'cropped.jpg', 'image/jpeg', null, true),
+        ])
+        ->assertOk();
+
+    $media = $media->fresh();
+    expect($media?->edited_path)->not->toBeNull()
+        ->and($media?->path)->toBe($originalPath);
+});
+
+it('restores the original over HTTP, clearing the edited columns', function () {
+    $owner = mediaActor(['baobab.media.upload', 'baobab.media.update']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(40, 20), 'restore.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'restore.jpg')->firstOrFail();
+
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.transform.store', ['media' => $media->id]), [
+        'file' => new UploadedFile(createTestJpeg(15, 15), 'cropped.jpg', 'image/jpeg', null, true),
+    ]);
+
+    $this->actingAs($owner, 'baobab')
+        ->delete(route('admin.media.transform.destroy', ['media' => $media->id]))
+        ->assertOk();
+
+    expect($media->fresh()?->edited_path)->toBeNull();
+});
+
+it('forbids transforming another user\'s media without update_any', function () {
+    $owner = mediaActor(['baobab.media.upload']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'guarded.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'guarded.jpg')->firstOrFail();
+
+    $stranger = mediaActor(['baobab.media.upload', 'baobab.media.update']);
+    $this->actingAs($stranger, 'baobab')
+        ->post(route('admin.media.transform.store', ['media' => $media->id]), [
+            'file' => new UploadedFile(createTestJpeg(), 'cropped.jpg', 'image/jpeg', null, true),
+        ])
+        ->assertForbidden();
+});
+
+it('deletes the owner\'s media over HTTP and redirects to the library', function () {
+    $owner = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'to-delete.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'to-delete.jpg')->firstOrFail();
+
+    $this->actingAs($owner, 'baobab')
+        ->delete(route('admin.media.destroy', ['media' => $media->id]))
+        ->assertRedirect(route('admin.media.index'));
+
+    expect(Media::find($media->id))->toBeNull();
+});
+
+it('forbids deleting another user\'s media without delete_any', function () {
+    $owner = mediaActor(['baobab.media.upload']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'protected.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'protected.jpg')->firstOrFail();
+
+    $stranger = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
+    $this->actingAs($stranger, 'baobab')
+        ->delete(route('admin.media.destroy', ['media' => $media->id]))
+        ->assertForbidden();
+
+    expect(Media::find($media->id))->not->toBeNull();
+});
+
+it('allows deleting another user\'s media with delete_any', function () {
+    $owner = mediaActor(['baobab.media.upload']);
+    $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(), 'manager-delete.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'manager-delete.jpg')->firstOrFail();
+
+    $manager = mediaActor(['baobab.media.upload', 'baobab.media.delete_any']);
+    $this->actingAs($manager, 'baobab')
+        ->delete(route('admin.media.destroy', ['media' => $media->id]))
+        ->assertRedirect(route('admin.media.index'));
+
+    expect(Media::find($media->id))->toBeNull();
+});

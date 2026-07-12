@@ -110,16 +110,15 @@
 
                     <div class="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                         @foreach ($media as $item)
-                            @php $fileUrl = Illuminate\Support\Facades\Storage::disk($item->disk)->url($item->path); @endphp
                             <div class="group relative block overflow-hidden rounded-lg border border-border bg-surface">
                                 <label class="absolute left-2 top-2 z-10 rounded bg-surface/80 p-0.5">
                                     <input type="checkbox" name="ids[]" value="{{ $item->id }}">
                                 </label>
 
-                                <a href="{{ $fileUrl }}" target="_blank" rel="noopener" class="block" title="{{ __('baobab::admin.media.view_action') }}">
-                                    @if (str_starts_with($item->mime_type, 'image/'))
+                                <a href="{{ route('admin.media.show', ['media' => $item->id]) }}" class="block" title="{{ __('baobab::admin.media.view_action') }}">
+                                    @if ($item->isImage())
                                         <img
-                                            src="{{ $fileUrl }}"
+                                            src="{{ $item->url() }}"
                                             alt="{{ $item->alt ?? $item->file_name }}"
                                             class="h-24 w-full object-cover"
                                         >

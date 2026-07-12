@@ -47,7 +47,9 @@ final class GenerateMediaConversions implements ShouldQueue
         // uniquement pour ce job, pas globalement.
         ini_set('memory_limit', (string) config('baobab.media.job_memory_limit', '512M'));
 
-        $sourcePath = Storage::disk($this->media->disk)->path($this->media->path);
+        // Une édition non destructive (M4 point 2b) remplace la source des variantes sans jamais
+        // toucher l'original (`path`) — `edited_path` prime tant qu'il existe.
+        $sourcePath = Storage::disk($this->media->disk)->path($this->media->edited_path ?? $this->media->path);
         $conversions = (array) $this->media->conversions;
 
         foreach ($presets->all() as $name => $definition) {

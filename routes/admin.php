@@ -58,6 +58,12 @@ Route::prefix('media')
         Route::post('/folders', [MediaFolderController::class, 'store'])->name('folders.store');
         Route::put('/folders/{folder}', [MediaFolderController::class, 'update'])->name('folders.update');
         Route::delete('/folders/{folder}', [MediaFolderController::class, 'destroy'])->name('folders.destroy');
+        Route::get('/{media}', [MediaController::class, 'show'])->name('show');
+        Route::patch('/{media}', [MediaController::class, 'update'])->name('update');
+        Route::patch('/{media}/focal-point', [MediaController::class, 'updateFocalPoint'])->name('focal-point.update');
+        Route::post('/{media}/transform', [MediaController::class, 'storeTransform'])->name('transform.store');
+        Route::delete('/{media}/transform', [MediaController::class, 'destroyTransform'])->name('transform.destroy');
+        Route::delete('/{media}', [MediaController::class, 'destroy'])->name('destroy');
     });
 
 Route::prefix('content/{contentType}')

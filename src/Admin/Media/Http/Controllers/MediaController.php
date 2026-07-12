@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace Baobab\Admin\Media\Http\Controllers;
 
+use Baobab\Media\Actions\DeleteMedia;
 use Baobab\Media\Actions\MoveMedia;
+use Baobab\Media\Actions\RestoreOriginalMedia;
+use Baobab\Media\Actions\TransformMedia;
+use Baobab\Media\Actions\UpdateMediaFocalPoint;
+use Baobab\Media\Actions\UpdateMediaMetadata;
 use Baobab\Media\Actions\UploadMedia;
 use Baobab\Media\Exceptions\DuplicateMediaDetectedException;
 use Baobab\Media\Models\Media;
@@ -20,8 +25,9 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Bibliothèque de médias (M4 points 1a/1b) : grille + upload direct ou
- * chunké, tous deux délégués à UploadMedia — même pipeline, même validation.
+ * Bibliothèque de médias (M4 points 1a/1b/2b) : grille + upload direct ou
+ * chunké (délégués à UploadMedia, même pipeline, même validation) + écran
+ * détail (métadonnées, point focal, édition non destructive).
  */
 final class MediaController
 {
@@ -140,6 +146,83 @@ final class MediaController
         app(MoveMedia::class)($items, $request->integer('folder_id') ?: null);
 
         return back();
+    }
+
+    public function show(Media $media): View
+    {
+        abort_unless($this->actor()->can('view', $media), 403);
+
+        return view('baobab::admin.media.show', [
+            'media' => $media,
+            'canUpdate' => $this->actor()->can('update', $media),
+            'canDelete' => $this->actor()->can('delete', $media),
+        ]);
+    }
+
+    public function update(Request $request, Media $media): RedirectResponse
+    {
+        abort_unless($this->actor()->can('update', $media), 403);
+
+        $validated = $request->validate([
+            'title' => ['nullable', 'string', 'max:255'],
+            'alt' => ['nullable', 'string', 'max:255'],
+            'caption' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        app(UpdateMediaMetadata::class)($media, $validated);
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.media.show.updated')]);
+
+        return redirect()->route('admin.media.show', ['media' => $media->id]);
+    }
+
+    public function updateFocalPoint(Request $request, Media $media): JsonResponse
+    {
+        abort_unless($this->actor()->can('update', $media), 403);
+
+        $validated = $request->validate([
+            'focal_x' => ['required', 'numeric', 'between:0,1'],
+            'focal_y' => ['required', 'numeric', 'between:0,1'],
+        ]);
+
+        $updated = app(UpdateMediaFocalPoint::class)($media, (float) $validated['focal_x'], (float) $validated['focal_y']);
+
+        return response()->json(['focal_x' => $updated->focal_x, 'focal_y' => $updated->focal_y]);
+    }
+
+    public function storeTransform(Request $request, Media $media): JsonResponse
+    {
+        abort_unless($this->actor()->can('update', $media), 403);
+
+        $request->validate(['file' => ['required', 'file']]);
+
+        /** @var UploadedFile $file */
+        $file = $request->file('file');
+
+        $updated = app(TransformMedia::class)($media, $file);
+
+        return response()->json($updated);
+    }
+
+    public function destroyTransform(Media $media): JsonResponse
+    {
+        abort_unless($this->actor()->can('update', $media), 403);
+
+        $updated = app(RestoreOriginalMedia::class)($media);
+
+        return response()->json($updated);
+    }
+
+    public function destroy(Media $media): RedirectResponse
+    {
+        abort_unless($this->actor()->can('delete', $media), 403);
+
+        app(DeleteMedia::class)($media);
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.media.show.deleted')]);
+
+        return redirect()->route('admin.media.index');
     }
 
     private function attemptUpload(UploadedFile $file, User $actor, Request $request): JsonResponse

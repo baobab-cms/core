@@ -9,6 +9,7 @@ use Baobab\Users\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -32,6 +33,9 @@ use Illuminate\Support\Str;
  * @property array<string, mixed> $meta
  * @property float|null $focal_x
  * @property float|null $focal_y
+ * @property string|null $edited_path
+ * @property int|null $edited_width
+ * @property int|null $edited_height
  */
 class Media extends Model
 {
@@ -60,6 +64,9 @@ class Media extends Model
         'meta',
         'focal_x',
         'focal_y',
+        'edited_path',
+        'edited_width',
+        'edited_height',
     ];
 
     protected static function booted(): void
@@ -82,6 +89,8 @@ class Media extends Model
             'meta' => 'array',
             'focal_x' => 'float',
             'focal_y' => 'float',
+            'edited_width' => 'integer',
+            'edited_height' => 'integer',
         ];
     }
 
@@ -110,5 +119,49 @@ class Media extends Model
     public function variantUrl(string $preset): ?string
     {
         return app(MediaVariantResolver::class)->resolve($this, $preset);
+    }
+
+    /**
+     * Largeur/hauteur de la version courante (éditée si elle existe, sinon
+     * l'original) — l'original lui-même (`width`/`height`) n'est jamais
+     * remplacé par une édition (spec 06 §4.2, « l'original reste »).
+     */
+    public function currentWidth(): ?int
+    {
+        return $this->edited_width ?? $this->width;
+    }
+
+    public function currentHeight(): ?int
+    {
+        return $this->edited_height ?? $this->height;
+    }
+
+    /**
+     * URL de la version courante (éditée si elle existe, sinon l'original) —
+     * vues et Actions ne doivent jamais résoudre de chemin Storage
+     * elles-mêmes (spec 06 §1.1).
+     */
+    public function url(): string
+    {
+        return Storage::disk($this->disk)->url($this->edited_path ?? $this->path);
+    }
+
+    /**
+     * Affichable par une balise <img> (SVG compris — la grille l'affiche
+     * tel quel, le navigateur sait le rendre).
+     */
+    public function isImage(): bool
+    {
+        return str_starts_with($this->mime_type, 'image/');
+    }
+
+    /**
+     * Éligible à l'éditeur pixel (point focal, recadrage/rotation/
+     * retournement) — un SVG n'a pas de sens à redimensionner en pixels,
+     * même logique que GenerateMediaConversions::isRasterImage().
+     */
+    public function isRasterImage(): bool
+    {
+        return $this->isImage() && $this->mime_type !== 'image/svg+xml';
     }
 }
