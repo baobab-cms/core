@@ -12,6 +12,8 @@ use Baobab\Admin\Sidebar\SidebarBuilder;
 use Baobab\Admin\Sidebar\SidebarItem;
 use Baobab\Audit\AuditLogger;
 use Baobab\Auth\TwoFactorManager;
+use Baobab\Console\Commands\ContentTypeBuildCommand;
+use Baobab\Console\Commands\ContentTypeMakeCommand;
 use Baobab\Console\Commands\HookListCommand;
 use Baobab\Console\Commands\ModuleActivateCommand;
 use Baobab\Console\Commands\ModuleDeactivateCommand;
@@ -131,6 +133,8 @@ class BaobabServiceProvider extends ServiceProvider
         Hook::action('baobab.booted');
 
         if ($this->app->runningInConsole()) {
+            $this->fixWindowsConsoleCharset();
+
             $this->commands([
                 ModuleListCommand::class,
                 ModuleInstallCommand::class,
@@ -139,7 +143,25 @@ class BaobabServiceProvider extends ServiceProvider
                 ModuleUninstallCommand::class,
                 HookListCommand::class,
                 SuperAdminCommand::class,
+                ContentTypeBuildCommand::class,
+                ContentTypeMakeCommand::class,
             ]);
+        }
+    }
+
+    /**
+     * PHP CLI sur Windows lit/écrit la console dans le codepage OEM actif
+     * (souvent CP437/850), pas en UTF-8 : un accent tapé dans un prompt
+     * interactif (`content-type:make`) est mal décodé puis persisté tel
+     * quel en base — pas un problème de charset SQLite/MySQL, la
+     * corruption a lieu avant l'écriture. Sans effet sur Linux/macOS (guard
+     * `PHP_OS_FAMILY`) ni sur les requêtes HTTP (toujours UTF-8). CMS
+     * francophone-first : les accents doivent survivre à la CLI.
+     */
+    private function fixWindowsConsoleCharset(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows' && function_exists('sapi_windows_cp_set')) {
+            sapi_windows_cp_set(65001);
         }
     }
 
