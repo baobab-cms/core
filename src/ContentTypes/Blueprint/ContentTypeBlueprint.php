@@ -38,6 +38,7 @@ final readonly class ContentTypeBlueprint
 
         self::validateFields($data['fields'] ?? [], $fieldRegistry ?? app(FieldRegistry::class));
         self::validateRelations($data['relations'] ?? [], $relationTargets ?? app(RelationTargetResolver::class));
+        self::validateTitleField($data);
 
         return new self($data);
     }
@@ -92,6 +93,43 @@ final readonly class ContentTypeBlueprint
         }
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private static function validateTitleField(array $data): void
+    {
+        if (! ($data['is_addressable'] ?? false)) {
+            return;
+        }
+
+        $titleField = $data['title_field'] ?? null;
+
+        if ($titleField === null) {
+            throw InvalidBlueprintException::forField(
+                'title_field',
+                'Un type de contenu adressable doit déclarer title_field (source du slug auto-généré, spec 02 §4.2).'
+            );
+        }
+
+        /** @var list<array<string, mixed>> $fields */
+        $fields = (array) ($data['fields'] ?? []);
+        $field = collect($fields)->firstWhere('key', $titleField);
+
+        if ($field === null) {
+            throw InvalidBlueprintException::forField(
+                'title_field',
+                "Le champ « {$titleField} » n'existe pas dans fields[]."
+            );
+        }
+
+        if (! in_array($field['type'], ['text', 'textarea', 'richtext'], true)) {
+            throw InvalidBlueprintException::forField(
+                'title_field',
+                "Le champ « {$titleField} » doit être de type text, textarea ou richtext pour servir de source au slug."
+            );
+        }
+    }
+
     public function key(): string
     {
         return $this->data['key'];
@@ -110,6 +148,11 @@ final readonly class ContentTypeBlueprint
     public function isAddressable(): bool
     {
         return $this->data['is_addressable'] ?? false;
+    }
+
+    public function titleField(): ?string
+    {
+        return $this->data['title_field'] ?? null;
     }
 
     public function blueprintVersion(): int

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Baobab\Admin\Access\Http\Controllers\AccessMatrixController;
 use Baobab\Admin\Account\Http\Controllers\SecurityController;
+use Baobab\Admin\Content\Http\Controllers\ContentController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
 use Baobab\Audit\Http\Controllers\AuditLogController;
@@ -43,4 +44,16 @@ Route::middleware('can:baobab.users.impersonate')
     ->group(function (): void {
         Route::get('/', [UserController::class, 'index'])->name('index');
         Route::post('/{user}/impersonate', [ImpersonationController::class, 'store'])->name('impersonate');
+    });
+
+Route::prefix('content/{contentType}')
+    ->name('content.')
+    ->group(function (): void {
+        Route::get('/', [ContentController::class, 'index'])->name('index');
+        Route::get('/create', [ContentController::class, 'create'])->name('create');
+        Route::post('/', [ContentController::class, 'store'])->name('store');
+        Route::post('/bulk-delete', [ContentController::class, 'bulkDestroy'])->name('bulk-delete');
+        Route::get('/{entry}/edit', [ContentController::class, 'edit'])->name('edit');
+        Route::put('/{entry}', [ContentController::class, 'update'])->name('update');
+        Route::delete('/{entry}', [ContentController::class, 'destroy'])->name('destroy');
     });

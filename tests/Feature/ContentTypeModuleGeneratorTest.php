@@ -43,15 +43,29 @@ it('generates a complete module tree for a blueprint', function () {
         ->and($manifest['provider'])->toBe('Modules\\Car\\Providers\\CarServiceProvider')
         ->and($manifest['autoload']['psr-4'])->toBe(['Modules\\Car\\' => 'src/'])
         ->and(collect((array) $manifest['permissions'])->pluck('key')->all())->toBe([
-            'content_types.car.view',
-            'content_types.car.create',
-            'content_types.car.update',
-            'content_types.car.delete',
+            'content.car.view',
+            'content.car.create',
+            'content.car.update',
+            'content.car.update_any',
+            'content.car.delete',
+            'content.car.delete_any',
+            'content.car.publish',
+            'content.car.publish_any',
+        ])
+        ->and($manifest['menus']['admin'][0])->toBe([
+            'label' => 'Voitures',
+            'route' => 'admin.content.index',
+            'route_params' => ['contentType' => 'cars'],
+            'permission' => 'content.car.view',
         ]);
 });
 
 it('adds a unique slug column to the migration when the type is addressable', function () {
-    $contentType = app(CreateContentType::class)(carBlueprintJson(['is_addressable' => true]));
+    $contentType = app(CreateContentType::class)(carBlueprintJson([
+        'is_addressable' => true,
+        'title_field' => 'brand',
+        'fields' => [['key' => 'brand', 'type' => 'text']],
+    ]));
 
     app(ContentTypeModuleGenerator::class)($contentType);
 

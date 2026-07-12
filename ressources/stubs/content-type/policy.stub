@@ -4,16 +4,23 @@ declare(strict_types=1);
 
 namespace {{ namespace }}\Policies;
 
+use {{ namespace }}\Models\{{ key }};
 use Baobab\Users\Models\User;
 
 /**
- * Squelette généré — la distinction own/any (spec 02 §6) sera affinée par
- * le CRUD admin auto-généré (M3 point 5). Éditable à la main sans risque :
- * une régénération respecte l'anti-écrasement par checksum.
+ * Own/any (spec 05 §3.2) : {{ var }}.update_any/{{ var }}.delete_any/{{ var }}.publish_any
+ * autorisent sur n'importe quelle ligne ; les variantes sans _any exigent en
+ * plus author_id === $user->id. Éditable à la main sans risque : une
+ * régénération respecte l'anti-écrasement par checksum.
  */
 final class {{ key }}Policy
 {
     public function viewAny(User $user): bool
+    {
+        return $user->can('{{ permission_prefix }}.view');
+    }
+
+    public function view(User $user): bool
     {
         return $user->can('{{ permission_prefix }}.view');
     }
@@ -23,13 +30,21 @@ final class {{ key }}Policy
         return $user->can('{{ permission_prefix }}.create');
     }
 
-    public function update(User $user): bool
+    public function update(User $user, {{ key }} ${{ var }}): bool
     {
-        return $user->can('{{ permission_prefix }}.update');
+        return $user->can('{{ permission_prefix }}.update_any')
+            || ($user->can('{{ permission_prefix }}.update') && ${{ var }}->author_id === $user->id);
     }
 
-    public function delete(User $user): bool
+    public function delete(User $user, {{ key }} ${{ var }}): bool
     {
-        return $user->can('{{ permission_prefix }}.delete');
+        return $user->can('{{ permission_prefix }}.delete_any')
+            || ($user->can('{{ permission_prefix }}.delete') && ${{ var }}->author_id === $user->id);
+    }
+
+    public function publish(User $user, {{ key }} ${{ var }}): bool
+    {
+        return $user->can('{{ permission_prefix }}.publish_any')
+            || ($user->can('{{ permission_prefix }}.publish') && ${{ var }}->author_id === $user->id);
     }
 }

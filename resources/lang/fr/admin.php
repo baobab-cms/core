@@ -95,6 +95,25 @@ return [
         ],
     ],
 
+    'content' => [
+        'search_placeholder' => 'Rechercher…',
+        'search_submit' => 'Rechercher',
+        'filter_status' => 'Statut',
+        'filter_all_statuses' => 'Tous les statuts',
+        'create_action' => 'Ajouter',
+        'edit_action' => 'Modifier',
+        'delete_action' => 'Supprimer',
+        'delete_confirm_title' => 'Supprimer cet élément ?',
+        'delete_confirm_description' => 'Cette action déplace l\'élément dans la corbeille.',
+        'bulk_delete_action' => 'Supprimer la sélection',
+        'column_status' => 'Statut',
+        'save_action' => 'Enregistrer',
+        'cancel_action' => 'Annuler',
+        'created' => 'Élément créé.',
+        'updated' => 'Élément modifié.',
+        'deleted' => 'Élément supprimé.',
+    ],
+
     'access' => [
         'title' => 'Rôles & permissions',
         'column_permission' => 'Permission',

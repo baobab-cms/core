@@ -36,7 +36,7 @@ final class ContentTypeModuleGenerator
         $dirSlug = Str::kebab(Str::plural($key));
         $moduleName = "content-types/{$dirSlug}";
         $namespace = "Modules\\{$key}";
-        $permissionPrefix = 'content_types.'.Str::snake($key);
+        $permissionPrefix = 'content.'.Str::snake($key);
         $moduleDir = $contentType->moduleDir();
 
         $this->checksums->write($moduleDir, 'module.json', $this->moduleJson(
@@ -44,6 +44,7 @@ final class ContentTypeModuleGenerator
             $moduleName,
             $namespace,
             $permissionPrefix,
+            $dirSlug,
         ));
 
         $this->checksums->write(
@@ -68,6 +69,7 @@ final class ContentTypeModuleGenerator
         $this->checksums->write($moduleDir, "src/Policies/{$key}Policy.php", $this->renderer->render(StubRenderer::stubPath('policy'), [
             'namespace' => $namespace,
             'key' => $key,
+            'var' => Str::camel($key),
             'permission_prefix' => $permissionPrefix,
         ]));
 
@@ -105,7 +107,7 @@ final class ContentTypeModuleGenerator
         ]));
     }
 
-    private function moduleJson(ContentType $contentType, string $moduleName, string $namespace, string $permissionPrefix): string
+    private function moduleJson(ContentType $contentType, string $moduleName, string $namespace, string $permissionPrefix, string $dirSlug): string
     {
         $key = $contentType->key;
         $label = $contentType->blueprint['label'] ?? ['singular' => $key, 'plural' => $key];
@@ -123,8 +125,22 @@ final class ContentTypeModuleGenerator
             'permissions' => [
                 ['key' => "{$permissionPrefix}.view", 'label' => "Voir : {$label['plural']}"],
                 ['key' => "{$permissionPrefix}.create", 'label' => "Créer : {$label['singular']}"],
-                ['key' => "{$permissionPrefix}.update", 'label' => "Modifier : {$label['singular']}"],
-                ['key' => "{$permissionPrefix}.delete", 'label' => "Supprimer : {$label['singular']}"],
+                ['key' => "{$permissionPrefix}.update", 'label' => "Modifier (les siens) : {$label['singular']}"],
+                ['key' => "{$permissionPrefix}.update_any", 'label' => "Modifier (tous) : {$label['plural']}"],
+                ['key' => "{$permissionPrefix}.delete", 'label' => "Supprimer (les siens) : {$label['singular']}"],
+                ['key' => "{$permissionPrefix}.delete_any", 'label' => "Supprimer (tous) : {$label['plural']}"],
+                ['key' => "{$permissionPrefix}.publish", 'label' => "Publier (les siens) : {$label['singular']}"],
+                ['key' => "{$permissionPrefix}.publish_any", 'label' => "Publier (tous) : {$label['plural']}"],
+            ],
+            'menus' => [
+                'admin' => [
+                    [
+                        'label' => $label['plural'],
+                        'route' => 'admin.content.index',
+                        'route_params' => ['contentType' => $dirSlug],
+                        'permission' => "{$permissionPrefix}.view",
+                    ],
+                ],
             ],
         ];
 

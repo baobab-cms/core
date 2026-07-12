@@ -36,7 +36,7 @@ it('builds a content type end to end: table created, module active, permissions 
     expect($module->status)->toBe('active')
         ->and($module->name)->toBe('content-types/cars');
 
-    expect(Permission::where('name', 'content_types.car.view')->where('guard_name', 'baobab')->exists())->toBeTrue();
+    expect(Permission::where('name', 'content.car.view')->where('guard_name', 'baobab')->exists())->toBeTrue();
 
     expect($received)->not->toBeNull();
 
