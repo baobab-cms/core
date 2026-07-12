@@ -1,7 +1,3 @@
-@php
-    $impersonatedUser = session('baobab.impersonator_id') ? auth('baobab')->user() : null;
-@endphp
-
 @if ($impersonatedUser)
     <div class="flex items-center justify-between bg-warning px-4 py-2 text-sm text-white">
         <span>

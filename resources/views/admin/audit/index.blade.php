@@ -10,39 +10,6 @@
             <x-baobab::button type="submit" variant="secondary">{{ __('baobab::admin.audit.filter_submit') }}</x-baobab::button>
         </form>
 
-        @php
-            $columns = [
-                [
-                    'key' => 'created_at',
-                    'label' => __('baobab::admin.audit.column_date'),
-                    'render' => fn ($entry) => $entry->created_at?->format('Y-m-d H:i'),
-                ],
-                [
-                    'key' => 'actor',
-                    'label' => __('baobab::admin.audit.column_actor'),
-                    'render' => fn ($entry) => $entry->actor?->name ?? __('baobab::admin.audit.system_actor'),
-                ],
-                [
-                    'key' => 'impersonator',
-                    'label' => __('baobab::admin.audit.column_impersonator'),
-                    'render' => fn ($entry) => $entry->impersonator?->name ?? '—',
-                ],
-                [
-                    'key' => 'action',
-                    'label' => __('baobab::admin.audit.column_action'),
-                ],
-                [
-                    'key' => 'data',
-                    'label' => __('baobab::admin.audit.column_data'),
-                    'render' => fn ($entry) => json_encode($entry->data),
-                ],
-                [
-                    'key' => 'ip_address',
-                    'label' => __('baobab::admin.audit.column_ip'),
-                ],
-            ];
-        @endphp
-
         <x-baobab::table :columns="$columns" :rows="$entries" />
     </x-baobab::page>
 @endsection

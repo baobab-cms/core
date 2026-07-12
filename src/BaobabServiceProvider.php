@@ -134,6 +134,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerAdminSidebarComposer();
 
+        $this->registerImpersonationBannerComposer();
+
         $this->registerAuditListeners();
 
         $this->registerCoreSidebarItems();
@@ -198,6 +200,16 @@ class BaobabServiceProvider extends ServiceProvider
             $user = auth('baobab')->user();
 
             $view->with('sidebar', $builder->build($user));
+        });
+    }
+
+    private function registerImpersonationBannerComposer(): void
+    {
+        View::composer('baobab::layouts.partials.impersonation-banner', function (ViewContract $view): void {
+            /** @var User|null $impersonatedUser */
+            $impersonatedUser = session('baobab.impersonator_id') ? auth('baobab')->user() : null;
+
+            $view->with('impersonatedUser', $impersonatedUser);
         });
     }
 

@@ -1,75 +1,53 @@
 @extends('baobab::layouts.admin')
 
-@php
-    $label = $contentType->blueprint['label']['singular'] ?? $contentType->key;
-    $isEdit = $entry !== null;
-    $titleField = $contentType->blueprint['title_field'] ?? null;
-@endphp
-
 @section('title', $label)
 
 @section('content')
     <x-baobab::page :title="$label">
         <x-baobab::card>
-            <x-baobab::form
-                method="{{ $isEdit ? 'PUT' : 'POST' }}"
-                action="{{ $isEdit
-                    ? route('admin.content.update', ['contentType' => $slug, 'entry' => $entry->id])
-                    : route('admin.content.store', ['contentType' => $slug]) }}"
-            >
+            <x-baobab::form method="{{ $formMethod }}" action="{{ $formAction }}">
                 <div x-data="{ slugManuallyEdited: {{ $isEdit ? 'true' : 'false' }} }">
                     @foreach ($fields as $field)
-                        @php
-                            $name = $field['key'];
-                            $value = $entry?->getAttribute($name);
-                            $fieldLabel = \Illuminate\Support\Str::headline($name);
-                            $choices = $field['options']['choices'] ?? [];
-                            $isTitleSource = $titleField !== null && $name === $titleField;
-                            $autoSlugHandler = $isTitleSource
-                                ? 'if (!slugManuallyEdited) { const el = document.getElementById(\'slug\'); if (el) { el.value = baobabSlugify($event.target.value); } }'
-                                : '';
-                        @endphp
-
                         @switch($field['type'])
                             @case('slug')
                                 <x-baobab::field.text
-                                    :name="$name"
-                                    :label="$fieldLabel"
-                                    :value="$value"
+                                    :name="$field['key']"
+                                    :label="$field['label']"
+                                    :value="$field['value']"
                                     placeholder="mon-titre-de-page"
                                     x-on:input="slugManuallyEdited = true"
                                 />
                                 @break
 
                             @case('boolean')
-                                <x-baobab::field.checkbox :name="$name" :label="$fieldLabel" :checked="(bool) $value" />
+                                <x-baobab::field.checkbox :name="$field['key']" :label="$field['label']" :checked="(bool) $field['value']" />
                                 @break
 
                             @case('select')
                             @case('radio')
                                 <x-baobab::field.select
-                                    :name="$name"
-                                    :label="$fieldLabel"
-                                    :options="array_combine($choices, $choices)"
-                                    :value="$value"
+                                    :name="$field['key']"
+                                    :label="$field['label']"
+                                    :options="$field['choice_options']"
+                                    :value="$field['value']"
                                 />
                                 @break
 
                             @case('multiselect')
                                 <div class="mb-4">
-                                    <label class="mb-1 block text-sm font-medium text-foreground">{{ $fieldLabel }}</label>
+                                    <label class="mb-1 block text-sm font-medium text-foreground">{{ $field['label'] }}</label>
                                     <select
-                                        name="{{ $name }}[]"
+                                        name="{{ $field['key'] }}[]"
                                         multiple
                                         class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground"
                                     >
-                                        @foreach ($choices as $choice)
-                                            <option value="{{ $choice }}" @selected(in_array($choice, (array) old($name, $value ?? []), true))>
+                                        @foreach ($field['choices'] as $choice)
+                                            <option value="{{ $choice }}" @selected(in_array($choice, (array) old($field['key'], $field['value'] ?? []), true))>
                                                 {{ $choice }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    @error($name)
+                                    @error($field['key'])
                                         <p class="mt-1 text-xs text-danger">{{ $message }}</p>
                                     @enderror
                                 </div>
@@ -78,34 +56,28 @@
                             @case('textarea')
                             @case('richtext')
                                 <x-baobab::field.textarea
-                                    :name="$name"
-                                    :label="$fieldLabel"
-                                    :value="$value"
-                                    x-on:input="{{ $autoSlugHandler }}"
+                                    :name="$field['key']"
+                                    :label="$field['label']"
+                                    :value="$field['value']"
+                                    x-on:input="{{ $field['auto_slug_handler'] }}"
                                 />
                                 @break
 
                             @case('json')
                                 <x-baobab::field.textarea
-                                    :name="$name"
-                                    :label="$fieldLabel"
-                                    :value="$value === null ? null : json_encode($value, JSON_PRETTY_PRINT)"
+                                    :name="$field['key']"
+                                    :label="$field['label']"
+                                    :value="$field['json_value']"
                                 />
                                 @break
 
                             @default
                                 <x-baobab::field.text
-                                    :name="$name"
-                                    :label="$fieldLabel"
-                                    :value="$value"
-                                    :type="match ($field['type']) {
-                                        'integer', 'decimal' => 'number',
-                                        'date' => 'date',
-                                        'datetime' => 'datetime-local',
-                                        'time' => 'time',
-                                        default => 'text',
-                                    }"
-                                    x-on:input="{{ $autoSlugHandler }}"
+                                    :name="$field['key']"
+                                    :label="$field['label']"
+                                    :value="$field['value']"
+                                    :type="$field['html_type']"
+                                    x-on:input="{{ $field['auto_slug_handler'] }}"
                                 />
                         @endswitch
                     @endforeach

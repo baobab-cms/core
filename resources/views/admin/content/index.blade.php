@@ -31,24 +31,6 @@
             </x-baobab::button>
         </form>
 
-        @php
-            $tableColumns = $columns;
-            $tableColumns[] = [
-                'key' => 'actions',
-                'label' => '',
-                'raw' => true,
-                'render' => fn ($row) => view('baobab::admin.content.partials.row-actions', [
-                    'editUrl' => route('admin.content.edit', ['contentType' => $slug, 'entry' => $row->id]),
-                    'deleteUrl' => route('admin.content.destroy', ['contentType' => $slug, 'entry' => $row->id]),
-                ])->render(),
-            ];
-
-            $bulkActions = $canBulkDelete ? [[
-                'route' => route('admin.content.bulk-delete', ['contentType' => $slug]),
-                'label' => __('baobab::admin.content.bulk_delete_action'),
-            ]] : [];
-        @endphp
-
-        <x-baobab::table :columns="$tableColumns" :rows="$rows" :bulk-actions="$bulkActions" />
+        <x-baobab::table :columns="$columns" :rows="$rows" :bulk-actions="$bulkActions" />
     </x-baobab::page>
 @endsection

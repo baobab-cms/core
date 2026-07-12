@@ -53,15 +53,19 @@ final class ContentController
         $rows = $query->orderByDesc('id')->paginate(20)->withQueryString();
 
         $permissionPrefix = 'content.'.Str::snake($type->key);
+        $canBulkDelete = $this->actor()->can("{$permissionPrefix}.delete_any") || $this->actor()->can("{$permissionPrefix}.delete");
 
         return view('baobab::admin.content.index', [
             'contentType' => $type,
             'slug' => $contentType,
-            'columns' => $this->listColumns($type),
+            'columns' => $this->listColumns($type, $contentType),
             'rows' => $rows,
             'statuses' => $statuses,
             'canCreate' => $this->actor()->can('create', $modelClass),
-            'canBulkDelete' => $this->actor()->can("{$permissionPrefix}.delete_any") || $this->actor()->can("{$permissionPrefix}.delete"),
+            'bulkActions' => $canBulkDelete ? [[
+                'route' => route('admin.content.bulk-delete', ['contentType' => $contentType]),
+                'label' => __('baobab::admin.content.bulk_delete_action'),
+            ]] : [],
         ]);
     }
 
@@ -73,8 +77,11 @@ final class ContentController
         return view('baobab::admin.content.form', [
             'contentType' => $type,
             'slug' => $contentType,
-            'fields' => $this->formFields($type),
-            'entry' => null,
+            'label' => $this->label($type),
+            'isEdit' => false,
+            'formMethod' => 'POST',
+            'formAction' => route('admin.content.store', ['contentType' => $contentType]),
+            'fields' => $this->formFieldsForView($type, null),
         ]);
     }
 
@@ -101,8 +108,11 @@ final class ContentController
         return view('baobab::admin.content.form', [
             'contentType' => $type,
             'slug' => $contentType,
-            'fields' => $this->formFields($type),
-            'entry' => $model,
+            'label' => $this->label($type),
+            'isEdit' => true,
+            'formMethod' => 'PUT',
+            'formAction' => route('admin.content.update', ['contentType' => $contentType, 'entry' => $model->getKey()]),
+            'fields' => $this->formFieldsForView($type, $model),
         ]);
     }
 
@@ -279,10 +289,54 @@ final class ContentController
         return $filtered;
     }
 
+    private function label(ContentType $type): string
+    {
+        return $type->blueprint['label']['singular'] ?? $type->key;
+    }
+
+    /**
+     * Enrichit chaque descripteur de champ avec tout ce que la vue du
+     * formulaire a besoin d'afficher (label, valeur courante, options,
+     * script d'auto-remplissage du slug) — la vue ne fait plus aucun calcul,
+     * seulement de la lecture.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function formFieldsForView(ContentType $type, ?Model $entry): array
+    {
+        $titleField = $type->blueprint['title_field'] ?? null;
+
+        return array_map(function (array $field) use ($entry, $titleField): array {
+            $name = $field['key'];
+            $value = $entry?->getAttribute($name);
+            $choices = $field['options']['choices'] ?? [];
+            $isTitleSource = $titleField !== null && $name === $titleField;
+
+            return [
+                ...$field,
+                'label' => Str::headline($name),
+                'value' => $value,
+                'choices' => $choices,
+                'choice_options' => array_combine($choices, $choices),
+                'json_value' => $value === null ? null : json_encode($value, JSON_PRETTY_PRINT),
+                'html_type' => match ($field['type']) {
+                    'integer', 'decimal' => 'number',
+                    'date' => 'date',
+                    'datetime' => 'datetime-local',
+                    'time' => 'time',
+                    default => 'text',
+                },
+                'auto_slug_handler' => $isTitleSource
+                    ? 'if (!slugManuallyEdited) { const el = document.getElementById(\'slug\'); if (el) { el.value = baobabSlugify($event.target.value); } }'
+                    : '',
+            ];
+        }, $this->formFields($type));
+    }
+
     /**
      * @return list<array<string, mixed>>
      */
-    private function listColumns(ContentType $type): array
+    private function listColumns(ContentType $type, string $slug): array
     {
         $columns = [['key' => 'id', 'label' => 'ID', 'sortable' => true]];
 
@@ -291,6 +345,16 @@ final class ContentController
         }
 
         $columns[] = ['key' => 'status', 'label' => __('baobab::admin.content.column_status')];
+
+        $columns[] = [
+            'key' => 'actions',
+            'label' => '',
+            'raw' => true,
+            'render' => fn (Model $row): string => view('baobab::admin.content.partials.row-actions', [
+                'editUrl' => route('admin.content.edit', ['contentType' => $slug, 'entry' => $row->getKey()]),
+                'deleteUrl' => route('admin.content.destroy', ['contentType' => $slug, 'entry' => $row->getKey()]),
+            ])->render(),
+        ];
 
         return $columns;
     }

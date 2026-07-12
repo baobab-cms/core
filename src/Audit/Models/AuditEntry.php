@@ -21,6 +21,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $ip_address
  * @property string|null $user_agent
  * @property Carbon $created_at
+ * @property-read User|null $actor
+ * @property-read User|null $impersonator
  */
 final class AuditEntry extends Model
 {

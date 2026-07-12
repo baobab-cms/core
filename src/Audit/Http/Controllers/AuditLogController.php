@@ -20,6 +20,46 @@ final class AuditLogController
             ->paginate(20)
             ->withQueryString();
 
-        return view('baobab::admin.audit.index', ['entries' => $entries]);
+        return view('baobab::admin.audit.index', [
+            'entries' => $entries,
+            'columns' => $this->columns(),
+        ]);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function columns(): array
+    {
+        return [
+            [
+                'key' => 'created_at',
+                'label' => __('baobab::admin.audit.column_date'),
+                'render' => fn (AuditEntry $entry) => $entry->created_at->format('Y-m-d H:i'),
+            ],
+            [
+                'key' => 'actor',
+                'label' => __('baobab::admin.audit.column_actor'),
+                'render' => fn (AuditEntry $entry) => $entry->actor !== null ? $entry->actor->name : __('baobab::admin.audit.system_actor'),
+            ],
+            [
+                'key' => 'impersonator',
+                'label' => __('baobab::admin.audit.column_impersonator'),
+                'render' => fn (AuditEntry $entry) => $entry->impersonator !== null ? $entry->impersonator->name : '—',
+            ],
+            [
+                'key' => 'action',
+                'label' => __('baobab::admin.audit.column_action'),
+            ],
+            [
+                'key' => 'data',
+                'label' => __('baobab::admin.audit.column_data'),
+                'render' => fn (AuditEntry $entry) => json_encode($entry->data),
+            ],
+            [
+                'key' => 'ip_address',
+                'label' => __('baobab::admin.audit.column_ip'),
+            ],
+        ];
     }
 }
