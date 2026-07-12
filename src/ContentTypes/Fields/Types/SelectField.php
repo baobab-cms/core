@@ -33,12 +33,12 @@ final class SelectField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.select';
+        return 'baobab::field.select';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.select-display';
+        return 'baobab::field.select-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

@@ -43,12 +43,12 @@ final class DecimalField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.decimal';
+        return 'baobab::field.decimal';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.decimal-display';
+        return 'baobab::field.decimal-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

@@ -37,12 +37,12 @@ final class RichTextField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.richtext';
+        return 'baobab::field.richtext';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.richtext-display';
+        return 'baobab::field.richtext-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

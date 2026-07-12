@@ -30,12 +30,12 @@ final class BooleanField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.boolean';
+        return 'baobab::field.boolean';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.boolean-display';
+        return 'baobab::field.boolean-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

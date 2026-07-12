@@ -37,12 +37,12 @@ final class RadioField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.radio';
+        return 'baobab::field.radio';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.radio-display';
+        return 'baobab::field.radio-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

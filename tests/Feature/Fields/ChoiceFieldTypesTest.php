@@ -17,7 +17,7 @@ it('RadioField stores the same way as SelectField, with its own component names'
 
     expect($field->columnDefinition('status', []))->toBe("\$table->string('status')->nullable();")
         ->and($field->rules('status', ['choices' => ['yes', 'no']]))->toBe(['string', 'in:yes,no'])
-        ->and($field->formComponent())->toBe('baobab::fields.radio')
+        ->and($field->formComponent())->toBe('baobab::field.radio')
         ->and($field->formComponent())->not->toBe((new SelectField)->formComponent());
 });
 

@@ -30,12 +30,12 @@ final class TimeField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.time';
+        return 'baobab::field.time';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.time-display';
+        return 'baobab::field.time-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

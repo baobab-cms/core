@@ -30,12 +30,12 @@ final class MultiSelectField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.multiselect';
+        return 'baobab::field.multiselect';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.multiselect-display';
+        return 'baobab::field.multiselect-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

@@ -30,12 +30,12 @@ final class TextareaField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.textarea';
+        return 'baobab::field.textarea';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.textarea-display';
+        return 'baobab::field.textarea-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

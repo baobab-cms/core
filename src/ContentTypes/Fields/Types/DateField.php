@@ -30,12 +30,12 @@ final class DateField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.date';
+        return 'baobab::field.date';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.date-display';
+        return 'baobab::field.date-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

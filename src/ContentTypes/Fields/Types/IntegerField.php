@@ -46,12 +46,12 @@ final class IntegerField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.integer';
+        return 'baobab::field.integer';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.integer-display';
+        return 'baobab::field.integer-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

@@ -30,12 +30,12 @@ final class SlugField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.slug';
+        return 'baobab::field.slug';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.slug-display';
+        return 'baobab::field.slug-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

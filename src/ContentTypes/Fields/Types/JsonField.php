@@ -30,12 +30,12 @@ final class JsonField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.json';
+        return 'baobab::field.json';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.json-display';
+        return 'baobab::field.json-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

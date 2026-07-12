@@ -32,12 +32,12 @@ final class TextField extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.text';
+        return 'baobab::field.text';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.text-display';
+        return 'baobab::field.text-display';
     }
 
     public function toApi(mixed $value, array $options): mixed

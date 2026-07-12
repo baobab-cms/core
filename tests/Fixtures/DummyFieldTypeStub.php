@@ -30,12 +30,12 @@ final class DummyFieldTypeStub extends FieldType
 
     public function formComponent(): string
     {
-        return 'baobab::fields.dummy';
+        return 'baobab::field.dummy';
     }
 
     public function displayComponent(): string
     {
-        return 'baobab::fields.dummy-display';
+        return 'baobab::field.dummy-display';
     }
 
     public function toApi(mixed $value, array $options): mixed
