@@ -115,3 +115,53 @@ function generatedModulesPath(): string
 {
     return sys_get_temp_dir().'/baobab-test-content-type-modules';
 }
+
+/**
+ * Écrit un JPEG minimal (via GD) sur disque et retourne son chemin absolu.
+ * Utilisé par UploadMediaTest.php.
+ */
+function createTestJpeg(int $width = 20, int $height = 10): string
+{
+    $path = sys_get_temp_dir().'/baobab-test-'.bin2hex(random_bytes(6)).'.jpg';
+    $image = imagecreatetruecolor($width, $height);
+    imagefill($image, 0, 0, (int) imagecolorallocate($image, 200, 50, 50));
+    imagejpeg($image, $path, 90);
+    imagedestroy($image);
+
+    return $path;
+}
+
+/**
+ * Écrit un JPEG minimal contenant un segment EXIF (TIFF) fait main —
+ * orientation + un tag GPS minimal (GPSVersionID, ne nécessite pas de bloc
+ * de données externe) — pas de bibliothèque de test capable d'écrire de
+ * l'EXIF, donc construit octet par octet. Utilisé par UploadMediaTest.php
+ * pour prouver que ExifNormalizer supprime réellement le GPS et applique
+ * l'orientation, pas seulement en théorie.
+ */
+function createTestJpegWithExif(int $orientation, int $width = 20, int $height = 10): string
+{
+    $jpegPath = createTestJpeg($width, $height);
+    $jpegBytes = (string) file_get_contents($jpegPath);
+
+    // IFD0 : Orientation (tag 0x0112, SHORT) + pointeur vers l'IFD GPS (tag 0x8825, LONG).
+    $ifd0 = pack('v', 2)
+        .pack('v', 0x0112).pack('v', 3).pack('V', 1).pack('v', $orientation).pack('v', 0)
+        .pack('v', 0x8825).pack('v', 4).pack('V', 1).pack('V', 38)
+        .pack('V', 0);
+
+    // IFD GPS à l'offset 38 (8 octets d'en-tête TIFF + 30 octets d'IFD0) : GPSVersionID seul,
+    // suffisant pour qu'exif_read_data() rapporte une clé GPS sans bloc de données externe.
+    $gpsIfd = pack('v', 1)
+        .pack('v', 0x0000).pack('v', 1).pack('V', 4)."\x02\x03\x00\x00"
+        .pack('V', 0);
+
+    $tiff = 'II'.pack('v', 42).pack('V', 8).$ifd0.$gpsIfd;
+    $app1Length = 2 + 6 + strlen($tiff);
+    $app1 = "\xFF\xE1".pack('n', $app1Length)."Exif\x00\x00".$tiff;
+
+    // Insère l'APP1/Exif juste après le marqueur SOI (2 premiers octets), avant le reste du JPEG.
+    file_put_contents($jpegPath, substr($jpegBytes, 0, 2).$app1.substr($jpegBytes, 2));
+
+    return $jpegPath;
+}

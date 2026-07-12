@@ -108,4 +108,36 @@ return [
         'modules_path' => env('BAOBAB_CONTENT_TYPES_PATH', base_path('modules')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Bibliothèque de médias
+    |--------------------------------------------------------------------------
+    |
+    | disk : disque Laravel (config/filesystems.php) où les fichiers sont
+    | stockés — jamais de chemin absolu manipulé directement (spec 06 §1.1).
+    | max_upload_size : limite globale en octets (défaut 64 Mo, spec 06 §7.3).
+    | Une limite par rôle n'est pas construite en dur ici (pas d'écran
+    | « fiche rôle → réglages » avant M9) : le filtre `baobab.media.uploading.
+    | max_size` (UploadMedia) est le point d'extension prévu par la spec.
+    | allowed_mime_types : liste blanche, vérifiée par contenu (jamais la
+    | seule extension).
+    |
+    */
+    'media' => [
+        'disk' => env('BAOBAB_MEDIA_DISK', 'public'),
+        'max_upload_size' => (int) env('BAOBAB_MEDIA_MAX_UPLOAD_SIZE', 67_108_864),
+        'allowed_mime_types' => [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'image/svg+xml',
+            'application/pdf',
+            'video/mp4',
+            'video/webm',
+            'audio/mpeg',
+            'audio/wav',
+        ],
+    ],
+
 ];
