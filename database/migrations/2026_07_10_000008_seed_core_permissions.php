@@ -12,6 +12,7 @@ return new class extends Migration
         'baobab.admin.access',
         'baobab.audit.view',
         'baobab.access.manage',
+        'baobab.users.impersonate',
     ];
 
     public function up(): void
