@@ -57,6 +57,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -127,6 +128,9 @@ class BaobabServiceProvider extends ServiceProvider
         $this->loadAdminRoutes();
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'baobab');
         $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'baobab');
+        // Composants à classe (logique de rendu hors des vues, ex. <x-baobab::img>) —
+        // les composants anonymes de resources/views/components restent résolus en repli.
+        Blade::componentNamespace('Baobab\\View\\Components', 'baobab');
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
         $this->publishes([
