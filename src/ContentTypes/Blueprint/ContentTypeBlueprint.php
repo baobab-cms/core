@@ -155,6 +155,25 @@ final readonly class ContentTypeBlueprint
         return $this->data['title_field'] ?? null;
     }
 
+    /**
+     * Active le workflow de validation à un niveau (spec 09 §5) : soumission,
+     * approbation/rejet. Désactivé par défaut — un type simple ne passe que
+     * par les transitions directes (publish/schedule/unpublish/archive).
+     */
+    public function workflowEnabled(): bool
+    {
+        return $this->data['workflow'] ?? false;
+    }
+
+    /**
+     * Colonne de convention optionnelle `unpublish_at` (dépublication
+     * programmée, spec 09 §4) — activée par défaut, désactivable par type.
+     */
+    public function unpublishAtEnabled(): bool
+    {
+        return $this->data['unpublish_at'] ?? true;
+    }
+
     public function blueprintVersion(): int
     {
         return $this->data['blueprint_version'] ?? 1;

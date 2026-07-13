@@ -4,8 +4,18 @@ declare(strict_types=1);
 
 namespace Baobab\Admin\Content\Http\Controllers;
 
+use Baobab\ContentTypes\Actions\ApproveContentEntry;
+use Baobab\ContentTypes\Actions\ArchiveContentEntry;
 use Baobab\ContentTypes\Actions\DeleteContentEntry;
+use Baobab\ContentTypes\Actions\PublishContentEntry;
+use Baobab\ContentTypes\Actions\RejectContentEntry;
+use Baobab\ContentTypes\Actions\RestoreArchivedContentEntry;
 use Baobab\ContentTypes\Actions\SaveContentEntry;
+use Baobab\ContentTypes\Actions\ScheduleContentEntry;
+use Baobab\ContentTypes\Actions\SubmitContentEntry;
+use Baobab\ContentTypes\Actions\UnpublishContentEntry;
+use Baobab\ContentTypes\Editorial\ContentStateMachine;
+use Baobab\ContentTypes\Exceptions\InvalidContentTransitionException;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
@@ -18,6 +28,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
@@ -30,7 +41,10 @@ use Illuminate\Support\Str;
  */
 final class ContentController
 {
-    public function __construct(private readonly FieldRegistry $fields) {}
+    public function __construct(
+        private readonly FieldRegistry $fields,
+        private readonly ContentStateMachine $machine,
+    ) {}
 
     public function index(Request $request, string $contentType): View
     {
@@ -107,6 +121,10 @@ final class ContentController
         $model = $this->findEntry($type, $entry);
         $this->authorizeInstance('update', $model);
 
+        $actor = $this->actor();
+        $prefix = 'content.'.Str::snake($type->key);
+        $status = (string) $model->getAttribute('status');
+
         return view('baobab::admin.content.form', [
             'contentType' => $type,
             'slug' => $contentType,
@@ -115,7 +133,74 @@ final class ContentController
             'formMethod' => 'PUT',
             'formAction' => route('admin.content.update', ['contentType' => $contentType, 'entry' => $model->getKey()]),
             'fields' => $this->formFieldsForView($type, $model),
+            'entryId' => $model->getKey(),
+            'currentStatus' => $status,
+            'publishedAt' => $model->getAttribute('published_at'),
+            'availableTransitions' => $this->machine->availableTransitions($type, $status),
+            'canUpdate' => $actor->can('update', $model),
+            'canPublish' => $actor->can('publish', $model),
+            'canPublishAny' => $actor->can("{$prefix}.publish_any"),
         ]);
+    }
+
+    /**
+     * Machine à états éditoriale (spec 09 §2.2, M5 point 1) : un seul
+     * endpoint pour les 8 transitions nommées, permission vérifiée ici selon
+     * la table exacte de la spec — `approve`/`reject` exigent toujours
+     * `publish_any` (jamais own, contrairement à `publish`/`schedule`/
+     * `unpublish` qui réutilisent la policy `publish` générée, own/any).
+     */
+    public function transition(Request $request, string $contentType, int|string $entry, string $transition): RedirectResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findEntry($type, $entry);
+        $actor = $this->actor();
+        $prefix = 'content.'.Str::snake($type->key);
+
+        match ($transition) {
+            'submit', 'archive', 'restore' => abort_unless($actor->can('update', $model), 403),
+            'approve', 'reject' => abort_unless($actor->can("{$prefix}.publish_any"), 403),
+            'publish', 'schedule', 'unpublish' => abort_unless($actor->can('publish', $model), 403),
+            default => abort(404),
+        };
+
+        try {
+            match ($transition) {
+                'submit' => app(SubmitContentEntry::class)($type, $model, $actor),
+                'approve' => app(ApproveContentEntry::class)($type, $model, $this->nullableFutureDate($request), $actor),
+                'reject' => app(RejectContentEntry::class)(
+                    $type,
+                    $model,
+                    $request->validate(['comment' => ['required', 'string', 'min:3']])['comment'],
+                    $actor,
+                ),
+                'publish' => app(PublishContentEntry::class)($type, $model, $actor),
+                'schedule' => app(ScheduleContentEntry::class)(
+                    $type,
+                    $model,
+                    Carbon::parse($request->validate(['published_at' => ['required', 'date', 'after:now']])['published_at']),
+                    $actor,
+                ),
+                'unpublish' => app(UnpublishContentEntry::class)($type, $model, $actor),
+                'archive' => app(ArchiveContentEntry::class)($type, $model, $actor),
+                'restore' => app(RestoreArchivedContentEntry::class)($type, $model, $actor),
+            };
+        } catch (InvalidContentTransitionException $e) {
+            session()->flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
+
+            return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+        }
+
+        session()->flash('toast', ['type' => 'success', 'message' => __("baobab::admin.content.transition_{$transition}_success")]);
+
+        return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+    }
+
+    private function nullableFutureDate(Request $request): ?Carbon
+    {
+        $value = $request->validate(['published_at' => ['nullable', 'date', 'after:now']])['published_at'] ?? null;
+
+        return $value === null ? null : Carbon::parse($value);
     }
 
     public function update(Request $request, string $contentType, int|string $entry): RedirectResponse
@@ -260,6 +345,10 @@ final class ContentController
             );
         }
 
+        if ($type->unpublishAtColumnExists()) {
+            $rules['unpublish_at'] = ['nullable', 'date', 'after:now'];
+        }
+
         foreach ((array) ($type->blueprint['fields'] ?? []) as $field) {
             $fieldType = $this->fields->resolve($field['type']);
             $typeRules = $fieldType->rules($field['key'], $field['options'] ?? []);
@@ -289,6 +378,10 @@ final class ContentController
             array_unshift($fields, ['key' => 'slug', 'type' => 'slug', 'required' => true]);
         }
 
+        if ($type->unpublishAtColumnExists()) {
+            $fields[] = ['key' => 'unpublish_at', 'type' => 'unpublish_at', 'required' => false];
+        }
+
         /** @var list<array<string, mixed>> $filtered */
         $filtered = Hook::filter('baobab.content.form.fields', $fields, $type);
 
@@ -315,6 +408,11 @@ final class ContentController
         return array_map(function (array $field) use ($entry, $titleField): array {
             $name = $field['key'];
             $value = $entry?->getAttribute($name);
+
+            if ($field['type'] === 'unpublish_at' && $value !== null) {
+                $value = $value->format('Y-m-d\TH:i');
+            }
+
             $choices = $field['options']['choices'] ?? [];
             $isTitleSource = $titleField !== null && $name === $titleField;
 
@@ -334,7 +432,7 @@ final class ContentController
                 'html_type' => match ($field['type']) {
                     'integer', 'decimal' => 'number',
                     'date' => 'date',
-                    'datetime' => 'datetime-local',
+                    'datetime', 'unpublish_at' => 'datetime-local',
                     'time' => 'time',
                     default => 'text',
                 },

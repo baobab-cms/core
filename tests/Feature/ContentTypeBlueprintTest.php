@@ -15,6 +15,20 @@ it('accepts a minimal valid blueprint', function () {
         ->and($blueprint->relations())->toBe([]);
 });
 
+it('defaults workflow and unpublish_at to their spec-mandated values when undeclared', function () {
+    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson());
+
+    expect($blueprint->workflowEnabled())->toBeFalse()
+        ->and($blueprint->unpublishAtEnabled())->toBeTrue();
+});
+
+it('accepts explicit workflow and unpublish_at overrides', function () {
+    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson(['workflow' => true, 'unpublish_at' => false]));
+
+    expect($blueprint->workflowEnabled())->toBeTrue()
+        ->and($blueprint->unpublishAtEnabled())->toBeFalse();
+});
+
 it('accepts a field of a known type and a relation targeting a known core model', function () {
     $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
         'fields' => [['key' => 'brand', 'type' => 'text']],

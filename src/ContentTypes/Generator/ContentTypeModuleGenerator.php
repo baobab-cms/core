@@ -52,6 +52,9 @@ final class ContentTypeModuleGenerator
             'database/migrations/'.MigrationTimestamp::generate()."_create_{$contentType->table_name}_table.php",
             $this->renderer->render(StubRenderer::stubPath('migration'), [
                 'table_name' => $contentType->table_name,
+                'unpublish_at_column' => $contentType->unpublishAtEnabled()
+                    ? "            \$table->timestamp('unpublish_at')->nullable();\n"
+                    : '',
                 'slug_column' => $contentType->is_addressable
                     ? "            \$table->string('slug')->unique();\n"
                     : '',
@@ -102,6 +105,9 @@ final class ContentTypeModuleGenerator
             'key' => $key,
             'table_name' => $contentType->table_name,
             'fillable' => $this->fillableList($contentType),
+            'unpublish_at_cast' => $contentType->unpublishAtEnabled()
+                ? "            'unpublish_at' => 'datetime',"
+                : '',
             'casts' => $this->castsList($contentType),
             'relations' => $this->relationMethods($contentType),
         ]));
@@ -176,6 +182,10 @@ final class ContentTypeModuleGenerator
     private function fillableList(ContentType $contentType): string
     {
         $columns = ['status', 'published_at', 'author_id'];
+
+        if ($contentType->unpublishAtEnabled()) {
+            $columns[] = 'unpublish_at';
+        }
 
         if ($contentType->is_addressable) {
             $columns[] = 'slug';

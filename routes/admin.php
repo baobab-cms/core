@@ -82,4 +82,5 @@ Route::prefix('content/{contentType}')
         Route::get('/{entry}/edit', [ContentController::class, 'edit'])->name('edit');
         Route::put('/{entry}', [ContentController::class, 'update'])->name('update');
         Route::delete('/{entry}', [ContentController::class, 'destroy'])->name('destroy');
+        Route::post('/{entry}/transition/{transition}', [ContentController::class, 'transition'])->name('transition');
     });

@@ -73,6 +73,31 @@ it('adds a unique slug column to the migration when the type is addressable', fu
     expect(file_get_contents($migrationFiles[0]))->toContain("\$table->string('slug')->unique();");
 });
 
+it('adds the unpublish_at column and cast by default', function () {
+    $contentType = app(CreateContentType::class)(carBlueprintJson());
+
+    app(ContentTypeModuleGenerator::class)($contentType);
+
+    $migrationFiles = File::glob(generatedModulesPath().'/content-cars/database/migrations/*.php');
+    $modelContents = (string) file_get_contents(generatedModulesPath().'/content-cars/src/Models/Car.php');
+
+    expect(file_get_contents($migrationFiles[0]))->toContain("\$table->timestamp('unpublish_at')->nullable();")
+        ->and($modelContents)->toContain("'unpublish_at' => 'datetime'")
+        ->and($modelContents)->toContain("'unpublish_at',");
+});
+
+it('omits the unpublish_at column when disabled in the blueprint', function () {
+    $contentType = app(CreateContentType::class)(carBlueprintJson(['unpublish_at' => false]));
+
+    app(ContentTypeModuleGenerator::class)($contentType);
+
+    $migrationFiles = File::glob(generatedModulesPath().'/content-cars/database/migrations/*.php');
+    $modelContents = (string) file_get_contents(generatedModulesPath().'/content-cars/src/Models/Car.php');
+
+    expect(file_get_contents($migrationFiles[0]))->not->toContain('unpublish_at')
+        ->and($modelContents)->not->toContain('unpublish_at');
+});
+
 it('regenerates silently when nothing has changed since the last generation', function () {
     $contentType = app(CreateContentType::class)(carBlueprintJson());
 

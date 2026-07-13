@@ -4,6 +4,97 @@
 
 @section('content')
     <x-baobab::page :title="$label">
+        @if ($isEdit)
+            <x-baobab::card class="mb-6" :header="__('baobab::admin.content.status_card_title')">
+                <p class="text-sm text-muted">
+                    {{ __('baobab::admin.content.status_label') }}:
+                    <span class="font-medium text-foreground">{{ __('baobab::admin.content.status_'.$currentStatus) }}</span>
+                    @if (in_array($currentStatus, ['scheduled', 'published'], true) && $publishedAt)
+                        · {{ __('baobab::admin.content.published_at_label') }} {{ $publishedAt->format('d/m/Y H:i') }}
+                    @endif
+                </p>
+
+                <div class="mt-3 flex flex-wrap gap-2" x-data="{ showSchedule: false, showApprove: false, showReject: false }">
+                    @if (in_array('publish', $availableTransitions, true) && $canPublish)
+                        <form method="POST" action="{{ route('admin.content.transition', ['contentType' => $slug, 'entry' => $entryId, 'transition' => 'publish']) }}">
+                            @csrf
+                            <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.content.publish_action') }}</x-baobab::button>
+                        </form>
+                    @endif
+
+                    @if (in_array('schedule', $availableTransitions, true) && $canPublish)
+                        <x-baobab::button type="button" variant="secondary" x-on:click="showSchedule = !showSchedule">
+                            {{ __('baobab::admin.content.schedule_action') }}
+                        </x-baobab::button>
+                    @endif
+
+                    @if (in_array('submit', $availableTransitions, true) && $canUpdate)
+                        <form method="POST" action="{{ route('admin.content.transition', ['contentType' => $slug, 'entry' => $entryId, 'transition' => 'submit']) }}">
+                            @csrf
+                            <x-baobab::button type="submit" variant="secondary">{{ __('baobab::admin.content.submit_action') }}</x-baobab::button>
+                        </form>
+                    @endif
+
+                    @if (in_array('approve', $availableTransitions, true) && $canPublishAny)
+                        <x-baobab::button type="button" variant="primary" x-on:click="showApprove = !showApprove">
+                            {{ __('baobab::admin.content.approve_action') }}
+                        </x-baobab::button>
+                    @endif
+
+                    @if (in_array('reject', $availableTransitions, true) && $canPublishAny)
+                        <x-baobab::button type="button" variant="danger" x-on:click="showReject = !showReject">
+                            {{ __('baobab::admin.content.reject_action') }}
+                        </x-baobab::button>
+                    @endif
+
+                    @if (in_array('unpublish', $availableTransitions, true) && $canPublish)
+                        <form method="POST" action="{{ route('admin.content.transition', ['contentType' => $slug, 'entry' => $entryId, 'transition' => 'unpublish']) }}" onsubmit="return confirm('{{ __('baobab::admin.content.unpublish_confirm_title') }}')">
+                            @csrf
+                            <x-baobab::button type="submit" variant="secondary">{{ __('baobab::admin.content.unpublish_action') }}</x-baobab::button>
+                        </form>
+                    @endif
+
+                    @if (in_array('archive', $availableTransitions, true) && $canUpdate)
+                        <form method="POST" action="{{ route('admin.content.transition', ['contentType' => $slug, 'entry' => $entryId, 'transition' => 'archive']) }}" onsubmit="return confirm('{{ __('baobab::admin.content.archive_confirm_title') }}')">
+                            @csrf
+                            <x-baobab::button type="submit" variant="danger">{{ __('baobab::admin.content.archive_action') }}</x-baobab::button>
+                        </form>
+                    @endif
+
+                    @if (in_array('restore', $availableTransitions, true) && $canUpdate)
+                        <form method="POST" action="{{ route('admin.content.transition', ['contentType' => $slug, 'entry' => $entryId, 'transition' => 'restore']) }}">
+                            @csrf
+                            <x-baobab::button type="submit" variant="secondary">{{ __('baobab::admin.content.restore_action') }}</x-baobab::button>
+                        </form>
+                    @endif
+
+                    <div x-show="showSchedule" x-cloak class="mt-3 w-full rounded-md border border-border p-3">
+                        <form method="POST" action="{{ route('admin.content.transition', ['contentType' => $slug, 'entry' => $entryId, 'transition' => 'schedule']) }}" class="flex flex-wrap items-end gap-2">
+                            @csrf
+                            <x-baobab::field.text type="datetime-local" name="published_at" label="{{ __('baobab::admin.content.schedule_date_label') }}" />
+                            <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.content.confirm_action') }}</x-baobab::button>
+                        </form>
+                    </div>
+
+                    <div x-show="showApprove" x-cloak class="mt-3 w-full rounded-md border border-border p-3">
+                        <form method="POST" action="{{ route('admin.content.transition', ['contentType' => $slug, 'entry' => $entryId, 'transition' => 'approve']) }}" class="flex flex-wrap items-end gap-2">
+                            @csrf
+                            <x-baobab::field.text type="datetime-local" name="published_at" label="{{ __('baobab::admin.content.approve_date_label') }}" />
+                            <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.content.confirm_action') }}</x-baobab::button>
+                        </form>
+                    </div>
+
+                    <div x-show="showReject" x-cloak class="mt-3 w-full rounded-md border border-border p-3">
+                        <form method="POST" action="{{ route('admin.content.transition', ['contentType' => $slug, 'entry' => $entryId, 'transition' => 'reject']) }}">
+                            @csrf
+                            <x-baobab::field.textarea name="comment" label="{{ __('baobab::admin.content.reject_comment_label') }}" />
+                            <x-baobab::button type="submit" variant="danger">{{ __('baobab::admin.content.confirm_action') }}</x-baobab::button>
+                        </form>
+                    </div>
+                </div>
+            </x-baobab::card>
+        @endif
+
         <x-baobab::card>
             <x-baobab::form method="{{ $formMethod }}" action="{{ $formAction }}">
                 <div x-data="{ slugManuallyEdited: {{ $isEdit ? 'true' : 'false' }} }">
