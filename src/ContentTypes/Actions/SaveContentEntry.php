@@ -44,7 +44,7 @@ final class SaveContentEntry
 
         $this->audit->record($isNew ? 'content.created' : 'content.updated', $entry, ['content_type' => $contentType->key]);
 
-        Hook::action('baobab.content.saved', $contentType, $entry, $isNew);
+        Hook::action('baobab.content.saved', $contentType, $entry, $isNew, $data);
 
         return $entry;
     }

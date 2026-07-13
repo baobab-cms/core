@@ -19,12 +19,12 @@ use Baobab\Media\Models\Media;
 use Baobab\Media\Models\MediaFolder;
 use Baobab\Media\Support\ChunkedUploadAssembler;
 use Baobab\Users\Models\User;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -35,7 +35,7 @@ use Illuminate\Support\Facades\Auth;
  */
 final class MediaController
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $actor = $this->actor();
 
@@ -60,6 +60,26 @@ final class MediaController
 
         /** @var LengthAwarePaginator<int, Media> $media */
         $media = $query->orderByDesc('id')->paginate(24)->withQueryString();
+
+        // Alimente x-baobab::media-picker (M4 point 4b-i, spec 06 §6) — mêmes filtres et
+        // policy que la grille HTML, juste une autre représentation de la même liste. Les
+        // colonnes brutes ne suffisent pas (url()/currentWidth() sont des méthodes, pas des
+        // attributs sérialisés automatiquement) — projection explicite plutôt que renommer
+        // url() en accesseur Eloquent, qui casserait tous les appels `$media->url()` déjà en
+        // place dans les vues.
+        if ($request->wantsJson()) {
+            $media->through(fn (Media $item): array => [
+                'id' => $item->id,
+                'file_name' => $item->file_name,
+                'mime_type' => $item->mime_type,
+                'url' => $item->url(),
+                'alt' => $item->alt,
+                'width' => $item->currentWidth(),
+                'height' => $item->currentHeight(),
+            ]);
+
+            return response()->json($media);
+        }
 
         $currentFolder = ($trashed || $folderId === null) ? null : MediaFolder::find($folderId);
 

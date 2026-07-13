@@ -9,6 +9,8 @@ use Baobab\ContentTypes\Actions\SaveContentEntry;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
+use Baobab\Media\Models\Media;
+use Baobab\Media\Models\MediaUsage;
 use Baobab\Users\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
@@ -266,6 +268,10 @@ final class ContentController
                 ($field['required'] ?? false) ? ['required'] : ['nullable'],
                 $typeRules,
             );
+
+            if ($field['type'] === 'gallery') {
+                $rules["{$field['key']}.*"] = ['integer', 'exists:media,id'];
+            }
         }
 
         return $rules;
@@ -319,6 +325,12 @@ final class ContentController
                 'choices' => $choices,
                 'choice_options' => array_combine($choices, $choices),
                 'json_value' => $value === null ? null : json_encode($value, JSON_PRETTY_PRINT),
+                'media' => in_array($field['type'], ['image', 'file'], true) && $value !== null
+                    ? Media::find($value)
+                    : null,
+                'gallery_items' => $field['type'] === 'gallery'
+                    ? $this->galleryItems($entry, $name)
+                    : [],
                 'html_type' => match ($field['type']) {
                     'integer', 'decimal' => 'number',
                     'date' => 'date',
@@ -331,6 +343,38 @@ final class ContentController
                     : '',
             ];
         }, $this->formFields($type));
+    }
+
+    /**
+     * Résout la sélection courante d'un champ `gallery` (M4 point 4b-ii) —
+     * pas de colonne propre à lire sur `$entry`, la sélection ordonnée vit
+     * dans `media_usages` (M4 point 3).
+     *
+     * @return list<Media>
+     */
+    private function galleryItems(?Model $entry, string $fieldKey): array
+    {
+        if ($entry === null) {
+            return [];
+        }
+
+        $usages = MediaUsage::query()
+            ->where('usable_type', $entry->getMorphClass())
+            ->where('usable_id', $entry->getKey())
+            ->where('field_key', $fieldKey)
+            ->orderBy('order')
+            ->with('media')
+            ->get();
+
+        $items = [];
+
+        foreach ($usages as $usage) {
+            if ($usage->media !== null) {
+                $items[] = $usage->media;
+            }
+        }
+
+        return $items;
     }
 
     /**

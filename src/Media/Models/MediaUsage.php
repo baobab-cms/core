@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property string $usable_type
  * @property int $usable_id
  * @property string|null $field_key
+ * @property int $order
  */
 final class MediaUsage extends Model
 {
@@ -30,6 +31,7 @@ final class MediaUsage extends Model
         'usable_type',
         'usable_id',
         'field_key',
+        'order',
     ];
 
     /**

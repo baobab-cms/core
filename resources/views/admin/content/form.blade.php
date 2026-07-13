@@ -79,6 +79,32 @@
                                 />
                                 @break
 
+                            @case('image')
+                                <x-baobab::field.media
+                                    :name="$field['key']"
+                                    :label="$field['label']"
+                                    type="image"
+                                    :media="$field['media']"
+                                />
+                                @break
+
+                            @case('file')
+                                <x-baobab::field.media
+                                    :name="$field['key']"
+                                    :label="$field['label']"
+                                    type="file"
+                                    :media="$field['media']"
+                                />
+                                @break
+
+                            @case('gallery')
+                                <x-baobab::field.gallery
+                                    :name="$field['key']"
+                                    :label="$field['label']"
+                                    :items="$field['gallery_items']"
+                                />
+                                @break
+
                             @default
                                 <x-baobab::field.text
                                     :name="$field['key']"

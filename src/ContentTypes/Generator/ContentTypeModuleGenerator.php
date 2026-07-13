@@ -153,8 +153,10 @@ final class ContentTypeModuleGenerator
             ->map(function (array $field): string {
                 $fieldType = $this->fields->resolve($field['type']);
 
-                return '            '.$fieldType->columnDefinition($field['key'], $field['options'] ?? []);
+                return $fieldType->columnDefinition($field['key'], $field['options'] ?? []);
             })
+            ->filter(fn (string $column): bool => $column !== '')
+            ->map(fn (string $column): string => '            '.$column)
             ->implode("\n");
     }
 
@@ -180,6 +182,12 @@ final class ContentTypeModuleGenerator
         }
 
         foreach ($contentType->blueprint['fields'] ?? [] as $field) {
+            $fieldType = $this->fields->resolve($field['type']);
+
+            if ($fieldType->columnDefinition($field['key'], $field['options'] ?? []) === '') {
+                continue;
+            }
+
             $columns[] = $field['key'];
         }
 

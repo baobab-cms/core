@@ -170,6 +170,32 @@ it('denies the media library without baobab.media.view', function () {
         ->assertForbidden();
 });
 
+it('returns a JSON list for the media picker when the request wants JSON', function () {
+    $user = mediaActor(['baobab.media.view', 'baobab.media.upload']);
+    $this->actingAs($user, 'baobab')->post(route('admin.media.store'), [
+        'file' => new UploadedFile(createTestJpeg(120, 80), 'picker-photo.jpg', 'image/jpeg', null, true),
+    ]);
+    $media = Media::where('file_name', 'picker-photo.jpg')->firstOrFail();
+
+    $response = $this->actingAs($user, 'baobab')
+        ->get(route('admin.media.index'), ['Accept' => 'application/json'])
+        ->assertOk();
+
+    $response->assertJsonPath('data.0.id', $media->id)
+        ->assertJsonPath('data.0.file_name', 'picker-photo.jpg')
+        ->assertJsonPath('data.0.width', 120)
+        ->assertJsonPath('data.0.height', 80)
+        ->assertJsonPath('data.0.url', $media->url());
+});
+
+it('denies the media picker JSON listing without baobab.media.view', function () {
+    $user = mediaActor([]);
+
+    $this->actingAs($user, 'baobab')
+        ->get(route('admin.media.index'), ['Accept' => 'application/json'])
+        ->assertForbidden();
+});
+
 // ── upload par chunks (HTTP) ──────────────────────────────────────────────────
 
 it('assembles a chunked upload sent as two sequential HTTP requests', function () {

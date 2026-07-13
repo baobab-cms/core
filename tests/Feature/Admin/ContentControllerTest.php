@@ -3,11 +3,15 @@
 use Baobab\Access\Actions\GrantPermission;
 use Baobab\ContentTypes\Actions\BuildContentType;
 use Baobab\ContentTypes\Models\ContentType;
+use Baobab\Media\Actions\UploadMedia;
+use Baobab\Media\Models\MediaUsage;
 use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
 use Baobab\Users\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     File::deleteDirectory(generatedModulesPath());
@@ -347,4 +351,195 @@ it('soft deletes an entry on destroy', function () {
 
     $trashed = $carClass::withTrashed()->find($carId);
     expect($trashed?->getAttribute('deleted_at'))->not->toBeNull();
+});
+
+// ── champs image/file (M4 point 4b-i) ──────────────────────────────────────────
+
+it('saves a content entry with a valid image field value', function () {
+    Storage::fake('public');
+
+    $contentType = app(BuildContentType::class)((string) json_encode([
+        'key' => 'Poster',
+        'label' => ['singular' => 'Poster', 'plural' => 'Posters'],
+        'fields' => [
+            ['key' => 'title', 'type' => 'text', 'required' => true],
+            ['key' => 'cover', 'type' => 'image'],
+        ],
+    ]));
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    $user = contentCrudActor(['content.poster.view', 'content.poster.create']);
+
+    $media = app(UploadMedia::class)(
+        new UploadedFile(createTestJpeg(200, 100), 'cover.jpg', 'image/jpeg', null, true),
+        $user,
+    );
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.content.store', ['contentType' => 'posters']), [
+            'title' => 'Affiche',
+            'cover' => $media->id,
+        ])
+        ->assertRedirect(route('admin.content.index', ['contentType' => 'posters']));
+
+    /** @var class-string<Model> $posterClass */
+    $posterClass = $contentType->modelClass();
+    $poster = $posterClass::query()->first();
+
+    expect($poster?->getAttribute('cover'))->toBe($media->id);
+});
+
+it('rejects a content entry referencing a media that does not exist for an image field', function () {
+    $contentType = app(BuildContentType::class)((string) json_encode([
+        'key' => 'Flyer',
+        'label' => ['singular' => 'Flyer', 'plural' => 'Flyers'],
+        'fields' => [
+            ['key' => 'title', 'type' => 'text', 'required' => true],
+            ['key' => 'cover', 'type' => 'image'],
+        ],
+    ]));
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    $user = contentCrudActor(['content.flyer.view', 'content.flyer.create']);
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.content.store', ['contentType' => 'flyers']), [
+            'title' => 'Flyer',
+            'cover' => 999999,
+        ])
+        ->assertSessionHasErrors('cover');
+
+    /** @var class-string<Model> $flyerClass */
+    $flyerClass = $contentType->modelClass();
+    expect($flyerClass::query()->count())->toBe(0);
+});
+
+it('renders the media picker container for an image field', function () {
+    $contentType = app(BuildContentType::class)((string) json_encode([
+        'key' => 'Banner',
+        'label' => ['singular' => 'Banner', 'plural' => 'Banners'],
+        'fields' => [
+            ['key' => 'title', 'type' => 'text', 'required' => true],
+            ['key' => 'cover', 'type' => 'image'],
+        ],
+    ]));
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    $user = contentCrudActor(['content.banner.view', 'content.banner.create']);
+
+    $this->actingAs($user, 'baobab')
+        ->get(route('admin.content.create', ['contentType' => 'banners']))
+        ->assertOk()
+        ->assertSee('mediaPicker(', false);
+});
+
+// ── champ gallery (M4 point 4b-ii) ─────────────────────────────────────────────
+
+it('saves a content entry with a valid gallery field selection', function () {
+    Storage::fake('public');
+
+    $contentType = app(BuildContentType::class)((string) json_encode([
+        'key' => 'Album',
+        'label' => ['singular' => 'Album', 'plural' => 'Albums'],
+        'fields' => [
+            ['key' => 'title', 'type' => 'text', 'required' => true],
+            ['key' => 'photos', 'type' => 'gallery'],
+        ],
+    ]));
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    $user = contentCrudActor(['content.album.view', 'content.album.create']);
+
+    $first = app(UploadMedia::class)(new UploadedFile(createTestJpeg(), 'first.jpg', 'image/jpeg', null, true), $user);
+    $second = app(UploadMedia::class)(new UploadedFile(createTestJpeg(), 'second.jpg', 'image/jpeg', null, true), $user, [], 'new');
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.content.store', ['contentType' => 'albums']), [
+            'title' => 'Vacances',
+            'photos' => [$first->id, $second->id],
+        ])
+        ->assertRedirect(route('admin.content.index', ['contentType' => 'albums']));
+
+    /** @var class-string<Model> $albumClass */
+    $albumClass = $contentType->modelClass();
+    $album = $albumClass::query()->first();
+
+    $usages = MediaUsage::where('usable_type', $album->getMorphClass())
+        ->where('usable_id', $album->getKey())
+        ->where('field_key', 'photos')
+        ->orderBy('order')
+        ->get();
+
+    expect($usages)->toHaveCount(2)
+        ->and($usages->get(0)?->media_id)->toBe($first->id)
+        ->and($usages->get(1)?->media_id)->toBe($second->id);
+});
+
+it('rejects a content entry referencing a media that does not exist in a gallery field', function () {
+    $contentType = app(BuildContentType::class)((string) json_encode([
+        'key' => 'Portfolio',
+        'label' => ['singular' => 'Portfolio', 'plural' => 'Portfolios'],
+        'fields' => [
+            ['key' => 'title', 'type' => 'text', 'required' => true],
+            ['key' => 'photos', 'type' => 'gallery'],
+        ],
+    ]));
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    $user = contentCrudActor(['content.portfolio.view', 'content.portfolio.create']);
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.content.store', ['contentType' => 'portfolios']), [
+            'title' => 'Travaux',
+            'photos' => [999999],
+        ])
+        ->assertSessionHasErrors('photos.0');
+
+    /** @var class-string<Model> $portfolioClass */
+    $portfolioClass = $contentType->modelClass();
+    expect($portfolioClass::query()->count())->toBe(0)
+        ->and(MediaUsage::where('field_key', 'photos')->count())->toBe(0);
+});
+
+it('renders the existing gallery selection in order on the edit screen', function () {
+    Storage::fake('public');
+
+    $contentType = app(BuildContentType::class)((string) json_encode([
+        'key' => 'Gallery',
+        'label' => ['singular' => 'Gallery', 'plural' => 'Galleries'],
+        'fields' => [
+            ['key' => 'title', 'type' => 'text', 'required' => true],
+            ['key' => 'photos', 'type' => 'gallery'],
+        ],
+    ]));
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    $user = contentCrudActor(['content.gallery.view', 'content.gallery.create', 'content.gallery.update']);
+
+    $first = app(UploadMedia::class)(new UploadedFile(createTestJpeg(), 'first.jpg', 'image/jpeg', null, true), $user);
+    $second = app(UploadMedia::class)(new UploadedFile(createTestJpeg(), 'second.jpg', 'image/jpeg', null, true), $user, [], 'new');
+
+    $this->actingAs($user, 'baobab')->post(route('admin.content.store', ['contentType' => 'galleries']), [
+        'title' => 'Souvenirs',
+        'photos' => [$second->id, $first->id],
+    ]);
+
+    /** @var class-string<Model> $galleryClass */
+    $galleryClass = $contentType->modelClass();
+    $entry = $galleryClass::query()->first();
+
+    $response = $this->actingAs($user, 'baobab')
+        ->get(route('admin.content.edit', ['contentType' => 'galleries', 'entry' => $entry->getKey()]))
+        ->assertOk();
+
+    $html = $response->getContent();
+    expect($html)->toContain('second.jpg')
+        ->and($html)->toContain('first.jpg')
+        ->and(strpos($html, 'second.jpg'))->toBeLessThan(strpos($html, 'first.jpg'));
 });

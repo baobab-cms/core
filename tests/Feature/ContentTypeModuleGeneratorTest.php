@@ -121,6 +121,26 @@ it('includes a cast in the generated model for a field whose type declares one',
     expect($modelContents)->toContain("'specs' => 'array',");
 });
 
+it('excludes a gallery field from the generated migration and model fillable (no own column)', function () {
+    $contentType = app(CreateContentType::class)(carBlueprintJson([
+        'fields' => [
+            ['key' => 'brand', 'type' => 'text'],
+            ['key' => 'photos', 'type' => 'gallery'],
+        ],
+    ]));
+
+    app(ContentTypeModuleGenerator::class)($contentType);
+
+    $moduleDir = generatedModulesPath().'/content-cars';
+
+    $migrationFiles = File::glob($moduleDir.'/database/migrations/*.php');
+    expect(file_get_contents($migrationFiles[0]))->not->toContain('photos');
+
+    $modelContents = (string) file_get_contents($moduleDir.'/src/Models/Car.php');
+    expect($modelContents)->toContain("'brand',")
+        ->and($modelContents)->not->toContain("'photos',");
+});
+
 it('generates a real FK column and belongsTo method for a one_to_many relation to an existing content type', function () {
     app(BuildContentType::class)((string) json_encode([
         'key' => 'Brand',

@@ -28,6 +28,9 @@ use Baobab\ContentTypes\Fields\Types\BooleanField;
 use Baobab\ContentTypes\Fields\Types\DateField;
 use Baobab\ContentTypes\Fields\Types\DateTimeField;
 use Baobab\ContentTypes\Fields\Types\DecimalField;
+use Baobab\ContentTypes\Fields\Types\FileField;
+use Baobab\ContentTypes\Fields\Types\GalleryField;
+use Baobab\ContentTypes\Fields\Types\ImageField;
 use Baobab\ContentTypes\Fields\Types\IntegerField;
 use Baobab\ContentTypes\Fields\Types\JsonField;
 use Baobab\ContentTypes\Fields\Types\MultiSelectField;
@@ -317,13 +320,14 @@ class BaobabServiceProvider extends ServiceProvider
 
     /**
      * Resynchronise les usages de médias (M4 point 3, spec 06 §5) à chaque
-     * sauvegarde de contenu — écoute le hook déjà déclenché par
-     * SaveContentEntry (M3), rien à changer côté Content Types.
+     * sauvegarde de contenu — écoute le hook déclenché par SaveContentEntry.
+     * `$data` (M4 point 4b-ii) porte la sélection des champs `gallery`, qui
+     * n'ont aucune colonne propre pour la relire depuis `$entry`.
      */
     private function registerMediaUsageListener(): void
     {
-        Hook::listen('baobab.content.saved', function (ContentType $contentType, Model $entry): void {
-            app(SyncMediaUsagesFromEntry::class)($contentType, $entry);
+        Hook::listen('baobab.content.saved', function (ContentType $contentType, Model $entry, bool $isNew, array $data = []): void {
+            app(SyncMediaUsagesFromEntry::class)($contentType, $entry, $data);
         });
     }
 
@@ -410,6 +414,9 @@ class BaobabServiceProvider extends ServiceProvider
             MultiSelectField::class,
             RadioField::class,
             JsonField::class,
+            ImageField::class,
+            FileField::class,
+            GalleryField::class,
         ] as $fieldType) {
             $registry->register($fieldType);
         }

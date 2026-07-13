@@ -160,6 +160,13 @@ return [
         'bulk_restore_action' => 'Restaurer la sélection',
         'bulk_purge_action' => 'Supprimer définitivement la sélection',
         'bulk_purge_confirm_title' => 'Supprimer définitivement les médias sélectionnés ? Cette action est irréversible.',
+        'picker_choose_action' => 'Choisir',
+        'picker_change_action' => 'Changer',
+        'picker_remove_action' => 'Retirer',
+        'picker_file_label' => 'Fichier',
+        'gallery_add_action' => 'Ajouter des médias',
+        'gallery_move_up' => 'Monter',
+        'gallery_move_down' => 'Descendre',
 
         'show' => [
             'open_file_action' => 'Ouvrir le fichier',
