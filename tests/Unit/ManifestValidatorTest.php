@@ -54,6 +54,36 @@ it('defaults autoloadPsr4 to an empty array when undeclared', function () {
     expect($manifest->autoloadPsr4())->toBe([]);
 });
 
+it('parses a declared schedule field', function () {
+    $manifest = ModuleManifest::fromJson(json_encode([
+        'name' => 'acme/blog',
+        'title' => 'Blog',
+        'version' => '1.0.0',
+        'type' => 'module',
+        'provider' => 'Acme\\Blog\\Providers\\BlogServiceProvider',
+        'schedule' => [
+            ['key' => 'acme.blog.digest', 'command' => 'acme:blog:digest', 'cron' => '0 8 * * *'],
+        ],
+    ], JSON_THROW_ON_ERROR));
+
+    expect($manifest->scheduledTasks())->toBe([
+        ['key' => 'acme.blog.digest', 'command' => 'acme:blog:digest', 'cron' => '0 8 * * *'],
+    ]);
+});
+
+it('rejects a schedule entry missing the cron field', function () {
+    ModuleManifest::fromJson(json_encode([
+        'name' => 'acme/blog',
+        'title' => 'Blog',
+        'version' => '1.0.0',
+        'type' => 'module',
+        'provider' => 'Acme\\Blog\\Providers\\BlogServiceProvider',
+        'schedule' => [
+            ['key' => 'acme.blog.digest', 'command' => 'acme:blog:digest'],
+        ],
+    ], JSON_THROW_ON_ERROR));
+})->throws(InvalidManifestException::class);
+
 it('rejects a manifest missing a required field', function () {
     ModuleManifest::fromJson(json_encode([
         'name' => 'acme/broken',

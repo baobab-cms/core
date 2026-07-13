@@ -130,6 +130,17 @@ final readonly class ModuleManifest
     }
 
     /**
+     * Tâches planifiées déclarées par ce module (spec 12 §2), enregistrées
+     * par SchedulerRegistrar tant que le module est actif.
+     *
+     * @return list<array{key: string, command: string, cron: string}>
+     */
+    public function scheduledTasks(): array
+    {
+        return $this->data['schedule'] ?? [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

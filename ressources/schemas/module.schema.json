@@ -231,6 +231,34 @@
             "type": "string",
             "description": "Route name of the module settings screen."
         },
+        "schedule": {
+            "type": "array",
+            "description": "Scheduled tasks declared by this module (spec 12 §2), registered by Baobab\\Scheduler\\SchedulerRegistrar while the module is active. Every run is recorded in scheduled_task_runs.",
+            "items": {
+                "type": "object",
+                "required": [
+                    "key",
+                    "command",
+                    "cron"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Unique task identifier, stored as scheduled_task_runs.task_key.",
+                        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_-]*)+$"
+                    },
+                    "command": {
+                        "type": "string",
+                        "description": "Artisan command signature or FQCN to run."
+                    },
+                    "cron": {
+                        "type": "string",
+                        "description": "Cron expression (5 fields)."
+                    }
+                }
+            }
+        },
         "autoload": {
             "type": "object",
             "description": "PSR-4 mappings for classes shipped by this module, registered dynamically by ModuleAutoloader when the module is active (spec 01 §7.1 decision 1). Same syntax as composer.json's autoload.psr-4.",

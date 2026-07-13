@@ -12,8 +12,10 @@ use Baobab\Admin\Sidebar\SidebarBuilder;
 use Baobab\Admin\Sidebar\SidebarItem;
 use Baobab\Audit\AuditLogger;
 use Baobab\Auth\TwoFactorManager;
+use Baobab\Console\Commands\ContentPublishDueCommand;
 use Baobab\Console\Commands\ContentTypeBuildCommand;
 use Baobab\Console\Commands\ContentTypeMakeCommand;
+use Baobab\Console\Commands\ContentUnpublishDueCommand;
 use Baobab\Console\Commands\HookListCommand;
 use Baobab\Console\Commands\MediaPurgeTrashCommand;
 use Baobab\Console\Commands\MediaRegenerateCommand;
@@ -49,6 +51,7 @@ use Baobab\Media\Conversions\PresetRegistry;
 use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
 use Baobab\Modules\ModuleDiscovery;
+use Baobab\Scheduler\SchedulerRegistrar;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
 use Illuminate\Console\Scheduling\Schedule;
@@ -178,10 +181,30 @@ class BaobabServiceProvider extends ServiceProvider
                 ContentTypeMakeCommand::class,
                 MediaRegenerateCommand::class,
                 MediaPurgeTrashCommand::class,
+                ContentPublishDueCommand::class,
+                ContentUnpublishDueCommand::class,
             ]);
         }
 
         $this->registerMediaPurgeSchedule();
+
+        $this->registerSchedulerTasks();
+    }
+
+    /**
+     * Tâches Core (publication/dépublication programmées, spec 09 §4) et
+     * tâches déclarées par les modules actifs (`schedule` au manifeste,
+     * spec 12 §2), toutes enregistrées et journalisées par
+     * SchedulerRegistrar — moteur générique, M5 point 7.
+     */
+    private function registerSchedulerTasks(): void
+    {
+        $this->app->booted(function (): void {
+            /** @var Schedule $schedule */
+            $schedule = $this->app->make(Schedule::class);
+
+            $this->app->make(SchedulerRegistrar::class)->register($schedule);
+        });
     }
 
     /**
