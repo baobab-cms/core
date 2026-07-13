@@ -54,6 +54,7 @@ Route::prefix('media')
         Route::get('/', [MediaController::class, 'index'])->name('index');
         Route::post('/', [MediaController::class, 'store'])->name('store');
         Route::post('/chunk', [MediaController::class, 'storeChunk'])->name('chunk');
+        Route::post('/external', [MediaController::class, 'storeExternal'])->name('external.store');
         Route::post('/move', [MediaController::class, 'move'])->name('move');
         Route::post('/bulk-delete', [MediaController::class, 'bulkDestroy'])->name('bulk-delete');
         Route::post('/bulk-restore', [MediaController::class, 'bulkRestore'])->name('bulk-restore');

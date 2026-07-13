@@ -12,8 +12,8 @@
         :breadcrumbs="[[__('baobab::admin.media.root_folder'), route('admin.media.index', ['folder' => $media->folder_id])], [$media->file_name]]"
     >
         <x-slot:actions>
-            <x-baobab::button variant="secondary" :href="$media->url()" target="_blank" rel="noopener">
-                {{ __('baobab::admin.media.show.open_file_action') }}
+            <x-baobab::button variant="secondary" :href="$media->isExternal() ? $media->external_url : $media->url()" target="_blank" rel="noopener">
+                {{ $media->isExternal() ? __('baobab::admin.media.show.open_external_action') : __('baobab::admin.media.show.open_file_action') }}
             </x-baobab::button>
 
             @if ($canDelete)
@@ -88,6 +88,16 @@
                     </x-baobab::form>
                 </x-baobab::card>
             </div>
+
+            @if ($media->isExternal() && $media->externalEmbedHtml())
+                <x-baobab::card :header="__('baobab::admin.media.show.external_preview_title')">
+                    <p class="mb-3 break-all text-sm text-muted">
+                        <a href="{{ $media->external_url }}" target="_blank" rel="noopener" class="text-primary hover:underline">{{ $media->external_url }}</a>
+                    </p>
+                    {{-- HTML oEmbed d'un fournisseur sur liste blanche (OEmbedResolver), jamais saisi par un utilisateur. --}}
+                    <div class="overflow-hidden rounded-md [&_iframe]:max-w-full">{!! $media->externalEmbedHtml() !!}</div>
+                </x-baobab::card>
+            @endif
 
             @if ($media->isRasterImage() && $canUpdate)
                 <div

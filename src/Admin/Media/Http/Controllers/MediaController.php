@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Admin\Media\Http\Controllers;
 
+use Baobab\Media\Actions\CreateExternalMedia;
 use Baobab\Media\Actions\DeleteMedia;
 use Baobab\Media\Actions\MoveMedia;
 use Baobab\Media\Actions\PurgeMedia;
@@ -14,6 +15,7 @@ use Baobab\Media\Actions\UpdateMediaFocalPoint;
 use Baobab\Media\Actions\UpdateMediaMetadata;
 use Baobab\Media\Actions\UploadMedia;
 use Baobab\Media\Exceptions\DuplicateMediaDetectedException;
+use Baobab\Media\Exceptions\ExternalMediaException;
 use Baobab\Media\Exceptions\MediaInUseException;
 use Baobab\Media\Models\Media;
 use Baobab\Media\Models\MediaFolder;
@@ -72,6 +74,7 @@ final class MediaController
                 'id' => $item->id,
                 'file_name' => $item->file_name,
                 'mime_type' => $item->mime_type,
+                'source' => $item->source,
                 'url' => $item->url(),
                 'alt' => $item->alt,
                 'width' => $item->currentWidth(),
@@ -152,6 +155,35 @@ final class MediaController
                 unlink($assembledPath);
             }
         }
+    }
+
+    public function storeExternal(Request $request): JsonResponse
+    {
+        $actor = $this->actor();
+
+        abort_unless($actor->can('create', Media::class), 403);
+
+        $validated = $request->validate(['url' => ['required', 'url:http,https', 'max:2048']]);
+
+        /** @var 'reuse'|'new'|null $duplicateAction */
+        $duplicateAction = in_array($request->input('duplicate_action'), ['reuse', 'new'], true)
+            ? $request->string('duplicate_action')->toString()
+            : null;
+
+        try {
+            $media = app(CreateExternalMedia::class)(
+                $validated['url'],
+                $actor,
+                $request->only(['title', 'alt', 'caption', 'description', 'folder_id']),
+                $duplicateAction,
+            );
+        } catch (DuplicateMediaDetectedException $e) {
+            return response()->json(['message' => $e->getMessage(), 'existing' => $e->existing], 409);
+        } catch (ExternalMediaException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json($media, 201);
     }
 
     public function move(Request $request): RedirectResponse

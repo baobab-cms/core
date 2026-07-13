@@ -64,10 +64,10 @@
                     x-bind:class="{ 'ring-2 ring-primary': isSelected(item.id) }"
                     class="overflow-hidden rounded-md border border-border bg-surface text-left"
                 >
-                    <template x-if="item.mime_type && item.mime_type.startsWith('image/')">
+                    <template x-if="(item.mime_type && item.mime_type.startsWith('image/')) || item.source === 'external'">
                         <img :src="item.url" :alt="item.alt || item.file_name" class="h-20 w-full object-cover">
                     </template>
-                    <template x-if="!item.mime_type || !item.mime_type.startsWith('image/')">
+                    <template x-if="!((item.mime_type && item.mime_type.startsWith('image/')) || item.source === 'external')">
                         <div class="flex h-20 w-full items-center justify-center bg-surface-subtle text-xs text-muted" x-text="item.file_name"></div>
                     </template>
                 </button>

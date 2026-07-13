@@ -16,6 +16,7 @@
                 chunkSize: {{ (int) config('baobab.media.chunk_size') }},
                 currentFolderId: {{ $currentFolder?->id ?? 'null' }},
                 csrfToken: @js(csrf_token()),
+                externalStoreUrl: @js(route('admin.media.external.store')),
             })"
         >
             {{-- Fil d'Ariane --}}
@@ -62,6 +63,9 @@
                     @endif
 
                     @if ($canUpload && ! $trashed)
+                        <x-baobab::button type="button" variant="secondary" x-on:click="$dispatch('open-modal', 'new-external-media')">
+                            {{ __('baobab::admin.media.external_action') }}
+                        </x-baobab::button>
                         <x-baobab::button type="button" variant="secondary" x-on:click="$dispatch('open-modal', 'new-media-folder')">
                             {{ __('baobab::admin.media.new_folder_action') }}
                         </x-baobab::button>
@@ -166,7 +170,7 @@
                             </label>
 
                             @if ($trashed)
-                                @if ($item->isImage())
+                                @if ($item->isImage() || $item->isExternal())
                                     <img src="{{ $item->url() }}" alt="{{ $item->alt ?? $item->file_name }}" class="h-24 w-full object-cover">
                                 @else
                                     <div class="flex h-24 w-full items-center justify-center bg-surface-subtle text-xs text-muted">
@@ -193,7 +197,12 @@
                                 </div>
                             @else
                                 <a href="{{ route('admin.media.show', ['media' => $item->id]) }}" class="block" title="{{ __('baobab::admin.media.view_action') }}">
-                                    @if ($item->isImage())
+                                    @if ($item->isExternal())
+                                        <span class="absolute right-2 top-2 z-10 rounded bg-foreground/70 px-1 py-0.5 text-[10px] font-medium uppercase text-surface">
+                                            {{ __('baobab::admin.media.external_badge') }}
+                                        </span>
+                                    @endif
+                                    @if ($item->isImage() || $item->isExternal())
                                         <img
                                             src="{{ $item->url() }}"
                                             alt="{{ $item->alt ?? $item->file_name }}"
@@ -214,6 +223,28 @@
 
                 <div class="mt-4">{{ $media->links() }}</div>
             @endif
+
+            {{-- Média externe (oEmbed) --}}
+            <x-baobab::modal name="new-external-media" :title="__('baobab::admin.media.external_action')">
+                <p class="mb-3 text-sm text-muted">{{ __('baobab::admin.media.external_hint') }}</p>
+                <label class="block text-sm font-medium text-foreground" for="external-media-url">{{ __('baobab::admin.media.external_url_label') }}</label>
+                <input
+                    id="external-media-url"
+                    type="url"
+                    x-model="externalUrl"
+                    x-on:keydown.enter.prevent="submitExternal()"
+                    placeholder="https://www.youtube.com/watch?v=…"
+                    class="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground"
+                >
+                <template x-if="externalError">
+                    <p class="mt-2 text-sm text-danger" x-text="externalError"></p>
+                </template>
+                <div class="mt-4 flex justify-end">
+                    <x-baobab::button type="button" variant="primary" x-bind:disabled="externalSubmitting" x-on:click="submitExternal()">
+                        {{ __('baobab::admin.media.external_submit_action') }}
+                    </x-baobab::button>
+                </div>
+            </x-baobab::modal>
 
             {{-- Nouveau dossier --}}
             <x-baobab::modal name="new-media-folder" :title="__('baobab::admin.media.new_folder_action')">
@@ -253,6 +284,40 @@
                     dragging: false,
                     uploading: [],
                     duplicate: null,
+                    externalUrl: '',
+                    externalError: null,
+                    externalSubmitting: false,
+
+                    async submitExternal() {
+                        if (!this.externalUrl || this.externalSubmitting) return;
+
+                        this.externalSubmitting = true;
+                        this.externalError = null;
+
+                        try {
+                            const body = new FormData();
+                            body.append('url', this.externalUrl);
+                            if (config.currentFolderId) body.append('folder_id', config.currentFolderId);
+
+                            const response = await fetch(config.externalStoreUrl, {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': config.csrfToken, Accept: 'application/json' },
+                                body,
+                            });
+
+                            if (!response.ok) {
+                                const payload = await response.json().catch(() => null);
+                                this.externalError = (payload && payload.message) || '{{ __('baobab::admin.media.external_failed') }}';
+                                return;
+                            }
+
+                            window.location.reload();
+                        } catch (error) {
+                            this.externalError = '{{ __('baobab::admin.media.external_failed') }}';
+                        } finally {
+                            this.externalSubmitting = false;
+                        }
+                    },
 
                     onDrop(event) {
                         [...event.dataTransfer.files].forEach((file) => this.enqueue(file));

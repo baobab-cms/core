@@ -20,6 +20,8 @@ use Illuminate\Support\Str;
  * @property string $path
  * @property string $file_name
  * @property string $mime_type
+ * @property string $source
+ * @property string|null $external_url
  * @property int $size
  * @property int|null $width
  * @property int|null $height
@@ -51,6 +53,8 @@ class Media extends Model
         'path',
         'file_name',
         'mime_type',
+        'source',
+        'external_url',
         'size',
         'width',
         'height',
@@ -166,6 +170,28 @@ class Media extends Model
     public function isImage(): bool
     {
         return str_starts_with($this->mime_type, 'image/');
+    }
+
+    /**
+     * Média externe (spec 06 §7.1) : référence une URL tierce résolue par
+     * oEmbed. Le fichier stocké (`path`) est sa vignette, le lecteur embarqué
+     * vit dans meta.oembed.html.
+     */
+    public function isExternal(): bool
+    {
+        return $this->source === 'external';
+    }
+
+    /**
+     * HTML du lecteur embarqué renvoyé par le fournisseur oEmbed (iframe).
+     * Fournisseurs sur liste blanche uniquement (OEmbedResolver) — jamais du
+     * HTML saisi par un utilisateur.
+     */
+    public function externalEmbedHtml(): ?string
+    {
+        $html = $this->meta['oembed']['html'] ?? null;
+
+        return is_string($html) ? $html : null;
     }
 
     /**
