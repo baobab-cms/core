@@ -1,0 +1,4 @@
+{
+  "subject": "Bienvenue {{ user.name }} !",
+  "body": "Bonjour {{ user.name }}, merci de votre inscription."
+}

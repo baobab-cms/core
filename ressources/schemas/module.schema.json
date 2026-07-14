@@ -259,6 +259,62 @@
                 }
             }
         },
+        "mails": {
+            "type": "array",
+            "description": "Templates d'e-mails déclarés par ce module (spec 13 §3.1), résolus par Baobab\\Mail\\Mailer. Un e-mail applicatif n'existe pas sans template déclaré ici.",
+            "items": {
+                "type": "object",
+                "required": [
+                    "key",
+                    "variables",
+                    "defaults"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Identifiant stable, préfixé par le slug du module ('core.' réservé au noyau).",
+                        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_-]*)+$"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "variables": {
+                        "type": "object",
+                        "description": "Contrat des placeholders disponibles pour ce template : nom → libellé, ou {label, required}.",
+                        "propertyNames": {
+                            "pattern": "^[a-z][a-zA-Z0-9_]*(\\.[a-z][a-zA-Z0-9_]*)*$"
+                        },
+                        "additionalProperties": {
+                            "oneOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "object",
+                                    "required": [
+                                        "label"
+                                    ],
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "label": {
+                                            "type": "string"
+                                        },
+                                        "required": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "defaults": {
+                        "type": "string",
+                        "description": "Chemin vers un JSON {subject, body} relatif à la racine du module."
+                    }
+                }
+            }
+        },
         "autoload": {
             "type": "object",
             "description": "PSR-4 mappings for classes shipped by this module, registered dynamically by ModuleAutoloader when the module is active (spec 01 §7.1 decision 1). Same syntax as composer.json's autoload.psr-4.",

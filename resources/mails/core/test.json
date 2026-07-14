@@ -1,0 +1,4 @@
+{
+  "subject": "Baobab CMS — e-mail de test",
+  "body": "Ceci est un e-mail de test envoyé depuis Baobab CMS le {{ sent_at }}. Si vous l'avez reçu, le transport e-mail fonctionne correctement."
+}

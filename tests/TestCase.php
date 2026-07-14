@@ -45,5 +45,26 @@ abstract class TestCase extends Orchestra
             'prefix' => '',
             'foreign_key_constraints' => true,
         ]);
+
+        $app['config']->set('mail.default', 'array');
+
+        // Connexions de queue Baobab (spec 12 §3.1) — même driver `database`
+        // que le défaut de test, juste une queue nommée dédiée.
+        $app['config']->set('queue.connections.baobab', [
+            'driver' => 'database',
+            'connection' => 'testing',
+            'table' => 'jobs',
+            'queue' => 'baobab',
+            'retry_after' => 90,
+            'after_commit' => false,
+        ]);
+        $app['config']->set('queue.connections.baobab-low', [
+            'driver' => 'database',
+            'connection' => 'testing',
+            'table' => 'jobs',
+            'queue' => 'baobab-low',
+            'retry_after' => 90,
+            'after_commit' => false,
+        ]);
     }
 }

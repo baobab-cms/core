@@ -1,0 +1,17 @@
+{
+  "name": "acme/mailer-broken",
+  "title": "Mailer fixture (broken)",
+  "description": "Fixture pour tester le rejet d'un template dont la variable required n'apparaît pas dans le défaut (MailTemplateValidatorTest).",
+  "version": "1.0.0",
+  "type": "module",
+  "provider": "Acme\\MailerBroken\\Providers\\MailerBrokenServiceProvider",
+  "mails": [
+    {
+      "key": "acme.mailer_broken.welcome",
+      "variables": {
+        "user.name": { "label": "Nom de l'utilisateur", "required": true }
+      },
+      "defaults": "mails/welcome.json"
+    }
+  ]
+}

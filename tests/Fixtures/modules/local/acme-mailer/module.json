@@ -1,0 +1,19 @@
+{
+  "name": "acme/mailer",
+  "title": "Mailer fixture",
+  "description": "Fixture pour tester la validation des templates d'e-mails (MailTemplateValidatorTest).",
+  "version": "1.0.0",
+  "type": "module",
+  "provider": "Acme\\Mailer\\Providers\\MailerServiceProvider",
+  "mails": [
+    {
+      "key": "acme.mailer.welcome",
+      "description": "Envoyé à l'inscription.",
+      "variables": {
+        "user.name": { "label": "Nom de l'utilisateur", "required": true },
+        "user.email": "E-mail de l'utilisateur"
+      },
+      "defaults": "mails/welcome.json"
+    }
+  ]
+}

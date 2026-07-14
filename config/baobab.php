@@ -192,4 +192,28 @@ return [
         'trash_retention_days' => (int) env('BAOBAB_MEDIA_TRASH_RETENTION_DAYS', 30),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | E-mails (spec 13 §2-3, M5 point 6)
+    |--------------------------------------------------------------------------
+    |
+    | templates : déclaration des templates du Core lui-même (`core.*`) — pas
+    | une ligne de la table `modules`, donc pas de manifest à lire ; même forme
+    | que la section "mails" d'un module.json. Les templates de modules sont
+    | lus depuis leur manifest par TemplateRegistry.
+    |
+    */
+    'mail' => [
+        'templates' => [
+            [
+                'key' => 'core.test',
+                'description' => 'E-mail de test (SendTestMail, `baobab:mail:test`).',
+                'variables' => [
+                    'sent_at' => 'Date/heure d\'envoi du test',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/test.json',
+            ],
+        ],
+    ],
+
 ];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Baobab\Admin\Access\Http\Controllers\AccessMatrixController;
 use Baobab\Admin\Account\Http\Controllers\SecurityController;
+use Baobab\Admin\Branding\Http\Controllers\BrandingController;
 use Baobab\Admin\Content\Http\Controllers\ContentController;
 use Baobab\Admin\Content\Http\Controllers\TrashController;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
@@ -40,6 +41,14 @@ Route::middleware('can:baobab.access.manage')
         Route::get('/', [AccessMatrixController::class, 'index'])->name('index');
         Route::post('/roles', [AccessMatrixController::class, 'store'])->name('roles.store');
         Route::post('/{role}/permissions/{permission}', [AccessMatrixController::class, 'toggle'])->name('toggle');
+    });
+
+Route::middleware('can:baobab.system.branding.manage')
+    ->prefix('branding')
+    ->name('branding.')
+    ->group(function (): void {
+        Route::get('/', [BrandingController::class, 'index'])->name('index');
+        Route::post('/', [BrandingController::class, 'update'])->name('update');
     });
 
 Route::middleware('can:baobab.users.impersonate')

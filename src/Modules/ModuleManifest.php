@@ -141,6 +141,17 @@ final readonly class ModuleManifest
     }
 
     /**
+     * Templates d'e-mails déclarés par ce module (spec 13 §3.1), résolus par
+     * `Baobab\Mail\Mailer` tant que le module est actif.
+     *
+     * @return list<array{key: string, description?: string, variables: array<string, mixed>, defaults: string}>
+     */
+    public function mails(): array
+    {
+        return $this->data['mails'] ?? [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

@@ -51,6 +51,7 @@ return [
         'users' => 'Utilisateurs',
         'media' => 'Médiathèque',
         'review' => 'À valider',
+        'branding' => 'Marque',
     ],
 
     'audit' => [
@@ -226,6 +227,15 @@ return [
         'empty' => 'La corbeille est vide.',
         'deleted_at_label' => 'Supprimé le',
         'view_type_action' => 'Voir dans le type',
+    ],
+
+    'branding' => [
+        'title' => 'Marque',
+        'logo_label' => 'Logo',
+        'favicon_label' => 'Favicon admin',
+        'primary_color_label' => 'Couleur primaire',
+        'save_action' => 'Enregistrer',
+        'updated' => 'Réglages de marque mis à jour.',
     ],
 
     'review' => [

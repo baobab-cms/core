@@ -7,6 +7,14 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
+    @if ($branding->favicon)
+        <link rel="icon" href="{{ $branding->favicon->url() }}">
+    @endif
+
+    @if ($branding->primary_color)
+        <style>:root { --color-primary: {{ $branding->primary_color }}; }</style>
+    @endif
+
     @stack('admin.head')
 </head>
 <body class="flex h-full flex-col bg-surface text-foreground antialiased" x-data="{ sidebarOpen: false }">

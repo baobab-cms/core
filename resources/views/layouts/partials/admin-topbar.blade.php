@@ -10,7 +10,11 @@
         </button>
 
         <a href="{{ route('admin.dashboard') }}" class="font-semibold text-foreground">
-            Baobab
+            @if ($branding->logo)
+                <img src="{{ $branding->logo->url() }}" alt="{{ config('app.name', 'Baobab') }}" class="h-8 w-auto">
+            @else
+                Baobab
+            @endif
         </a>
     </div>
 

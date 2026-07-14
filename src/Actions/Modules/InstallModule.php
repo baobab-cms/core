@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Baobab\Actions\Modules;
 
 use Baobab\Facades\Hook;
+use Baobab\Mail\MailTemplateValidator;
 use Baobab\Modules\DependencyResolver;
 use Baobab\Modules\Exceptions\ModuleNotFoundException;
 use Baobab\Modules\Models\Module;
@@ -26,6 +27,7 @@ final class InstallModule
     public function __construct(
         private readonly ModuleDiscovery $discovery,
         private readonly DependencyResolver $dependencies,
+        private readonly MailTemplateValidator $mailTemplates,
     ) {}
 
     public function __invoke(string $name): Module
@@ -40,6 +42,7 @@ final class InstallModule
 
         $this->dependencies->assertCoreCompatible($manifest);
         $this->dependencies->assertNoCycle($manifest->name(), $manifest->requiresModules(), Module::all());
+        $this->mailTemplates->assertValid($manifest, $discovered->path);
 
         // DDL migrations must run outside any transaction: on MySQL/MariaDB a
         // CREATE TABLE causes an implicit commit that would silently break an

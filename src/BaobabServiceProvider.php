@@ -13,12 +13,15 @@ use Baobab\Admin\Sidebar\SidebarBuilder;
 use Baobab\Admin\Sidebar\SidebarItem;
 use Baobab\Audit\AuditLogger;
 use Baobab\Auth\TwoFactorManager;
+use Baobab\Branding\Models\BrandingSetting;
 use Baobab\Console\Commands\ContentPublishDueCommand;
 use Baobab\Console\Commands\ContentPurgeTrashCommand;
 use Baobab\Console\Commands\ContentTypeBuildCommand;
 use Baobab\Console\Commands\ContentTypeMakeCommand;
 use Baobab\Console\Commands\ContentUnpublishDueCommand;
 use Baobab\Console\Commands\HookListCommand;
+use Baobab\Console\Commands\MailTemplatesCommand;
+use Baobab\Console\Commands\MailTestCommand;
 use Baobab\Console\Commands\MediaPurgeTrashCommand;
 use Baobab\Console\Commands\MediaRegenerateCommand;
 use Baobab\Console\Commands\ModuleActivateCommand;
@@ -154,6 +157,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerImpersonationBannerComposer();
 
+        $this->registerBrandingComposer();
+
         $this->registerAuditListeners();
 
         $this->registerMediaUsageListener();
@@ -186,6 +191,8 @@ class BaobabServiceProvider extends ServiceProvider
                 ContentPublishDueCommand::class,
                 ContentUnpublishDueCommand::class,
                 ContentPurgeTrashCommand::class,
+                MailTestCommand::class,
+                MailTemplatesCommand::class,
             ]);
         }
 
@@ -293,6 +300,18 @@ class BaobabServiceProvider extends ServiceProvider
             $impersonatedUser = session('baobab.impersonator_id') ? auth('baobab')->user() : null;
 
             $view->with('impersonatedUser', $impersonatedUser);
+        });
+    }
+
+    /**
+     * Réglages de marque (spec-admin.md §11.1) partagés avec le layout admin —
+     * calculés ici, jamais dans la vue (`@include` hérite du scope du parent,
+     * donc la topbar y a accès sans second composer).
+     */
+    private function registerBrandingComposer(): void
+    {
+        View::composer('baobab::layouts.admin', function (ViewContract $view): void {
+            $view->with('branding', BrandingSetting::current()->load(['logo', 'favicon']));
         });
     }
 
@@ -423,6 +442,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: null,
                     url: route('admin.review.index'),
                     order: -25,
+                );
+            }
+
+            if ($user->can('baobab.system.branding.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -6,
+                    label: __('baobab::admin.sidebar.branding'),
+                    icon: null,
+                    url: route('admin.branding.index'),
+                    order: -15,
                 );
             }
 
