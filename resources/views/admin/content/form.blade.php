@@ -23,7 +23,39 @@
                 </x-baobab::card>
             @endif
 
-            @if ($workingDraft)
+            @if ($workingDraft && $workingDraftPending)
+                <x-baobab::card class="mb-6 border-warning/30 bg-warning/5" x-data="{ showApprove: false, showReject: false }">
+                    <p class="text-sm text-foreground">{{ __('baobab::admin.content.working_draft_pending_banner') }}</p>
+
+                    @if ($workingDraftDiff)
+                        <div class="mt-3 border-t border-border pt-3">
+                            @include('baobab::admin.content.partials.diff', ['diff' => $workingDraftDiff])
+                        </div>
+                    @endif
+
+                    @if ($canPublishAny)
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <x-baobab::button type="button" variant="primary" x-on:click="showApprove = !showApprove">{{ __('baobab::admin.content.approve_action') }}</x-baobab::button>
+                            <x-baobab::button type="button" variant="danger" x-on:click="showReject = !showReject">{{ __('baobab::admin.content.reject_action') }}</x-baobab::button>
+
+                            <div x-show="showApprove" x-cloak class="mt-3 w-full rounded-md border border-border p-3">
+                                <form method="POST" action="{{ route('admin.content.working-draft.approve', ['contentType' => $slug, 'entry' => $entryId]) }}">
+                                    @csrf
+                                    <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.content.confirm_action') }}</x-baobab::button>
+                                </form>
+                            </div>
+
+                            <div x-show="showReject" x-cloak class="mt-3 w-full rounded-md border border-border p-3">
+                                <form method="POST" action="{{ route('admin.content.working-draft.reject', ['contentType' => $slug, 'entry' => $entryId]) }}">
+                                    @csrf
+                                    <x-baobab::field.textarea name="comment" label="{{ __('baobab::admin.content.reject_comment_label') }}" />
+                                    <x-baobab::button type="submit" variant="danger">{{ __('baobab::admin.content.confirm_action') }}</x-baobab::button>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+                </x-baobab::card>
+            @elseif ($workingDraft)
                 <x-baobab::card class="mb-6 border-primary/30 bg-primary/5">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <p class="text-sm text-foreground">
@@ -35,6 +67,11 @@
                                 <form method="POST" action="{{ route('admin.content.working-draft.publish', ['contentType' => $slug, 'entry' => $entryId]) }}">
                                     @csrf
                                     <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.content.working_draft_publish_action') }}</x-baobab::button>
+                                </form>
+                            @elseif ($contentType->workflowEnabled() && $canUpdate)
+                                <form method="POST" action="{{ route('admin.content.working-draft.submit', ['contentType' => $slug, 'entry' => $entryId]) }}">
+                                    @csrf
+                                    <x-baobab::button type="submit" variant="secondary">{{ __('baobab::admin.content.working_draft_submit_action') }}</x-baobab::button>
                                 </form>
                             @endif
                             <form
@@ -153,6 +190,10 @@
                     </div>
                 </div>
             </x-baobab::card>
+
+            @if ($reviewHistory->isNotEmpty())
+                @include('baobab::admin.content.partials.review-history', ['reviewHistory' => $reviewHistory])
+            @endif
         @endif
 
         @php

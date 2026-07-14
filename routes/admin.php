@@ -6,6 +6,7 @@ use Baobab\Admin\Access\Http\Controllers\AccessMatrixController;
 use Baobab\Admin\Account\Http\Controllers\SecurityController;
 use Baobab\Admin\Content\Http\Controllers\ContentController;
 use Baobab\Admin\Content\Http\Controllers\TrashController;
+use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
 use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
@@ -75,6 +76,8 @@ Route::prefix('media')
 
 Route::get('trash', [TrashController::class, 'index'])->name('trash.index');
 
+Route::get('review', [ValidationQueueController::class, 'index'])->name('review.index');
+
 Route::prefix('content/{contentType}')
     ->name('content.')
     ->group(function (): void {
@@ -94,6 +97,9 @@ Route::prefix('content/{contentType}')
         Route::post('/{entry}/revisions/{revision}/restore', [ContentController::class, 'restoreRevision'])->name('revisions.restore');
         Route::post('/{entry}/working-draft/publish', [ContentController::class, 'publishWorkingDraft'])->name('working-draft.publish');
         Route::post('/{entry}/working-draft/discard', [ContentController::class, 'discardWorkingDraft'])->name('working-draft.discard');
+        Route::post('/{entry}/working-draft/submit', [ContentController::class, 'submitWorkingDraft'])->name('working-draft.submit');
+        Route::post('/{entry}/working-draft/approve', [ContentController::class, 'approveWorkingDraft'])->name('working-draft.approve');
+        Route::post('/{entry}/working-draft/reject', [ContentController::class, 'rejectWorkingDraft'])->name('working-draft.reject');
         Route::post('/{entry}/autosave', [ContentController::class, 'autosave'])->name('autosave');
         Route::post('/{entry}/lock/heartbeat', [ContentController::class, 'heartbeat'])->name('lock.heartbeat');
         Route::post('/{entry}/lock/release', [ContentController::class, 'releaseLock'])->name('lock.release');

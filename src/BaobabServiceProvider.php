@@ -8,6 +8,7 @@ use Baobab\Access\AccessManager;
 use Baobab\Access\Facades\Access;
 use Baobab\Access\Http\Middleware\ImpersonationGuard;
 use Baobab\Admin\Access\PermissionMatrixBuilder;
+use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
 use Baobab\Admin\Sidebar\SidebarBuilder;
 use Baobab\Admin\Sidebar\SidebarItem;
 use Baobab\Audit\AuditLogger;
@@ -412,6 +413,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: null,
                     url: route('admin.media.index'),
                     order: -40,
+                );
+            }
+
+            if (ValidationQueueController::isVisibleTo($user)) {
+                $coreItems[] = new SidebarItem(
+                    id: -5,
+                    label: __('baobab::admin.sidebar.review'),
+                    icon: null,
+                    url: route('admin.review.index'),
+                    order: -25,
                 );
             }
 

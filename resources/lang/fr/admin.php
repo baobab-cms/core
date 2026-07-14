@@ -50,6 +50,7 @@ return [
         'access' => 'Rôles & permissions',
         'users' => 'Utilisateurs',
         'media' => 'Médiathèque',
+        'review' => 'À valider',
     ],
 
     'audit' => [
@@ -168,6 +169,25 @@ return [
         'working_draft_saved' => 'Brouillon enregistré.',
         'working_draft_published' => 'Brouillon publié.',
         'working_draft_discarded' => 'Brouillon abandonné.',
+        'working_draft_submit_action' => 'Soumettre à validation',
+        'working_draft_submitted' => 'Brouillon soumis à validation.',
+        'working_draft_pending_banner' => 'Ce brouillon est soumis à validation — la version publiée n\'est pas affectée.',
+        'working_draft_review_approved' => 'Brouillon approuvé et appliqué au contenu publié.',
+        'working_draft_review_rejected' => 'Brouillon rejeté, renvoyé à l\'auteur.',
+
+        'review_history_title' => 'Historique de validation',
+        'review_history_action' => [
+            'content' => [
+                'submitted' => 'Soumis à validation',
+                'approved' => 'Approuvé',
+                'rejected' => 'Rejeté',
+                'working_draft' => [
+                    'submitted' => 'Brouillon soumis à validation',
+                    'approved' => 'Brouillon approuvé',
+                    'rejected' => 'Brouillon rejeté',
+                ],
+            ],
+        ],
 
         'autosave_banner' => 'Une sauvegarde automatique du :date est disponible.',
         'autosave_restore_action' => 'Restaurer',
@@ -206,6 +226,21 @@ return [
         'empty' => 'La corbeille est vide.',
         'deleted_at_label' => 'Supprimé le',
         'view_type_action' => 'Voir dans le type',
+    ],
+
+    'review' => [
+        'title' => 'File de validation',
+        'empty' => 'Rien à valider pour l\'instant.',
+        'filter_type' => 'Type',
+        'filter_all_types' => 'Tous les types',
+        'filter_author' => 'Auteur',
+        'filter_all_authors' => 'Tous les auteurs',
+        'filter_from' => 'Du',
+        'filter_to' => 'Au',
+        'filter_submit' => 'Filtrer',
+        'submission_badge' => 'Soumission',
+        'working_draft_badge' => 'Modification d\'un contenu publié',
+        'examine_action' => 'Examiner',
     ],
 
     'media' => [

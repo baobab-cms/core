@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Baobab\Admin\Content\Http\Controllers;
 
+use Baobab\Audit\Models\AuditEntry;
 use Baobab\ContentTypes\Actions\AcquireOrRefreshContentLock;
 use Baobab\ContentTypes\Actions\ApproveContentEntry;
+use Baobab\ContentTypes\Actions\ApproveWorkingDraftReview;
 use Baobab\ContentTypes\Actions\ArchiveContentEntry;
 use Baobab\ContentTypes\Actions\AutosaveContentEntry;
 use Baobab\ContentTypes\Actions\DeleteContentEntry;
@@ -14,6 +16,7 @@ use Baobab\ContentTypes\Actions\PublishContentEntry;
 use Baobab\ContentTypes\Actions\PublishWorkingDraftEntry;
 use Baobab\ContentTypes\Actions\PurgeContentEntry;
 use Baobab\ContentTypes\Actions\RejectContentEntry;
+use Baobab\ContentTypes\Actions\RejectWorkingDraftReview;
 use Baobab\ContentTypes\Actions\ReleaseContentLock;
 use Baobab\ContentTypes\Actions\RestoreArchivedContentEntry;
 use Baobab\ContentTypes\Actions\RestoreContentEntryFromTrash;
@@ -22,6 +25,7 @@ use Baobab\ContentTypes\Actions\SaveContentEntry;
 use Baobab\ContentTypes\Actions\SaveWorkingDraftEntry;
 use Baobab\ContentTypes\Actions\ScheduleContentEntry;
 use Baobab\ContentTypes\Actions\SubmitContentEntry;
+use Baobab\ContentTypes\Actions\SubmitWorkingDraftForReview;
 use Baobab\ContentTypes\Actions\TakeOverContentLock;
 use Baobab\ContentTypes\Actions\UnpublishContentEntry;
 use Baobab\ContentTypes\Editorial\ContentStateMachine;
@@ -44,6 +48,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
@@ -176,6 +181,7 @@ final class ContentController
         }
 
         $workingDraft = $this->workingDraftFor($model);
+        $workingDraftPending = $workingDraft?->type === 'pending';
         $autosave = $this->autosaveFor($model, $actor, $workingDraft);
 
         return view('baobab::admin.content.form', [
@@ -198,15 +204,45 @@ final class ContentController
             'readOnly' => $lockedBy !== null,
             'canSaveAsDraft' => in_array($status, ['published', 'scheduled'], true) && $actor->can('update', $model),
             'workingDraft' => $workingDraft,
+            'workingDraftPending' => $workingDraftPending,
+            'workingDraftDiff' => $workingDraftPending
+                ? app(RevisionDiffer::class)->diff($model->attributesToArray(), $workingDraft->snapshot)
+                : null,
             'autosave' => $autosave,
+            'reviewHistory' => $this->reviewHistoryFor($model),
         ]);
+    }
+
+    /**
+     * Fil des allers-retours du workflow de validation (spec 09 §5 :
+     * « historique des allers-retours »), soumission native comme brouillon
+     * de contenu publié — pas de table dédiée, l'audit log porte déjà
+     * l'acteur, la date et le commentaire de chaque étape.
+     *
+     * @return Collection<int, AuditEntry>
+     */
+    private function reviewHistoryFor(Model $entry): Collection
+    {
+        return AuditEntry::where('auditable_type', $entry->getMorphClass())
+            ->where('auditable_id', $entry->getKey())
+            ->whereIn('action', [
+                'content.submitted',
+                'content.approved',
+                'content.rejected',
+                'content.working_draft.submitted',
+                'content.working_draft.approved',
+                'content.working_draft.rejected',
+            ])
+            ->orderByDesc('created_at')
+            ->with('actor')
+            ->get();
     }
 
     private function workingDraftFor(Model $entry): ?Revision
     {
         return Revision::where('revisionable_type', $entry->getMorphClass())
             ->where('revisionable_id', $entry->getKey())
-            ->where('type', 'working_draft')
+            ->whereIn('type', ['working_draft', 'pending'])
             ->first();
     }
 
@@ -455,6 +491,98 @@ final class ContentController
         }
 
         session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.working_draft_discarded')]);
+
+        return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+    }
+
+    /**
+     * Soumet à validation la modification d'un contenu déjà publié (spec 09
+     * §3 dernière puce, §5, M5 point 3) : même permission que le submit
+     * natif (`update`, own/any vérifié par la policy), mais agit sur le
+     * working draft, jamais sur la ligne `ct_*`.
+     */
+    public function submitWorkingDraft(string $contentType, int|string $entry): RedirectResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findEntry($type, $entry);
+        $actor = $this->actor();
+
+        abort_unless($actor->can('update', $model), 403);
+
+        $draft = $this->workingDraftFor($model);
+        abort_if($draft === null, 404);
+
+        try {
+            app(SubmitWorkingDraftForReview::class)($type, $draft);
+        } catch (InvalidContentTransitionException $e) {
+            session()->flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
+
+            return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+        }
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.working_draft_submitted')]);
+
+        return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+    }
+
+    /**
+     * Approuve un working draft en attente de validation (spec 09 §3
+     * dernière puce, §5, M5 point 3) : toujours `publish_any`, jamais own —
+     * cohérent avec la table de permissions de `transition()`.
+     */
+    public function approveWorkingDraft(string $contentType, int|string $entry): RedirectResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findEntry($type, $entry);
+        $actor = $this->actor();
+        $prefix = 'content.'.Str::snake($type->key);
+
+        abort_unless($actor->can("{$prefix}.publish_any"), 403);
+
+        $draft = $this->workingDraftFor($model);
+        abort_if($draft === null, 404);
+
+        try {
+            app(ApproveWorkingDraftReview::class)($type, $model, $draft, $actor);
+        } catch (InvalidContentTransitionException $e) {
+            session()->flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
+
+            return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+        }
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.working_draft_review_approved')]);
+
+        return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+    }
+
+    /**
+     * Rejette un working draft en attente de validation (spec 09 §3
+     * dernière puce, §5, M5 point 3) : commentaire obligatoire, le brouillon
+     * redevient éditable — rien n'est perdu.
+     */
+    public function rejectWorkingDraft(Request $request, string $contentType, int|string $entry): RedirectResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findEntry($type, $entry);
+        $actor = $this->actor();
+        $prefix = 'content.'.Str::snake($type->key);
+
+        abort_unless($actor->can("{$prefix}.publish_any"), 403);
+
+        $draft = $this->workingDraftFor($model);
+        abort_if($draft === null, 404);
+
+        $comment = $request->validate(['comment' => ['required', 'string', 'min:3']])['comment'];
+
+        try {
+            app(RejectWorkingDraftReview::class)($type, $draft, $comment);
+        } catch (InvalidContentTransitionException $e) {
+            session()->flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
+
+            return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+        }
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.working_draft_review_rejected')]);
 
         return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
     }
