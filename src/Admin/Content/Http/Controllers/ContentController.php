@@ -4,20 +4,34 @@ declare(strict_types=1);
 
 namespace Baobab\Admin\Content\Http\Controllers;
 
+use Baobab\ContentTypes\Actions\AcquireOrRefreshContentLock;
 use Baobab\ContentTypes\Actions\ApproveContentEntry;
 use Baobab\ContentTypes\Actions\ArchiveContentEntry;
+use Baobab\ContentTypes\Actions\AutosaveContentEntry;
 use Baobab\ContentTypes\Actions\DeleteContentEntry;
+use Baobab\ContentTypes\Actions\DiscardWorkingDraftEntry;
 use Baobab\ContentTypes\Actions\PublishContentEntry;
+use Baobab\ContentTypes\Actions\PublishWorkingDraftEntry;
+use Baobab\ContentTypes\Actions\PurgeContentEntry;
 use Baobab\ContentTypes\Actions\RejectContentEntry;
+use Baobab\ContentTypes\Actions\ReleaseContentLock;
 use Baobab\ContentTypes\Actions\RestoreArchivedContentEntry;
+use Baobab\ContentTypes\Actions\RestoreContentEntryFromTrash;
+use Baobab\ContentTypes\Actions\RestoreContentRevision;
 use Baobab\ContentTypes\Actions\SaveContentEntry;
+use Baobab\ContentTypes\Actions\SaveWorkingDraftEntry;
 use Baobab\ContentTypes\Actions\ScheduleContentEntry;
 use Baobab\ContentTypes\Actions\SubmitContentEntry;
+use Baobab\ContentTypes\Actions\TakeOverContentLock;
 use Baobab\ContentTypes\Actions\UnpublishContentEntry;
 use Baobab\ContentTypes\Editorial\ContentStateMachine;
+use Baobab\ContentTypes\Editorial\Models\Revision;
+use Baobab\ContentTypes\Editorial\Support\RevisionDiffer;
+use Baobab\ContentTypes\Exceptions\ContentLockedException;
 use Baobab\ContentTypes\Exceptions\InvalidContentTransitionException;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Models\ContentType;
+use Baobab\ContentTypes\Support\ContentTrash;
 use Baobab\Facades\Hook;
 use Baobab\Media\Models\Media;
 use Baobab\Media\Models\MediaUsage;
@@ -26,6 +40,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -54,35 +69,62 @@ final class ContentController
         /** @var class-string<Model> $modelClass */
         $modelClass = $type->modelClass();
 
-        /** @var list<string> $statuses */
-        $statuses = $modelClass::query()->distinct()->pluck('status')->filter()->values()->all();
+        $trashed = $request->boolean('trashed');
 
-        $query = $modelClass::query();
+        $query = $trashed ? ContentTrash::onlyTrashed($modelClass) : $modelClass::query();
 
-        $this->applySearch($query, $type, (string) $request->string('q'));
+        if (! $trashed) {
+            $this->applySearch($query, $type, (string) $request->string('q'));
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->string('status')->toString());
+            if ($request->filled('status')) {
+                $query->where('status', $request->string('status')->toString());
+            }
         }
 
         /** @var LengthAwarePaginator<int, Model> $rows */
         $rows = $query->orderByDesc('id')->paginate(20)->withQueryString();
 
+        /** @var list<string> $statuses */
+        $statuses = $trashed ? [] : $modelClass::query()->distinct()->pluck('status')->filter()->values()->all();
+
+        $actor = $this->actor();
         $permissionPrefix = 'content.'.Str::snake($type->key);
-        $canBulkDelete = $this->actor()->can("{$permissionPrefix}.delete_any") || $this->actor()->can("{$permissionPrefix}.delete");
+        $canBulkDelete = $actor->can("{$permissionPrefix}.delete_any") || $actor->can("{$permissionPrefix}.delete");
+        $canPurge = $actor->can('baobab.trash.purge');
 
         return view('baobab::admin.content.index', [
             'contentType' => $type,
             'slug' => $contentType,
-            'columns' => $this->listColumns($type, $contentType),
+            'columns' => $this->listColumns($type, $contentType, $trashed),
             'rows' => $rows,
             'statuses' => $statuses,
-            'canCreate' => $this->actor()->can('create', $modelClass),
-            'bulkActions' => $canBulkDelete ? [[
-                'route' => route('admin.content.bulk-delete', ['contentType' => $contentType]),
-                'label' => __('baobab::admin.content.bulk_delete_action'),
-            ]] : [],
+            'trashed' => $trashed,
+            'canCreate' => $actor->can('create', $modelClass),
+            'canPurge' => $canPurge,
+            'bulkActions' => $this->indexBulkActions($contentType, $trashed, $canBulkDelete, $canPurge),
         ]);
+    }
+
+    /**
+     * @return list<array{route: string, label: string}>
+     */
+    private function indexBulkActions(string $contentType, bool $trashed, bool $canBulkDelete, bool $canPurge): array
+    {
+        if ($trashed) {
+            $actions = [
+                ['route' => route('admin.content.bulk-restore', ['contentType' => $contentType]), 'label' => __('baobab::admin.content.bulk_restore_action')],
+            ];
+
+            if ($canPurge) {
+                $actions[] = ['route' => route('admin.content.bulk-force-destroy', ['contentType' => $contentType]), 'label' => __('baobab::admin.content.bulk_purge_action')];
+            }
+
+            return $actions;
+        }
+
+        return $canBulkDelete ? [
+            ['route' => route('admin.content.bulk-delete', ['contentType' => $contentType]), 'label' => __('baobab::admin.content.bulk_delete_action')],
+        ] : [];
     }
 
     public function create(string $contentType): View
@@ -125,6 +167,17 @@ final class ContentController
         $prefix = 'content.'.Str::snake($type->key);
         $status = (string) $model->getAttribute('status');
 
+        $lockedBy = null;
+
+        try {
+            app(AcquireOrRefreshContentLock::class)($model, $actor);
+        } catch (ContentLockedException $e) {
+            $lockedBy = $e->getMessage();
+        }
+
+        $workingDraft = $this->workingDraftFor($model);
+        $autosave = $this->autosaveFor($model, $actor, $workingDraft);
+
         return view('baobab::admin.content.form', [
             'contentType' => $type,
             'slug' => $contentType,
@@ -140,7 +193,44 @@ final class ContentController
             'canUpdate' => $actor->can('update', $model),
             'canPublish' => $actor->can('publish', $model),
             'canPublishAny' => $actor->can("{$prefix}.publish_any"),
+            'canTakeOverLock' => $actor->can("{$prefix}.update_any"),
+            'lockedBy' => $lockedBy,
+            'readOnly' => $lockedBy !== null,
+            'canSaveAsDraft' => in_array($status, ['published', 'scheduled'], true) && $actor->can('update', $model),
+            'workingDraft' => $workingDraft,
+            'autosave' => $autosave,
         ]);
+    }
+
+    private function workingDraftFor(Model $entry): ?Revision
+    {
+        return Revision::where('revisionable_type', $entry->getMorphClass())
+            ->where('revisionable_id', $entry->getKey())
+            ->where('type', 'working_draft')
+            ->first();
+    }
+
+    /**
+     * Ne propose la restauration d'un autosave que s'il est plus récent que
+     * le brouillon en cours (sinon rien de nouveau à récupérer).
+     */
+    private function autosaveFor(Model $entry, User $actor, ?Revision $workingDraft): ?Revision
+    {
+        $autosave = Revision::where('revisionable_type', $entry->getMorphClass())
+            ->where('revisionable_id', $entry->getKey())
+            ->where('author_id', $actor->getKey())
+            ->where('type', 'autosave')
+            ->first();
+
+        if ($autosave === null) {
+            return null;
+        }
+
+        if ($workingDraft !== null && $autosave->updated_at->lessThanOrEqualTo($workingDraft->updated_at)) {
+            return null;
+        }
+
+        return $autosave;
     }
 
     /**
@@ -209,9 +299,30 @@ final class ContentController
         $model = $this->findEntry($type, $entry);
         $this->authorizeInstance('update', $model);
 
+        $actor = $this->actor();
+
+        try {
+            app(AcquireOrRefreshContentLock::class)($model, $actor);
+        } catch (ContentLockedException $e) {
+            session()->flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
+
+            return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+        }
+
         $validated = $this->validated($request, $type, $model);
 
-        app(SaveContentEntry::class)($type, $validated, $this->actor(), $model);
+        $status = (string) $model->getAttribute('status');
+        $wantsDraft = $request->string('intent')->toString() === 'draft';
+
+        if ($wantsDraft && in_array($status, ['published', 'scheduled'], true)) {
+            app(SaveWorkingDraftEntry::class)($type, $model, $validated, $actor);
+
+            session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.working_draft_saved')]);
+
+            return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+        }
+
+        app(SaveContentEntry::class)($type, $validated, $actor, $model);
 
         session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.updated')]);
 
@@ -251,6 +362,239 @@ final class ContentController
         return redirect()->route('admin.content.index', ['contentType' => $contentType]);
     }
 
+    /**
+     * Écran de révisions (spec 09 §6) : historique manuel/pre_restore (pas
+     * l'autosave, invisible de l'historique éditorial) + diff optionnel entre
+     * deux révisions choisies via `?from=&to=`.
+     */
+    public function revisions(Request $request, string $contentType, int|string $entry): View
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findEntry($type, $entry);
+        $this->authorizeInstance('update', $model);
+
+        $history = Revision::where('revisionable_type', $model->getMorphClass())
+            ->where('revisionable_id', $model->getKey())
+            ->whereIn('type', ['manual', 'pre_restore'])
+            ->orderByDesc('id')
+            ->with('author')
+            ->get();
+
+        $diff = null;
+        $fromId = $request->integer('from');
+        $toId = $request->integer('to');
+
+        if ($fromId !== 0 && $toId !== 0) {
+            $from = $history->firstWhere('id', $fromId);
+            $to = $history->firstWhere('id', $toId);
+
+            if ($from !== null && $to !== null) {
+                $diff = app(RevisionDiffer::class)->diff($from->snapshot, $to->snapshot);
+            }
+        }
+
+        return view('baobab::admin.content.revisions', [
+            'contentType' => $type,
+            'slug' => $contentType,
+            'label' => $this->label($type),
+            'entryId' => $model->getKey(),
+            'history' => $history,
+            'workingDraft' => $this->workingDraftFor($model),
+            'diff' => $diff,
+            'fromId' => $fromId ?: null,
+            'toId' => $toId ?: null,
+            'canUpdate' => $this->actor()->can('update', $model),
+        ]);
+    }
+
+    public function restoreRevision(string $contentType, int|string $entry, int $revision): RedirectResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findEntry($type, $entry);
+        $this->authorizeInstance('update', $model);
+
+        $revisionModel = Revision::where('revisionable_type', $model->getMorphClass())
+            ->where('revisionable_id', $model->getKey())
+            ->findOrFail($revision);
+
+        app(RestoreContentRevision::class)($type, $model, $revisionModel, $this->actor());
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.revision_restored')]);
+
+        return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+    }
+
+    public function publishWorkingDraft(string $contentType, int|string $entry): RedirectResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findEntry($type, $entry);
+        $actor = $this->actor();
+
+        abort_unless($actor->can('publish', $model), 403);
+
+        $draft = $this->workingDraftFor($model);
+        abort_if($draft === null, 404);
+
+        app(PublishWorkingDraftEntry::class)($type, $model, $draft, $actor);
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.working_draft_published')]);
+
+        return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+    }
+
+    public function discardWorkingDraft(string $contentType, int|string $entry): RedirectResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findEntry($type, $entry);
+        $this->authorizeInstance('update', $model);
+
+        $draft = $this->workingDraftFor($model);
+
+        if ($draft !== null) {
+            app(DiscardWorkingDraftEntry::class)($type, $draft);
+        }
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.working_draft_discarded')]);
+
+        return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+    }
+
+    /**
+     * Autosave périodique (spec 09 §3) — pas de validation stricte, le
+     * contenu peut être incomplet en cours de frappe.
+     */
+    public function autosave(Request $request, string $contentType, int|string $entry): JsonResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findEntry($type, $entry);
+        $actor = $this->actor();
+
+        abort_unless($actor->can('update', $model), 403);
+
+        app(AutosaveContentEntry::class)($type, $model, $request->except(['_token', '_method']), $actor);
+
+        return response()->json(['saved' => true]);
+    }
+
+    /**
+     * Battement de cœur du verrou d'édition (spec 09 §7) — appelé toutes les
+     * `baobab.content.lock_heartbeat_seconds` tant que le formulaire est
+     * ouvert. 200 dans les deux cas (information, pas une erreur) : le
+     * client compare `locked` à son propre état pour détecter une prise de
+     * main (aucune notification persistée, M5 point 4 n'existe pas encore).
+     */
+    public function heartbeat(string $contentType, int|string $entry): JsonResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findEntry($type, $entry);
+        $this->authorizeInstance('update', $model);
+
+        try {
+            app(AcquireOrRefreshContentLock::class)($model, $this->actor());
+
+            return response()->json(['locked' => false]);
+        } catch (ContentLockedException $e) {
+            return response()->json(['locked' => true, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function releaseLock(string $contentType, int|string $entry): JsonResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findEntry($type, $entry);
+        $this->authorizeInstance('update', $model);
+
+        app(ReleaseContentLock::class)($model, $this->actor());
+
+        return response()->json(['released' => true]);
+    }
+
+    public function takeOverLock(string $contentType, int|string $entry): RedirectResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findEntry($type, $entry);
+        $actor = $this->actor();
+        $prefix = 'content.'.Str::snake($type->key);
+
+        abort_unless($actor->can("{$prefix}.update_any"), 403);
+
+        app(TakeOverContentLock::class)($model, $actor);
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.lock_taken_over')]);
+
+        return redirect()->route('admin.content.edit', ['contentType' => $contentType, 'entry' => $model->getKey()]);
+    }
+
+    public function restore(string $contentType, int|string $entry): RedirectResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findTrashedEntry($type, $entry);
+
+        abort_unless($this->actor()->can('restore', $model), 403);
+
+        app(RestoreContentEntryFromTrash::class)($type, $model);
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.restored')]);
+
+        return redirect()->route('admin.content.index', ['contentType' => $contentType, 'trashed' => 1]);
+    }
+
+    public function forceDestroy(string $contentType, int|string $entry): RedirectResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $model = $this->findTrashedEntry($type, $entry);
+
+        abort_unless($this->actor()->can('forceDelete', $model), 403);
+
+        app(PurgeContentEntry::class)($type, $model);
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.purged')]);
+
+        return redirect()->route('admin.content.index', ['contentType' => $contentType, 'trashed' => 1]);
+    }
+
+    public function bulkRestore(Request $request, string $contentType): RedirectResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $actor = $this->actor();
+
+        /** @var list<int> $ids */
+        $ids = (array) $request->input('ids', []);
+
+        foreach ($ids as $id) {
+            $model = $this->findTrashedEntry($type, $id);
+
+            if ($actor->can('restore', $model)) {
+                app(RestoreContentEntryFromTrash::class)($type, $model);
+            }
+        }
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.restored')]);
+
+        return redirect()->route('admin.content.index', ['contentType' => $contentType, 'trashed' => 1]);
+    }
+
+    public function bulkForceDestroy(Request $request, string $contentType): RedirectResponse
+    {
+        $type = $this->resolveContentType($contentType);
+        $actor = $this->actor();
+
+        /** @var list<int> $ids */
+        $ids = (array) $request->input('ids', []);
+
+        foreach ($ids as $id) {
+            $model = $this->findTrashedEntry($type, $id);
+
+            if ($actor->can('forceDelete', $model)) {
+                app(PurgeContentEntry::class)($type, $model);
+            }
+        }
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.content.purged')]);
+
+        return redirect()->route('admin.content.index', ['contentType' => $contentType, 'trashed' => 1]);
+    }
+
     private function resolveContentType(string $slug): ContentType
     {
         $tableName = 'ct_'.str_replace('-', '_', $slug);
@@ -268,6 +612,18 @@ final class ContentController
         $modelClass = $type->modelClass();
 
         $model = $modelClass::query()->find($id);
+
+        abort_if($model === null, 404);
+
+        return $model;
+    }
+
+    private function findTrashedEntry(ContentType $type, int|string $id): Model
+    {
+        /** @var class-string<Model> $modelClass */
+        $modelClass = $type->modelClass();
+
+        $model = ContentTrash::onlyTrashed($modelClass)->find($id);
 
         abort_if($model === null, 404);
 
@@ -478,7 +834,7 @@ final class ContentController
     /**
      * @return list<array<string, mixed>>
      */
-    private function listColumns(ContentType $type, string $slug): array
+    private function listColumns(ContentType $type, string $slug, bool $trashed = false): array
     {
         $columns = [['key' => 'id', 'label' => 'ID', 'sortable' => true]];
 
@@ -486,15 +842,24 @@ final class ContentController
             $columns[] = ['key' => $field['key'], 'label' => $field['key']];
         }
 
-        $columns[] = ['key' => 'status', 'label' => __('baobab::admin.content.column_status')];
+        if (! $trashed) {
+            $columns[] = ['key' => 'status', 'label' => __('baobab::admin.content.column_status')];
+        }
+
+        $actor = $this->actor();
+        $canPurge = $actor->can('baobab.trash.purge');
 
         $columns[] = [
             'key' => 'actions',
             'label' => '',
             'raw' => true,
             'render' => fn (Model $row): string => view('baobab::admin.content.partials.row-actions', [
+                'trashed' => $trashed,
                 'editUrl' => route('admin.content.edit', ['contentType' => $slug, 'entry' => $row->getKey()]),
                 'deleteUrl' => route('admin.content.destroy', ['contentType' => $slug, 'entry' => $row->getKey()]),
+                'restoreUrl' => route('admin.content.restore', ['contentType' => $slug, 'entry' => $row->getKey()]),
+                'purgeUrl' => route('admin.content.force-destroy', ['contentType' => $slug, 'entry' => $row->getKey()]),
+                'canPurge' => $canPurge,
             ])->render(),
         ];
 

@@ -29,6 +29,22 @@ it('accepts explicit workflow and unpublish_at overrides', function () {
         ->and($blueprint->unpublishAtEnabled())->toBeFalse();
 });
 
+it('defaults revisionsLimit to null (falls back to the global config) and revisionsExcept to an empty list', function () {
+    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson());
+
+    expect($blueprint->revisionsLimit())->toBeNull()
+        ->and($blueprint->revisionsExcept())->toBe([]);
+});
+
+it('accepts an explicit revisions override', function () {
+    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'revisions' => ['limit' => 10, 'except' => ['view_count']],
+    ]));
+
+    expect($blueprint->revisionsLimit())->toBe(10)
+        ->and($blueprint->revisionsExcept())->toBe(['view_count']);
+});
+
 it('accepts a field of a known type and a relation targeting a known core model', function () {
     $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
         'fields' => [['key' => 'brand', 'type' => 'text']],

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Baobab\Scheduler;
 
 use Baobab\Console\Commands\ContentPublishDueCommand;
+use Baobab\Console\Commands\ContentPurgeTrashCommand;
 use Baobab\Console\Commands\ContentUnpublishDueCommand;
 use Baobab\Modules\Models\Module;
 use Baobab\Scheduler\Models\ScheduledTaskRun;
@@ -29,6 +30,7 @@ final class SchedulerRegistrar
     {
         $this->record($schedule->command(ContentPublishDueCommand::class)->everyMinute(), 'baobab.content.publish-due');
         $this->record($schedule->command(ContentUnpublishDueCommand::class)->everyMinute(), 'baobab.content.unpublish-due');
+        $this->record($schedule->command(ContentPurgeTrashCommand::class)->daily(), 'baobab.content.purge-trash');
 
         $this->registerModuleTasks($schedule);
     }

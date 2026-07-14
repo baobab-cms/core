@@ -22,6 +22,7 @@ final class PublishContentEntry
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly ContentStateMachine $machine,
+        private readonly CaptureRevision $captureRevision,
     ) {}
 
     public function __invoke(ContentType $contentType, Model $entry, ?User $actor = null): Model
@@ -32,6 +33,8 @@ final class PublishContentEntry
         $entry->update(['status' => 'published', 'published_at' => now()]);
 
         $this->audit->record('content.published', $entry, ['content_type' => $contentType->key]);
+
+        ($this->captureRevision)($contentType, $entry, 'manual', $actor, 'Publication');
 
         Hook::action('baobab.content.published', $contentType, $entry);
         Hook::action('baobab.content.transitioned', $contentType, $entry, $from, 'published', $actor);

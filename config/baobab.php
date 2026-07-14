@@ -110,6 +110,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cycle éditorial (spec 09, M5 point 2)
+    |--------------------------------------------------------------------------
+    |
+    | revisions_limit : révisions conservées par entrée au-delà desquelles les
+    | plus anciennes sont purgées (défaut 50, spec 02 §9 décision 4) —
+    | surchargeable par type via `blueprint.revisions.limit`.
+    | autosave_seconds : cadence de l'autosave côté formulaire (spec 09 §3).
+    | lock_heartbeat_seconds : fréquence du ping qui maintient un verrou
+    | d'édition ouvert (spec 09 §7).
+    | lock_expiry_seconds : au-delà de ce délai sans heartbeat, le verrou est
+    | considéré abandonné et libéré silencieusement (onglet fermé brutalement).
+    | trash_retention_days : un contenu mis à la corbeille est purgé
+    | définitivement après ce délai par `content:purge-trash` (spec 09 §8),
+    | même convention que `media.trash_retention_days`.
+    |
+    */
+    'content' => [
+        'revisions_limit' => (int) env('BAOBAB_CONTENT_REVISIONS_LIMIT', 50),
+        'autosave_seconds' => (int) env('BAOBAB_CONTENT_AUTOSAVE_SECONDS', 60),
+        'lock_heartbeat_seconds' => (int) env('BAOBAB_CONTENT_LOCK_HEARTBEAT_SECONDS', 30),
+        'lock_expiry_seconds' => (int) env('BAOBAB_CONTENT_LOCK_EXPIRY_SECONDS', 120),
+        'trash_retention_days' => (int) env('BAOBAB_CONTENT_TRASH_RETENTION_DAYS', 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Bibliothèque de médias
     |--------------------------------------------------------------------------
     |

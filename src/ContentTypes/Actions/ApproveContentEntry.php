@@ -23,6 +23,7 @@ final class ApproveContentEntry
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly ContentStateMachine $machine,
+        private readonly CaptureRevision $captureRevision,
     ) {}
 
     public function __invoke(ContentType $contentType, Model $entry, ?DateTimeInterface $publishAt = null, ?User $actor = null): Model
@@ -35,6 +36,8 @@ final class ApproveContentEntry
         $entry->update(['status' => $to, 'published_at' => $publishAt ?? now()]);
 
         $this->audit->record('content.approved', $entry, ['content_type' => $contentType->key, 'to' => $to]);
+
+        ($this->captureRevision)($contentType, $entry, 'manual', $actor, 'Approbation');
 
         Hook::action('baobab.content.approved', $contentType, $entry);
         Hook::action('baobab.content.transitioned', $contentType, $entry, $from, $to, $actor);

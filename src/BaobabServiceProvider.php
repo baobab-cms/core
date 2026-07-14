@@ -13,6 +13,7 @@ use Baobab\Admin\Sidebar\SidebarItem;
 use Baobab\Audit\AuditLogger;
 use Baobab\Auth\TwoFactorManager;
 use Baobab\Console\Commands\ContentPublishDueCommand;
+use Baobab\Console\Commands\ContentPurgeTrashCommand;
 use Baobab\Console\Commands\ContentTypeBuildCommand;
 use Baobab\Console\Commands\ContentTypeMakeCommand;
 use Baobab\Console\Commands\ContentUnpublishDueCommand;
@@ -183,6 +184,7 @@ class BaobabServiceProvider extends ServiceProvider
                 MediaPurgeTrashCommand::class,
                 ContentPublishDueCommand::class,
                 ContentUnpublishDueCommand::class,
+                ContentPurgeTrashCommand::class,
             ]);
         }
 

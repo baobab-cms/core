@@ -109,4 +109,29 @@ class ContentType extends Model
     {
         return $this->unpublishAtEnabled() && Schema::hasColumn($this->table_name, 'unpublish_at');
     }
+
+    /**
+     * Quota de révisions (spec 09 §6) — `null` au blueprint retombe sur le
+     * réglage global `baobab.content.revisions_limit`. `0` désactive les
+     * révisions sur ce type.
+     */
+    public function revisionsLimit(): int
+    {
+        $declared = $this->blueprint['revisions']['limit'] ?? null;
+
+        return $declared ?? (int) config('baobab.content.revisions_limit', 50);
+    }
+
+    public function revisionsEnabled(): bool
+    {
+        return $this->revisionsLimit() !== 0;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function revisionsExcept(): array
+    {
+        return $this->blueprint['revisions']['except'] ?? [];
+    }
 }

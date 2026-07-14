@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Baobab\Admin\Access\Http\Controllers\AccessMatrixController;
 use Baobab\Admin\Account\Http\Controllers\SecurityController;
 use Baobab\Admin\Content\Http\Controllers\ContentController;
+use Baobab\Admin\Content\Http\Controllers\TrashController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
 use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
@@ -72,6 +73,8 @@ Route::prefix('media')
         Route::delete('/{media}', [MediaController::class, 'destroy'])->name('destroy');
     });
 
+Route::get('trash', [TrashController::class, 'index'])->name('trash.index');
+
 Route::prefix('content/{contentType}')
     ->name('content.')
     ->group(function (): void {
@@ -79,8 +82,20 @@ Route::prefix('content/{contentType}')
         Route::get('/create', [ContentController::class, 'create'])->name('create');
         Route::post('/', [ContentController::class, 'store'])->name('store');
         Route::post('/bulk-delete', [ContentController::class, 'bulkDestroy'])->name('bulk-delete');
+        Route::post('/bulk-restore', [ContentController::class, 'bulkRestore'])->name('bulk-restore');
+        Route::post('/bulk-force-destroy', [ContentController::class, 'bulkForceDestroy'])->name('bulk-force-destroy');
         Route::get('/{entry}/edit', [ContentController::class, 'edit'])->name('edit');
         Route::put('/{entry}', [ContentController::class, 'update'])->name('update');
         Route::delete('/{entry}', [ContentController::class, 'destroy'])->name('destroy');
+        Route::post('/{entry}/restore', [ContentController::class, 'restore'])->name('restore');
+        Route::delete('/{entry}/force', [ContentController::class, 'forceDestroy'])->name('force-destroy');
         Route::post('/{entry}/transition/{transition}', [ContentController::class, 'transition'])->name('transition');
+        Route::get('/{entry}/revisions', [ContentController::class, 'revisions'])->name('revisions');
+        Route::post('/{entry}/revisions/{revision}/restore', [ContentController::class, 'restoreRevision'])->name('revisions.restore');
+        Route::post('/{entry}/working-draft/publish', [ContentController::class, 'publishWorkingDraft'])->name('working-draft.publish');
+        Route::post('/{entry}/working-draft/discard', [ContentController::class, 'discardWorkingDraft'])->name('working-draft.discard');
+        Route::post('/{entry}/autosave', [ContentController::class, 'autosave'])->name('autosave');
+        Route::post('/{entry}/lock/heartbeat', [ContentController::class, 'heartbeat'])->name('lock.heartbeat');
+        Route::post('/{entry}/lock/release', [ContentController::class, 'releaseLock'])->name('lock.release');
+        Route::post('/{entry}/lock/take-over', [ContentController::class, 'takeOverLock'])->name('lock.take-over');
     });

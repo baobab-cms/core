@@ -174,6 +174,27 @@ final readonly class ContentTypeBlueprint
         return $this->data['unpublish_at'] ?? true;
     }
 
+    /**
+     * Quota de révisions du type (spec 09 §6, spec 02 §9 décision 4) — `null`
+     * signifie "utiliser `config('baobab.content.revisions_limit')`", `0`
+     * désactive les révisions sur ce type.
+     */
+    public function revisionsLimit(): ?int
+    {
+        return $this->data['revisions']['limit'] ?? null;
+    }
+
+    /**
+     * Champs exclus du snapshot de révision (spec 09 §6 : `"revisions":
+     * {"except": ["view_count"]}`).
+     *
+     * @return list<string>
+     */
+    public function revisionsExcept(): array
+    {
+        return $this->data['revisions']['except'] ?? [];
+    }
+
     public function blueprintVersion(): int
     {
         return $this->data['blueprint_version'] ?? 1;

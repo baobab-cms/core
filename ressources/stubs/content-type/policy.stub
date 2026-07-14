@@ -47,4 +47,19 @@ final class {{ key }}Policy
         return $user->can('{{ permission_prefix }}.publish_any')
             || ($user->can('{{ permission_prefix }}.publish') && ${{ var }}->author_id === $user->id);
     }
+
+    public function restore(User $user, {{ key }} ${{ var }}): bool
+    {
+        return $this->delete($user, ${{ var }});
+    }
+
+    /**
+     * Purge définitive (spec 09 §8) — permission globale dédiée, pas own/any
+     * : plus stricte que la simple mise à la corbeille, y compris pour le
+     * propriétaire.
+     */
+    public function forceDelete(User $user): bool
+    {
+        return $user->can('baobab.trash.purge');
+    }
 }

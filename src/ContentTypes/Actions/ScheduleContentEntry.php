@@ -24,6 +24,7 @@ final class ScheduleContentEntry
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly ContentStateMachine $machine,
+        private readonly CaptureRevision $captureRevision,
     ) {}
 
     public function __invoke(ContentType $contentType, Model $entry, DateTimeInterface $publishAt, ?User $actor = null): Model
@@ -34,6 +35,8 @@ final class ScheduleContentEntry
         $entry->update(['status' => 'scheduled', 'published_at' => $publishAt]);
 
         $this->audit->record('content.scheduled', $entry, ['content_type' => $contentType->key, 'published_at' => $publishAt]);
+
+        ($this->captureRevision)($contentType, $entry, 'manual', $actor, 'Programmation');
 
         Hook::action('baobab.content.scheduled', $contentType, $entry);
         Hook::action('baobab.content.transitioned', $contentType, $entry, $from, 'scheduled', $actor);

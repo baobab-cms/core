@@ -13,11 +13,16 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Crée ou met à jour une ligne de contenu d'un Content Type construit (M3
  * point 5). `author_id` n'est posé qu'à la création — une modification ne
- * change jamais la paternité (spec 05 §3.2, own/any repose dessus).
+ * change jamais la paternité (spec 05 §3.2, own/any repose dessus). Capture
+ * une révision `manual` après chaque sauvegarde effective (spec 09 §6) —
+ * fait partie de l'action elle-même, comme les hooks et l'audit.
  */
 final class SaveContentEntry
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly CaptureRevision $captureRevision,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -43,6 +48,8 @@ final class SaveContentEntry
         $entry->save();
 
         $this->audit->record($isNew ? 'content.created' : 'content.updated', $entry, ['content_type' => $contentType->key]);
+
+        ($this->captureRevision)($contentType, $entry, 'manual', $actor);
 
         Hook::action('baobab.content.saved', $contentType, $entry, $isNew, $data);
 

@@ -5,6 +5,66 @@
 @section('content')
     <x-baobab::page :title="$label">
         @if ($isEdit)
+            @if ($readOnly)
+                <x-baobab::card class="mb-6 border-danger/30 bg-danger/5">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm text-foreground">{{ $lockedBy }}</p>
+                        @if ($canTakeOverLock)
+                            <form
+                                method="POST"
+                                action="{{ route('admin.content.lock.take-over', ['contentType' => $slug, 'entry' => $entryId]) }}"
+                                onsubmit="return confirm('{{ __('baobab::admin.content.lock_take_over_confirm_title') }}')"
+                            >
+                                @csrf
+                                <x-baobab::button type="submit" variant="danger">{{ __('baobab::admin.content.lock_take_over_action') }}</x-baobab::button>
+                            </form>
+                        @endif
+                    </div>
+                </x-baobab::card>
+            @endif
+
+            @if ($workingDraft)
+                <x-baobab::card class="mb-6 border-primary/30 bg-primary/5">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <p class="text-sm text-foreground">
+                            {{ __('baobab::admin.content.working_draft_banner') }}
+                            <a href="{{ route('admin.content.revisions', ['contentType' => $slug, 'entry' => $entryId]) }}" class="text-primary hover:underline">{{ __('baobab::admin.content.working_draft_view_diff_action') }}</a>
+                        </p>
+                        <div class="flex gap-2">
+                            @if ($canPublish)
+                                <form method="POST" action="{{ route('admin.content.working-draft.publish', ['contentType' => $slug, 'entry' => $entryId]) }}">
+                                    @csrf
+                                    <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.content.working_draft_publish_action') }}</x-baobab::button>
+                                </form>
+                            @endif
+                            <form
+                                method="POST"
+                                action="{{ route('admin.content.working-draft.discard', ['contentType' => $slug, 'entry' => $entryId]) }}"
+                                onsubmit="return confirm('{{ __('baobab::admin.content.working_draft_discard_confirm_title') }}')"
+                            >
+                                @csrf
+                                <x-baobab::button type="submit" variant="secondary">{{ __('baobab::admin.content.working_draft_discard_action') }}</x-baobab::button>
+                            </form>
+                        </div>
+                    </div>
+                </x-baobab::card>
+            @endif
+
+            @if ($autosave)
+                <x-baobab::card class="mb-6 border-border bg-surface-subtle" x-data="{ dismissed: false }" x-show="!dismissed">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <p class="text-sm text-foreground">{{ __('baobab::admin.content.autosave_banner', ['date' => $autosave->updated_at->format('d/m/Y H:i')]) }}</p>
+                        <div class="flex gap-2">
+                            <form method="POST" action="{{ route('admin.content.revisions.restore', ['contentType' => $slug, 'entry' => $entryId, 'revision' => $autosave->id]) }}">
+                                @csrf
+                                <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.content.autosave_restore_action') }}</x-baobab::button>
+                            </form>
+                            <x-baobab::button type="button" variant="secondary" x-on:click="dismissed = true">{{ __('baobab::admin.content.autosave_ignore_action') }}</x-baobab::button>
+                        </div>
+                    </div>
+                </x-baobab::card>
+            @endif
+
             <x-baobab::card class="mb-6" :header="__('baobab::admin.content.status_card_title')">
                 <p class="text-sm text-muted">
                     {{ __('baobab::admin.content.status_label') }}:
@@ -95,8 +155,29 @@
             </x-baobab::card>
         @endif
 
+        @php
+            // Calculé en dehors de la balise du composant : Blade ne compile pas correctement
+            // des directives @if/@endif placées à l'intérieur de la liste d'attributs d'un tag
+            // de composant (<x-baobab::form ...>), contrairement à une balise HTML brute.
+            $editFormConfig = $isEdit ? [
+                'heartbeatUrl' => route('admin.content.lock.heartbeat', ['contentType' => $slug, 'entry' => $entryId]),
+                'releaseUrl' => route('admin.content.lock.release', ['contentType' => $slug, 'entry' => $entryId]),
+                'autosaveUrl' => route('admin.content.autosave', ['contentType' => $slug, 'entry' => $entryId]),
+                'heartbeatSeconds' => (int) config('baobab.content.lock_heartbeat_seconds', 30),
+                'autosaveSeconds' => (int) config('baobab.content.autosave_seconds', 60),
+                'readOnly' => (bool) ($readOnly ?? false),
+                'csrfToken' => csrf_token(),
+            ] : null;
+        @endphp
+
         <x-baobab::card>
-            <x-baobab::form method="{{ $formMethod }}" action="{{ $formAction }}">
+            <x-baobab::form
+                method="{{ $formMethod }}"
+                action="{{ $formAction }}"
+                x-data="contentEditForm(@js($editFormConfig))"
+                x-init="start()"
+            >
+                <fieldset @if ($readOnly ?? false) disabled @endif>
                 <div x-data="{ slugManuallyEdited: {{ $isEdit ? 'true' : 'false' }} }">
                     @foreach ($fields as $field)
                         @switch($field['type'])
@@ -208,21 +289,79 @@
                     @endforeach
                 </div>
 
-                <div class="flex gap-2">
-                    <x-baobab::button type="submit" variant="primary">
-                        {{ __('baobab::admin.content.save_action') }}
-                    </x-baobab::button>
+                @unless ($readOnly ?? false)
+                    <div class="flex gap-2">
+                        @if ($isEdit && ($canSaveAsDraft ?? false))
+                            <x-baobab::button type="submit" name="intent" value="update" variant="primary">
+                                {{ __('baobab::admin.content.update_action') }}
+                            </x-baobab::button>
+                            <x-baobab::button type="submit" name="intent" value="draft" variant="secondary">
+                                {{ __('baobab::admin.content.save_draft_action') }}
+                            </x-baobab::button>
+                        @else
+                            <x-baobab::button type="submit" variant="primary">
+                                {{ __('baobab::admin.content.save_action') }}
+                            </x-baobab::button>
+                        @endif
 
-                    <x-baobab::button :href="route('admin.content.index', ['contentType' => $slug])" variant="secondary">
-                        {{ __('baobab::admin.content.cancel_action') }}
-                    </x-baobab::button>
-                </div>
+                        <x-baobab::button :href="route('admin.content.index', ['contentType' => $slug])" variant="secondary">
+                            {{ __('baobab::admin.content.cancel_action') }}
+                        </x-baobab::button>
+                    </div>
+                @endunless
+                </fieldset>
             </x-baobab::form>
         </x-baobab::card>
     </x-baobab::page>
 
     @once
         <script>
+            function contentEditForm(config) {
+                return {
+                    heartbeatTimer: null,
+                    autosaveTimer: null,
+
+                    start() {
+                        if (!config || config.readOnly) return;
+
+                        this.heartbeatTimer = setInterval(() => this.heartbeat(), config.heartbeatSeconds * 1000);
+                        this.autosaveTimer = setInterval(() => this.autosave(), config.autosaveSeconds * 1000);
+
+                        window.addEventListener('beforeunload', () => this.release());
+                    },
+
+                    async heartbeat() {
+                        const response = await fetch(config.heartbeatUrl, {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': config.csrfToken, Accept: 'application/json' },
+                        });
+                        const data = await response.json();
+
+                        if (data.locked) {
+                            clearInterval(this.heartbeatTimer);
+                            clearInterval(this.autosaveTimer);
+                            window.location.reload();
+                        }
+                    },
+
+                    autosave() {
+                        const form = this.$root;
+                        const body = new FormData(form);
+
+                        fetch(config.autosaveUrl, {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': config.csrfToken, Accept: 'application/json' },
+                            body,
+                            keepalive: true,
+                        });
+                    },
+
+                    release() {
+                        navigator.sendBeacon(config.releaseUrl, new Blob([JSON.stringify({ _token: config.csrfToken })], { type: 'application/json' }));
+                    },
+                };
+            }
+
             function baobabSlugify(value) {
                 const accents = { à:'a', â:'a', ä:'a', á:'a', ã:'a', å:'a', ç:'c', é:'e', è:'e', ê:'e', ë:'e', î:'i', ï:'i', ì:'i', í:'i', ô:'o', ö:'o', ò:'o', ó:'o', õ:'o', ù:'u', û:'u', ü:'u', ú:'u', ñ:'n', ý:'y', ÿ:'y' };
 
