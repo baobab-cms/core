@@ -152,6 +152,17 @@ final readonly class ModuleManifest
     }
 
     /**
+     * Notifications déclarées par ce module (spec 11 §6), résolues par
+     * `Baobab\Notify\Notifier` tant que le module est actif.
+     *
+     * @return list<array{key: string, description?: string, channels: list<string>, mail_template?: string, configurable?: bool}>
+     */
+    public function notifications(): array
+    {
+        return $this->data['notifications'] ?? [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

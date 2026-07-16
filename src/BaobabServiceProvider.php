@@ -29,6 +29,8 @@ use Baobab\Console\Commands\ModuleDeactivateCommand;
 use Baobab\Console\Commands\ModuleInstallCommand;
 use Baobab\Console\Commands\ModuleListCommand;
 use Baobab\Console\Commands\ModuleUninstallCommand;
+use Baobab\Console\Commands\NotificationsPurgeCommand;
+use Baobab\Console\Commands\NotifyTestCommand;
 use Baobab\Console\Commands\SuperAdminCommand;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Fields\Types\BooleanField;
@@ -56,6 +58,7 @@ use Baobab\Media\Conversions\PresetRegistry;
 use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
 use Baobab\Modules\ModuleDiscovery;
+use Baobab\Notify\Notifier;
 use Baobab\Scheduler\SchedulerRegistrar;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
@@ -72,9 +75,11 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Intervention\Image\ImageManager;
 use Mews\Purifier\PurifierServiceProvider;
 use PragmaRX\Google2FA\Google2FA;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionServiceProvider;
 use Throwable;
@@ -159,9 +164,13 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerBrandingComposer();
 
+        $this->registerNotificationCenterComposer();
+
         $this->registerAuditListeners();
 
         $this->registerMediaUsageListener();
+
+        $this->registerWorkflowNotificationListeners();
 
         $this->registerCoreSidebarItems();
 
@@ -193,6 +202,8 @@ class BaobabServiceProvider extends ServiceProvider
                 ContentPurgeTrashCommand::class,
                 MailTestCommand::class,
                 MailTemplatesCommand::class,
+                NotifyTestCommand::class,
+                NotificationsPurgeCommand::class,
             ]);
         }
 
@@ -313,6 +324,118 @@ class BaobabServiceProvider extends ServiceProvider
         View::composer('baobab::layouts.admin', function (ViewContract $view): void {
             $view->with('branding', BrandingSetting::current()->load(['logo', 'favicon']));
         });
+    }
+
+    /**
+     * Centre de notifications (spec 11 §8) — seul le nombre de non-lus est
+     * calculé côté serveur (peinture initiale de la cloche) ; la liste elle-
+     * même est chargée en JS via l'endpoint `admin.notifications.poll`, pas
+     * dupliquée ici.
+     */
+    private function registerNotificationCenterComposer(): void
+    {
+        View::composer('baobab::layouts.partials.admin-topbar', function (ViewContract $view): void {
+            /** @var User|null $user */
+            $user = auth('baobab')->user();
+
+            $view->with('unreadNotificationsCount', $user?->unreadNotifications()->count() ?? 0);
+        });
+    }
+
+    /**
+     * Le workflow de validation est le premier client des notifications
+     * (spec 09 §5, spec 11 §6, M5 point 4) : soumission → détenteurs de
+     * `publish_any` sur le type, approbation/rejet → auteur. Écoute les
+     * hooks déjà émis par les Actions de M5 point 3, ne les modifie pas.
+     * Une même paire de closures couvre les variantes natives et
+     * working-draft-review : leurs hooks partagent la même forme
+     * ($contentType, $entry[, $comment]).
+     */
+    private function registerWorkflowNotificationListeners(): void
+    {
+        /** @var HookRegistry $registry */
+        $registry = $this->app->make(HookRegistry::class);
+
+        $notifyReviewers = function (ContentType $contentType, Model $entry): void {
+            $reviewers = $this->usersWithPermission('content.'.Str::snake($contentType->key).'.publish_any');
+
+            if ($reviewers->isEmpty()) {
+                return;
+            }
+
+            $this->app->make(Notifier::class)->send(
+                'core.content.review_requested',
+                $reviewers,
+                $this->contentNotificationData($contentType, $entry),
+            );
+        };
+
+        $notifyAuthorApproved = function (ContentType $contentType, Model $entry): void {
+            $this->notifyContentAuthor($contentType, $entry, 'core.content.review_approved');
+        };
+
+        $notifyAuthorRejected = function (ContentType $contentType, Model $entry, string $comment): void {
+            $this->notifyContentAuthor($contentType, $entry, 'core.content.review_rejected', ['comment' => $comment]);
+        };
+
+        $registry->listen('baobab.content.submitted', $notifyReviewers);
+        $registry->listen('baobab.content.working_draft.submitted', $notifyReviewers);
+        $registry->listen('baobab.content.approved', $notifyAuthorApproved);
+        $registry->listen('baobab.content.working_draft.approved', $notifyAuthorApproved);
+        $registry->listen('baobab.content.rejected', $notifyAuthorRejected);
+        $registry->listen('baobab.content.working_draft.rejected', $notifyAuthorRejected);
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     */
+    private function notifyContentAuthor(ContentType $contentType, Model $entry, string $notificationKey, array $extra = []): void
+    {
+        /** @var int|null $authorId */
+        $authorId = $entry->getAttribute('author_id');
+        $author = $authorId !== null ? User::find($authorId) : null;
+
+        if ($author === null) {
+            return;
+        }
+
+        $this->app->make(Notifier::class)->send(
+            $notificationKey,
+            [$author],
+            $this->contentNotificationData($contentType, $entry, $extra),
+        );
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    private function usersWithPermission(string $permission): Collection
+    {
+        // Permission::findByName() (utilisée par le scope ->permission()) lève
+        // si la permission n'a encore jamais été accordée à personne — état
+        // normal pour un type de contenu qui vient d'activer le workflow.
+        if (! Permission::where('name', $permission)->where('guard_name', 'baobab')->exists()) {
+            return new Collection;
+        }
+
+        return User::permission($permission)->get();
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    private function contentNotificationData(ContentType $contentType, Model $entry, array $extra = []): array
+    {
+        $titleField = $contentType->blueprint['title_field'] ?? ($contentType->blueprint['fields'][0]['key'] ?? null);
+        $title = $titleField !== null ? (string) $entry->getAttribute($titleField) : '#'.$entry->getKey();
+        $slug = Str::kebab(Str::plural($contentType->key));
+
+        return array_merge([
+            'content_type' => $contentType->blueprint['label']['singular'] ?? $contentType->key,
+            'content_title' => $title,
+            'url' => route('admin.content.edit', ['contentType' => $slug, 'entry' => $entry->getKey()]),
+        ], $extra);
     }
 
     /**

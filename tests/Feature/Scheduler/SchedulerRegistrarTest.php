@@ -16,6 +16,16 @@ it('registers the two Core content tasks every minute', function () {
         ->toContain('content:unpublish-due');
 });
 
+it('registers the notifications purge command daily', function () {
+    $schedule = app(Schedule::class);
+
+    app(SchedulerRegistrar::class)->register($schedule);
+
+    $commands = collect($schedule->events())->map(fn ($event) => $event->command)->implode(' | ');
+
+    expect($commands)->toContain('notifications:purge-old');
+});
+
 it('registers a task declared by an active module', function () {
     Module::create([
         'name' => 'acme/newsletter',

@@ -1,0 +1,27 @@
+{
+  "name": "acme/notifier",
+  "title": "Notifier fixture",
+  "description": "Fixture pour tester la validation des notifications déclarées (NotificationValidatorTest).",
+  "version": "1.0.0",
+  "type": "module",
+  "provider": "Acme\\Notifier\\Providers\\NotifierServiceProvider",
+  "mails": [
+    {
+      "key": "acme.notifier.pending",
+      "description": "Envoyé quand un élément attend une action.",
+      "variables": {
+        "item.name": "Nom de l'élément"
+      },
+      "defaults": "mails/pending.json"
+    }
+  ],
+  "notifications": [
+    {
+      "key": "acme.notifier.pending",
+      "description": "Un élément attend une action.",
+      "channels": ["database", "mail"],
+      "mail_template": "acme.notifier.pending",
+      "configurable": true
+    }
+  ]
+}

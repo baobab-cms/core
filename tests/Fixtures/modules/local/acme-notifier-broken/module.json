@@ -1,0 +1,16 @@
+{
+  "name": "acme/notifier-broken",
+  "title": "Notifier fixture (broken)",
+  "description": "Fixture pour tester le rejet d'une notification dont le mail_template ne résout vers aucun template déclaré (NotificationValidatorTest).",
+  "version": "1.0.0",
+  "type": "module",
+  "provider": "Acme\\NotifierBroken\\Providers\\NotifierBrokenServiceProvider",
+  "notifications": [
+    {
+      "key": "acme.notifier_broken.pending",
+      "channels": ["database", "mail"],
+      "mail_template": "acme.notifier_broken.does_not_exist",
+      "configurable": true
+    }
+  ]
+}

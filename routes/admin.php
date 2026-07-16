@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Baobab\Admin\Access\Http\Controllers\AccessMatrixController;
+use Baobab\Admin\Account\Http\Controllers\NotificationPreferencesController;
 use Baobab\Admin\Account\Http\Controllers\SecurityController;
 use Baobab\Admin\Branding\Http\Controllers\BrandingController;
 use Baobab\Admin\Content\Http\Controllers\ContentController;
@@ -10,6 +11,7 @@ use Baobab\Admin\Content\Http\Controllers\TrashController;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
 use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
+use Baobab\Admin\Notifications\Http\Controllers\NotificationController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
 use Baobab\Audit\Http\Controllers\AuditLogController;
@@ -25,6 +27,22 @@ Route::prefix('account/security')
         Route::post('/confirm', [SecurityController::class, 'confirm'])->name('confirm');
         Route::post('/recovery-codes', [SecurityController::class, 'regenerateRecoveryCodes'])->name('recovery-codes.regenerate');
         Route::post('/disable', [SecurityController::class, 'disable'])->name('disable');
+    });
+
+Route::prefix('account/notifications')
+    ->name('account.notifications.')
+    ->group(function (): void {
+        Route::get('/', [NotificationPreferencesController::class, 'show'])->name('show');
+        Route::post('/', [NotificationPreferencesController::class, 'update'])->name('update');
+    });
+
+Route::prefix('notifications')
+    ->name('notifications.')
+    ->group(function (): void {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('/poll', [NotificationController::class, 'poll'])->name('poll');
+        Route::post('/{notification}/read', [NotificationController::class, 'markRead'])->name('read');
+        Route::post('/read-all', [NotificationController::class, 'markAllRead'])->name('read-all');
     });
 
 Route::middleware('can:baobab.audit.view')

@@ -253,6 +253,21 @@ return [
         'examine_action' => 'Examiner',
     ],
 
+    'notifications' => [
+        'preferences_title' => 'Notifications',
+        'preferences_empty' => 'Aucune notification configurable pour l\'instant.',
+        'preferences_updated' => 'Préférences de notification mises à jour.',
+        'column_notification' => 'Notification',
+        'channel_database' => 'Centre de notifications',
+        'channel_mail' => 'E-mail',
+        'save_action' => 'Enregistrer',
+        'title' => 'Notifications',
+        'empty' => 'Aucune notification pour l\'instant.',
+        'mark_read_action' => 'Marquer comme lu',
+        'mark_all_read_action' => 'Tout marquer comme lu',
+        'view_all_action' => 'Voir toutes les notifications',
+    ],
+
     'media' => [
         'title' => 'Médiathèque',
         'search_placeholder' => 'Rechercher…',

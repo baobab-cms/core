@@ -1,0 +1,4 @@
+{
+  "subject": "À valider : {{ content_title }}",
+  "body": "Un contenu {{ content_type }} — « {{ content_title }} » — attend votre validation.{{# if url }} <a href=\"{{ url }}\">Examiner</a>.{{/ if }}"
+}

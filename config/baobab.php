@@ -213,6 +213,79 @@ return [
                 ],
                 'defaults' => __DIR__.'/../resources/mails/core/test.json',
             ],
+            [
+                'key' => 'core.content.review_requested',
+                'description' => 'Envoyé aux détenteurs de publish_any quand un contenu est soumis à validation (spec 09 §5, M5 point 4).',
+                'variables' => [
+                    'content_type' => 'Libellé du Content Type',
+                    'content_title' => 'Titre/identifiant du contenu',
+                    'url' => 'Lien vers le formulaire d\'édition',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/content-review-requested.json',
+            ],
+            [
+                'key' => 'core.content.review_approved',
+                'description' => 'Envoyé à l\'auteur quand son contenu est approuvé (spec 09 §5, M5 point 4).',
+                'variables' => [
+                    'content_type' => 'Libellé du Content Type',
+                    'content_title' => 'Titre/identifiant du contenu',
+                    'url' => 'Lien vers le formulaire d\'édition',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/content-review-approved.json',
+            ],
+            [
+                'key' => 'core.content.review_rejected',
+                'description' => 'Envoyé à l\'auteur quand son contenu est rejeté (spec 09 §5, M5 point 4).',
+                'variables' => [
+                    'content_type' => 'Libellé du Content Type',
+                    'content_title' => 'Titre/identifiant du contenu',
+                    'comment' => [
+                        'label' => 'Commentaire de rejet',
+                        'required' => true,
+                    ],
+                    'url' => 'Lien vers le formulaire d\'édition',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/content-review-rejected.json',
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notifications (spec 11 §5-8, M5 point 4)
+    |--------------------------------------------------------------------------
+    |
+    | declarations : notifications du Core lui-même (`core.*`), même forme que
+    | la section "notifications" d'un module.json — lue par NotificationRegistry
+    | au même titre que les modules actifs.
+    | retention_days : rétention des notifications `database` avant purge par
+    | le scheduler (spec 11 §8, défaut 90).
+    |
+    */
+    'notifications' => [
+        'retention_days' => (int) env('BAOBAB_NOTIFICATIONS_RETENTION_DAYS', 90),
+        'declarations' => [
+            [
+                'key' => 'core.content.review_requested',
+                'description' => 'Un contenu attend une validation.',
+                'channels' => ['database', 'mail'],
+                'mail_template' => 'core.content.review_requested',
+                'configurable' => true,
+            ],
+            [
+                'key' => 'core.content.review_approved',
+                'description' => 'Un contenu a été approuvé.',
+                'channels' => ['database', 'mail'],
+                'mail_template' => 'core.content.review_approved',
+                'configurable' => true,
+            ],
+            [
+                'key' => 'core.content.review_rejected',
+                'description' => 'Un contenu a été rejeté.',
+                'channels' => ['database', 'mail'],
+                'mail_template' => 'core.content.review_rejected',
+                'configurable' => true,
+            ],
         ],
     ],
 

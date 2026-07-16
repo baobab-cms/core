@@ -1,0 +1,16 @@
+{
+  "name": "acme/notifier-core-template",
+  "title": "Notifier fixture (Core template)",
+  "description": "Fixture pour tester qu'une notification peut référencer un template d'e-mail Core (config('baobab.mail.templates')) sans en déclarer un localement.",
+  "version": "1.0.0",
+  "type": "module",
+  "provider": "Acme\\NotifierCoreTemplate\\Providers\\NotifierCoreTemplateServiceProvider",
+  "notifications": [
+    {
+      "key": "acme.notifier_core_template.pending",
+      "channels": ["database", "mail"],
+      "mail_template": "core.test",
+      "configurable": true
+    }
+  ]
+}

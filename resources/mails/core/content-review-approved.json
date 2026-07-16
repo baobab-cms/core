@@ -1,0 +1,4 @@
+{
+  "subject": "Approuvé : {{ content_title }}",
+  "body": "Votre contenu {{ content_type }} — « {{ content_title }} » — a été approuvé.{{# if url }} <a href=\"{{ url }}\">Voir</a>.{{/ if }}"
+}

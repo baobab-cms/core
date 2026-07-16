@@ -315,6 +315,67 @@
                 }
             }
         },
+        "notifications": {
+            "type": "array",
+            "description": "Notifications déclarées par ce module (spec 11 §6), résolues par Baobab\\Notify\\Notifier.",
+            "items": {
+                "type": "object",
+                "required": [
+                    "key",
+                    "channels"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Identifiant stable, préfixé par le slug du module ('core.' réservé au noyau).",
+                        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_-]*)+$"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "channels": {
+                        "type": "array",
+                        "description": "Canaux par défaut.",
+                        "minItems": 1,
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "database",
+                                "mail"
+                            ]
+                        }
+                    },
+                    "mail_template": {
+                        "type": "string",
+                        "description": "Clé du template d'e-mail (spec 13 §3.1) — requis si 'mail' figure dans channels."
+                    },
+                    "configurable": {
+                        "type": "boolean",
+                        "description": "false verrouille les préférences (notifications de sécurité non désactivables, spec 11 §6). Défaut true.",
+                        "default": true
+                    }
+                },
+                "allOf": [
+                    {
+                        "if": {
+                            "properties": {
+                                "channels": {
+                                    "contains": {
+                                        "const": "mail"
+                                    }
+                                }
+                            }
+                        },
+                        "then": {
+                            "required": [
+                                "mail_template"
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
         "autoload": {
             "type": "object",
             "description": "PSR-4 mappings for classes shipped by this module, registered dynamically by ModuleAutoloader when the module is active (spec 01 §7.1 decision 1). Same syntax as composer.json's autoload.psr-4.",

@@ -1,0 +1,4 @@
+{
+  "subject": "En attente : {{ item.name }}",
+  "body": "L'élément {{ item.name }} attend une action de votre part."
+}

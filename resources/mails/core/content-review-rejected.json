@@ -1,0 +1,4 @@
+{
+  "subject": "Rejeté : {{ content_title }}",
+  "body": "Votre contenu {{ content_type }} — « {{ content_title }} » — a été rejeté.<br>Commentaire : {{ comment }}{{# if url }} <a href=\"{{ url }}\">Modifier</a>.{{/ if }}"
+}
