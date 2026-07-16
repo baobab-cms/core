@@ -14,6 +14,7 @@ use Baobab\Modules\Models\ModulePermission;
 use Baobab\Modules\ModuleDiscovery;
 use Baobab\Modules\ModuleManifest;
 use Baobab\Notify\NotificationValidator;
+use Baobab\Themes\Validation\ThemeValidator;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
@@ -30,6 +31,7 @@ final class InstallModule
         private readonly DependencyResolver $dependencies,
         private readonly MailTemplateValidator $mailTemplates,
         private readonly NotificationValidator $notifications,
+        private readonly ThemeValidator $themes,
     ) {}
 
     public function __invoke(string $name): Module
@@ -46,6 +48,10 @@ final class InstallModule
         $this->dependencies->assertNoCycle($manifest->name(), $manifest->requiresModules(), Module::all());
         $this->mailTemplates->assertValid($manifest, $discovered->path);
         $this->notifications->assertValid($manifest);
+
+        if ($manifest->type() === 'theme') {
+            $this->themes->assertValid($manifest, $discovered->path);
+        }
 
         // DDL migrations must run outside any transaction: on MySQL/MariaDB a
         // CREATE TABLE causes an implicit commit that would silently break an

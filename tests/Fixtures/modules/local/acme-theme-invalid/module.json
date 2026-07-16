@@ -1,0 +1,11 @@
+{
+  "name": "acme/theme-invalid",
+  "title": "Acme Theme Invalid",
+  "description": "Fixture thème délibérément invalide (spec 03 §10.3) — cumule plusieurs motifs bloquants pour tester le rejet à l'installation : @php dans une vue, eval() dans le provider, fichier PHP dans public/.",
+  "version": "1.0.0",
+  "type": "theme",
+  "provider": "Acme\\ThemeInvalid\\Providers\\ThemeInvalidServiceProvider",
+  "theme": {
+    "parent": null
+  }
+}

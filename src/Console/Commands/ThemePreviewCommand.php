@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 
 final class ThemePreviewCommand extends Command
 {
-    protected $signature = 'theme:preview {name : The theme name (vendor/slug)}';
+    protected $signature = 'baobab:theme:preview {name : The theme name (vendor/slug)}';
 
     protected $description = 'Print a signed link that previews an installed theme without activating it.';
 

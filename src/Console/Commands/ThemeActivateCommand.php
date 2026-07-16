@@ -10,7 +10,7 @@ use Throwable;
 
 final class ThemeActivateCommand extends Command
 {
-    protected $signature = 'theme:activate {name : The theme name (vendor/slug)}';
+    protected $signature = 'baobab:theme:activate {name : The theme name (vendor/slug)}';
 
     protected $description = 'Activate an installed theme, deactivating the currently active one.';
 

@@ -34,6 +34,7 @@ use Baobab\Console\Commands\NotifyTestCommand;
 use Baobab\Console\Commands\SuperAdminCommand;
 use Baobab\Console\Commands\ThemeActivateCommand;
 use Baobab\Console\Commands\ThemePreviewCommand;
+use Baobab\Console\Commands\ThemeValidateCommand;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Fields\Types\BooleanField;
 use Baobab\ContentTypes\Fields\Types\DateField;
@@ -214,6 +215,7 @@ class BaobabServiceProvider extends ServiceProvider
                 NotificationsPurgeCommand::class,
                 ThemeActivateCommand::class,
                 ThemePreviewCommand::class,
+                ThemeValidateCommand::class,
             ]);
         }
 
