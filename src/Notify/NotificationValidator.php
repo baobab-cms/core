@@ -35,7 +35,15 @@ final class NotificationValidator
             return;
         }
 
-        $mailTemplate = $notification['mail_template'];
+        // Le schéma JSON impose mail_template dès que "mail" figure dans
+        // channels (contrainte croisée que PHPStan ne peut pas déduire de la
+        // forme du tableau) — absent malgré tout, on échoue avec le même
+        // message que "template inconnu" plutôt qu'une erreur de type.
+        $mailTemplate = $notification['mail_template'] ?? null;
+
+        if ($mailTemplate === null) {
+            throw InvalidNotificationException::unknownMailTemplate($notification['key'], '(non déclaré)');
+        }
 
         $declaredByModule = collect($manifest->mails())->contains(fn (array $mail) => $mail['key'] === $mailTemplate);
 
