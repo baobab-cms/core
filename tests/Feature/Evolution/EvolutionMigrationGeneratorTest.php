@@ -116,6 +116,45 @@ it('generates a ->change() line for a safe type conversion', function () {
         ->and($contents)->toContain("\$table->string('notes', 255)->change();");
 });
 
+it('returns null and writes nothing for an added field without its own column', function () {
+    $contentType = new ContentType(['key' => 'Car', 'table_name' => 'ct_cars']);
+    $diff = diffWith(added: [['key' => 'gallery', 'type' => 'gallery']]);
+
+    $filename = app(EvolutionMigrationGenerator::class)->generate($contentType, $diff, evolutionModuleDir());
+
+    expect($filename)->toBeNull()
+        ->and(File::glob(evolutionModuleDir().'/database/migrations/*.php'))->toBe([]);
+});
+
+it('returns null and writes nothing for a removed field without its own column', function () {
+    $contentType = new ContentType(['key' => 'Car', 'table_name' => 'ct_cars']);
+    $diff = diffWith(removed: [['key' => 'gallery', 'type' => 'gallery']]);
+
+    $filename = app(EvolutionMigrationGenerator::class)->generate($contentType, $diff, evolutionModuleDir());
+
+    expect($filename)->toBeNull()
+        ->and(File::glob(evolutionModuleDir().'/database/migrations/*.php'))->toBe([]);
+});
+
+it('skips a columnless field while still emitting the column for a sibling added field', function () {
+    $contentType = new ContentType(['key' => 'Car', 'table_name' => 'ct_cars']);
+    $diff = diffWith(added: [
+        ['key' => 'gallery', 'type' => 'gallery'],
+        ['key' => 'mileage', 'type' => 'integer'],
+    ]);
+
+    $filename = app(EvolutionMigrationGenerator::class)->generate($contentType, $diff, evolutionModuleDir());
+
+    if ($filename === null) {
+        throw new RuntimeException('Expected a migration file to be generated for the sibling added field.');
+    }
+
+    $contents = (string) file_get_contents(evolutionModuleDir().'/'.$filename);
+
+    expect($contents)->toContain("\$table->integer('mileage');")
+        ->and($contents)->not->toContain('gallery');
+});
+
 it('refuses a type conversion outside the safe whitelist', function () {
     $contentType = new ContentType(['key' => 'Car', 'table_name' => 'ct_cars']);
     $diff = diffWith(typeChanged: [[

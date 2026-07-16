@@ -247,6 +247,15 @@ return [
                 ],
                 'defaults' => __DIR__.'/../resources/mails/core/content-review-rejected.json',
             ],
+            [
+                'key' => 'core.security.impersonation_started',
+                'description' => 'Envoyé à un utilisateur quand un administrateur démarre une impersonation sur son compte (spec 11 §6, notification de sécurité non désactivable).',
+                'variables' => [
+                    'actor_name' => 'Nom de la personne qui a démarré l\'impersonation',
+                    'occurred_at' => 'Date/heure de l\'impersonation',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/security-impersonation-started.json',
+            ],
         ],
     ],
 
@@ -285,6 +294,13 @@ return [
                 'channels' => ['database', 'mail'],
                 'mail_template' => 'core.content.review_rejected',
                 'configurable' => true,
+            ],
+            [
+                'key' => 'core.security.impersonation_started',
+                'description' => 'Quelqu\'un s\'est connecté en tant que vous.',
+                'channels' => ['database', 'mail'],
+                'mail_template' => 'core.security.impersonation_started',
+                'configurable' => false,
             ],
         ],
     ],

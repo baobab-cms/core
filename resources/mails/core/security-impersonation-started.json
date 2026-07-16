@@ -1,0 +1,4 @@
+{
+  "subject": "Connexion en tant que vous",
+  "body": "{{ actor_name }} s'est connecté(e) à l'administration en tant que vous le {{ occurred_at }}. Si cette action ne vous est pas familière, contactez un administrateur."
+}

@@ -47,12 +47,15 @@ final class MediaPolicy
     }
 
     /**
-     * Purge définitive (M4 point 3) — irréversible, réservée à `delete_any`
-     * même pour le propriétaire : barre plus haute que la simple mise à la
-     * corbeille.
+     * Purge définitive — irréversible, réservée à `baobab.trash.purge` (spec
+     * 09 §8 : permission générique transverse à tout modèle avec soft
+     * deletes), pas à `delete_any` qui gouverne la simple mise à la corbeille.
+     * Harmonisé avec la purge de contenu (M5 point 2) le 16 juillet 2026
+     * (suivi n° 43) — jusqu'ici incohérent avec le média, resté sur
+     * `delete_any` depuis M4.
      */
     public function forceDelete(User $user, Media $media): bool
     {
-        return $user->can('baobab.media.delete_any');
+        return $user->can('baobab.trash.purge');
     }
 }

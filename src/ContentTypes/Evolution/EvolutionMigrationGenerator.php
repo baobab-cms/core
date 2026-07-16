@@ -57,14 +57,29 @@ final class EvolutionMigrationGenerator
 
         foreach ($diff['added'] as $field) {
             $fieldType = $this->fields->resolve((string) $field['type']);
-            $up[] = '            '.$fieldType->columnDefinition((string) $field['key'], $field['options'] ?? []);
+            $columnDefinition = $fieldType->columnDefinition((string) $field['key'], $field['options'] ?? []);
+
+            // Un champ sans colonne propre (ex. "gallery", matérialisé dans
+            // media_usages) n'a rien à ajouter/retirer au schéma — le laisser
+            // passer produirait un up() no-op et un down() cassé (n° 37).
+            if ($columnDefinition === '') {
+                continue;
+            }
+
+            $up[] = '            '.$columnDefinition;
             $down[] = "            \$table->dropColumn('{$field['key']}');";
         }
 
         foreach ($diff['removed'] as $field) {
-            $up[] = "            \$table->dropColumn('{$field['key']}');";
             $fieldType = $this->fields->resolve((string) $field['type']);
-            $down[] = '            '.$fieldType->columnDefinition((string) $field['key'], $field['options'] ?? []);
+            $columnDefinition = $fieldType->columnDefinition((string) $field['key'], $field['options'] ?? []);
+
+            if ($columnDefinition === '') {
+                continue;
+            }
+
+            $up[] = "            \$table->dropColumn('{$field['key']}');";
+            $down[] = '            '.$columnDefinition;
         }
 
         foreach ($diff['renamed'] as $rename) {

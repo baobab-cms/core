@@ -598,7 +598,7 @@ it('forbids restoring another user\'s trashed media without delete_any', functio
         ->assertForbidden();
 });
 
-it('forbids permanently purging without delete_any even for the owner', function () {
+it('forbids permanently purging without trash.purge even for the owner', function () {
     $owner = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
     $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
         'file' => new UploadedFile(createTestJpeg(), 'owner-purge.jpg', 'image/jpeg', null, true),
@@ -611,7 +611,7 @@ it('forbids permanently purging without delete_any even for the owner', function
         ->assertForbidden();
 });
 
-it('permanently purges a trashed media with delete_any', function () {
+it('permanently purges a trashed media with trash.purge', function () {
     $owner = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
     $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
         'file' => new UploadedFile(createTestJpeg(), 'admin-purge.jpg', 'image/jpeg', null, true),
@@ -620,7 +620,7 @@ it('permanently purges a trashed media with delete_any', function () {
     $path = $media->path;
     $this->actingAs($owner, 'baobab')->delete(route('admin.media.destroy', ['media' => $media->id]));
 
-    $manager = mediaActor(['baobab.media.delete_any']);
+    $manager = mediaActor(['baobab.trash.purge']);
     $this->actingAs($manager, 'baobab')
         ->delete(route('admin.media.force-destroy', ['media' => $media->id]))
         ->assertRedirect(route('admin.media.index', ['trashed' => 1]));
@@ -665,7 +665,7 @@ it('bulk restores selected trashed media', function () {
     expect(Media::find($media->id))->not->toBeNull();
 });
 
-it('bulk purges selected trashed media with delete_any only', function () {
+it('bulk purges selected trashed media with trash.purge only', function () {
     $owner = mediaActor(['baobab.media.upload', 'baobab.media.delete']);
     $this->actingAs($owner, 'baobab')->post(route('admin.media.store'), [
         'file' => new UploadedFile(createTestJpeg(), 'bulk-purge.jpg', 'image/jpeg', null, true),
@@ -678,7 +678,7 @@ it('bulk purges selected trashed media with delete_any only', function () {
         ->assertRedirect();
     expect(Media::withTrashed()->find($media->id))->not->toBeNull();
 
-    $manager = mediaActor(['baobab.media.delete_any']);
+    $manager = mediaActor(['baobab.trash.purge']);
     $this->actingAs($manager, 'baobab')
         ->post(route('admin.media.bulk-force-destroy'), ['ids' => [$media->id]])
         ->assertRedirect();

@@ -172,6 +172,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerWorkflowNotificationListeners();
 
+        $this->registerSecurityNotificationListeners();
+
         $this->registerCoreSidebarItems();
 
         $this->registerCoreFieldTypes();
@@ -384,6 +386,26 @@ class BaobabServiceProvider extends ServiceProvider
         $registry->listen('baobab.content.working_draft.approved', $notifyAuthorApproved);
         $registry->listen('baobab.content.rejected', $notifyAuthorRejected);
         $registry->listen('baobab.content.working_draft.rejected', $notifyAuthorRejected);
+    }
+
+    /**
+     * Notification de sécurité `core.security.*` (spec 11 §6, `configurable:
+     * false`) — seule « impersonation subie » est câblée ici (suivi n° 47) :
+     * « nouvel appareil » et « changement de mot de passe » n'ont pas
+     * d'infra/flow dédié dans le code actuel, câblage laissé différé.
+     */
+    private function registerSecurityNotificationListeners(): void
+    {
+        /** @var HookRegistry $registry */
+        $registry = $this->app->make(HookRegistry::class);
+
+        $registry->listen('baobab.user.impersonation.started', function (User $actor, User $target): void {
+            $this->app->make(Notifier::class)->send(
+                'core.security.impersonation_started',
+                [$target],
+                ['actor_name' => $actor->name, 'occurred_at' => now()->toIso8601String()],
+            );
+        });
     }
 
     /**
