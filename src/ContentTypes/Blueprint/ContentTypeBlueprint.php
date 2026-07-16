@@ -7,8 +7,10 @@ namespace Baobab\ContentTypes\Blueprint;
 use Baobab\ContentTypes\Exceptions\InvalidBlueprintException;
 use Baobab\ContentTypes\Exceptions\UnknownRelationTargetException;
 use Baobab\ContentTypes\Fields\FieldRegistry;
+use Baobab\ContentTypes\Models\ContentType;
 use Baobab\ContentTypes\Relations\RelationTargetResolver;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 /**
  * Représentation validée d'un blueprint de Content Type (spec 02 §1.2, §9).
@@ -39,6 +41,7 @@ final readonly class ContentTypeBlueprint
         self::validateFields($data['fields'] ?? [], $fieldRegistry ?? app(FieldRegistry::class));
         self::validateRelations($data['relations'] ?? [], $relationTargets ?? app(RelationTargetResolver::class));
         self::validateTitleField($data);
+        self::validateUrlPrefix($data);
 
         return new self($data);
     }
@@ -130,6 +133,48 @@ final readonly class ContentTypeBlueprint
         }
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private static function validateUrlPrefix(array $data): void
+    {
+        if (! ($data['is_addressable'] ?? false)) {
+            return;
+        }
+
+        $prefix = self::resolveUrlPrefix($data);
+
+        /** @var list<string> $reserved */
+        $reserved = config('baobab.rendering.reserved_prefixes', [config('baobab.admin.path', 'admin'), 'api']);
+
+        if (in_array($prefix, $reserved, true)) {
+            throw InvalidBlueprintException::forField(
+                'url_prefix',
+                "Le préfixe « {$prefix} » est réservé et ne peut pas être utilisé par un Content Type."
+            );
+        }
+
+        $taken = ContentType::where('is_addressable', true)
+            ->where('key', '!=', $data['key'])
+            ->get()
+            ->contains(fn (ContentType $other): bool => self::resolveUrlPrefix($other->blueprint) === $prefix);
+
+        if ($taken) {
+            throw InvalidBlueprintException::forField(
+                'url_prefix',
+                "Le préfixe « {$prefix} » est déjà utilisé par un autre Content Type adressable."
+            );
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private static function resolveUrlPrefix(array $data): string
+    {
+        return $data['url_prefix'] ?? Str::kebab(Str::plural((string) $data['key']));
+    }
+
     public function key(): string
     {
         return $this->data['key'];
@@ -148,6 +193,15 @@ final readonly class ContentTypeBlueprint
     public function isAddressable(): bool
     {
         return $this->data['is_addressable'] ?? false;
+    }
+
+    /**
+     * Préfixe d'URL public (spec 07 §3, spec 03 §3) — repli kebab-pluriel de
+     * la clé si non déclaré. Non significatif si `isAddressable()` est faux.
+     */
+    public function urlPrefix(): string
+    {
+        return self::resolveUrlPrefix($this->data);
     }
 
     public function titleField(): ?string

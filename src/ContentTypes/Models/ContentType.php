@@ -134,4 +134,14 @@ class ContentType extends Model
     {
         return $this->blueprint['revisions']['except'] ?? [];
     }
+
+    /**
+     * Préfixe d'URL public (spec 07 §3, spec 03 §3) — repli kebab-pluriel de
+     * la clé si non déclaré au blueprint. Non significatif si
+     * `is_addressable` est faux. Utilisé par PublicRouteRegistrar.
+     */
+    public function urlPrefix(): string
+    {
+        return $this->blueprint['url_prefix'] ?? Str::kebab(Str::plural($this->key));
+    }
 }

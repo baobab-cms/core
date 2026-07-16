@@ -305,4 +305,23 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Rendu public (spec 03 §3-4, M6 point 1)
+    |--------------------------------------------------------------------------
+    |
+    | reserved_prefixes : segments d'URL qu'un Content Type adressable ne peut
+    | pas revendiquer comme url_prefix (collision avec l'admin ou l'API, spec
+    | 08, à venir M7).
+    | per_page : taille de page des archives de types adressables.
+    |
+    */
+    'rendering' => [
+        'reserved_prefixes' => [
+            env('BAOBAB_ADMIN_PATH', 'admin'),
+            'api',
+        ],
+        'per_page' => (int) env('BAOBAB_RENDERING_PER_PAGE', 15),
+    ],
+
 ];

@@ -2,6 +2,7 @@
 
 use Baobab\ContentTypes\Blueprint\ContentTypeBlueprint;
 use Baobab\ContentTypes\Exceptions\InvalidBlueprintException;
+use Baobab\ContentTypes\Models\ContentType;
 
 it('accepts a minimal valid blueprint', function () {
     $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson());
@@ -131,4 +132,57 @@ it('rejects a blueprint without a label', function () {
 it('rejects malformed JSON', function () {
     expect(fn () => ContentTypeBlueprint::fromJson('{not json'))
         ->toThrow(InvalidBlueprintException::class);
+});
+
+it('defaults url_prefix to the kebab-plural of the key for an addressable type', function () {
+    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'fields' => [['key' => 'brand', 'type' => 'text']],
+        'is_addressable' => true,
+        'title_field' => 'brand',
+    ]));
+
+    expect($blueprint->urlPrefix())->toBe('cars');
+});
+
+it('accepts an explicit url_prefix override', function () {
+    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'fields' => [['key' => 'brand', 'type' => 'text']],
+        'is_addressable' => true,
+        'title_field' => 'brand',
+        'url_prefix' => 'voitures',
+    ]));
+
+    expect($blueprint->urlPrefix())->toBe('voitures');
+});
+
+it('rejects a url_prefix reserved for the admin path', function () {
+    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'fields' => [['key' => 'brand', 'type' => 'text']],
+        'is_addressable' => true,
+        'title_field' => 'brand',
+        'url_prefix' => 'admin',
+    ])))->toThrow(InvalidBlueprintException::class);
+});
+
+it('rejects a url_prefix already used by another addressable Content Type', function () {
+    ContentType::create([
+        'key' => 'Brand',
+        'table_name' => 'ct_brands',
+        'is_addressable' => true,
+        'version' => 1,
+        'blueprint' => ['key' => 'Brand', 'label' => ['singular' => 'Marque', 'plural' => 'Marques'], 'is_addressable' => true, 'url_prefix' => 'voitures'],
+    ]);
+
+    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'fields' => [['key' => 'brand', 'type' => 'text']],
+        'is_addressable' => true,
+        'title_field' => 'brand',
+        'url_prefix' => 'voitures',
+    ])))->toThrow(InvalidBlueprintException::class);
+});
+
+it('does not consider a non-addressable url_prefix reserved or unique', function () {
+    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson(['url_prefix' => 'admin']));
+
+    expect($blueprint->isAddressable())->toBeFalse();
 });

@@ -59,6 +59,8 @@ use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
 use Baobab\Modules\ModuleDiscovery;
 use Baobab\Notify\Notifier;
+use Baobab\Rendering\ActiveThemeResolver;
+use Baobab\Rendering\PublicRouteRegistrar;
 use Baobab\Scheduler\SchedulerRegistrar;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
@@ -67,6 +69,7 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
@@ -139,6 +142,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
         $this->loadAdminRoutes();
+        $this->registerActiveThemeViews();
+        $this->registerPublicRoutes();
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'baobab');
         $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'baobab');
         // Composants à classe (logique de rendu hors des vues, ex. <x-baobab::img>) —
@@ -291,6 +296,41 @@ class BaobabServiceProvider extends ServiceProvider
             ->prefix($this->app->make('config')->get('baobab.admin.path', 'admin'))
             ->name('admin.')
             ->group(__DIR__.'/../routes/admin.php');
+    }
+
+    /**
+     * Espace de vues `theme::` pointant sur le thème actif (spec 03 §7) —
+     * lecture minimale ici (ActiveThemeResolver), le cycle de vie complet
+     * (exclusivité, activation atomique, préview, parent) est M6 point 2.
+     */
+    private function registerActiveThemeViews(): void
+    {
+        try {
+            if (! Schema::hasTable('modules')) {
+                return;
+            }
+        } catch (Throwable) {
+            return;
+        }
+
+        $theme = $this->app->make(ActiveThemeResolver::class)->current();
+
+        if ($theme !== null) {
+            View::addNamespace('theme', $theme->path.'/resources/views');
+        }
+    }
+
+    /**
+     * Routes publiques des types adressables (spec 03 §3, M6 point 1) — route
+     * générique résolue à la requête (PublicRouteRegistrar), pas de lecture
+     * DB au boot : aucune garde Schema::hasTable nécessaire ici.
+     */
+    private function registerPublicRoutes(): void
+    {
+        /** @var Router $router */
+        $router = $this->app->make('router');
+
+        $this->app->make(PublicRouteRegistrar::class)->register($router);
     }
 
     private function registerAdminSidebarComposer(): void

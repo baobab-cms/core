@@ -44,6 +44,11 @@
             "description": "Key of a text/textarea/richtext field used to auto-generate the slug in the admin form (spec 02 §4.2) — required when is_addressable is true, cross-checked at runtime against fields[] by ContentTypeBlueprint.",
             "pattern": "^[a-z][a-z0-9_]*$"
         },
+        "url_prefix": {
+            "type": "string",
+            "description": "Public URL prefix for this Content Type (spec 07 §3, spec 03 §3 pipeline) — routes as /{url_prefix}/{slug}. Only meaningful when is_addressable is true. Defaults to the kebab-plural of the key when absent, cross-checked at runtime against reserved prefixes and other addressable types by ContentTypeBlueprint.",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
         "workflow": {
             "type": "boolean",
             "description": "Activates the single-level validation workflow (submit/pending/approve/reject transitions, spec 09 §5). Off by default: the type only has the direct draft/published/scheduled/archived transitions.",
