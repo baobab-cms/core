@@ -163,6 +163,19 @@ final readonly class ModuleManifest
     }
 
     /**
+     * Section `theme` du manifeste (spec 03 §2.1), présente uniquement quand
+     * `type === "theme"` (imposé par le schéma JSON). Accesseur brut, patron
+     * `mails()`/`notifications()` — pas de value object, seul `parent` est
+     * consommé pour l'instant (M6 point 2).
+     *
+     * @return array{parent?: string|null, screenshot?: string, menus?: array<string, string>, widget_zones?: array<string, string>, supports?: list<string>, settings_schema?: string}
+     */
+    public function theme(): array
+    {
+        return $this->data['theme'] ?? [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

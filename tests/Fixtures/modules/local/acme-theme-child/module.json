@@ -1,0 +1,15 @@
+{
+  "name": "acme/theme-child",
+  "title": "Acme Theme Child",
+  "description": "Fixture thème enfant d'acme/theme — ne fournit que single.blade.php (pour prouver le repli vers le parent sur index) et déclare une clé de menu différente (pour prouver l'orphelinat des clés du parent à l'activation).",
+  "version": "1.0.0",
+  "type": "theme",
+  "provider": "Acme\\ThemeChild\\Providers\\ThemeChildServiceProvider",
+  "theme": {
+    "parent": "acme/theme",
+    "menus": {
+      "primary": "Menu principal (enfant)"
+    },
+    "widget_zones": {}
+  }
+}

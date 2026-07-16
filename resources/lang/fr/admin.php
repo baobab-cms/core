@@ -51,6 +51,7 @@ return [
         'users' => 'Utilisateurs',
         'media' => 'Médiathèque',
         'review' => 'À valider',
+        'themes' => 'Thèmes',
         'branding' => 'Marque',
     ],
 
@@ -236,6 +237,17 @@ return [
         'primary_color_label' => 'Couleur primaire',
         'save_action' => 'Enregistrer',
         'updated' => 'Réglages de marque mis à jour.',
+    ],
+
+    'themes' => [
+        'title' => 'Thèmes',
+        'empty' => 'Aucun thème installé.',
+        'active_label' => 'Actif',
+        'inactive_label' => 'Inactif',
+        'parent_label' => 'Enfant de :parent',
+        'activate_action' => 'Activer',
+        'preview_action' => 'Prévisualiser',
+        'activated' => 'Thème activé.',
     ],
 
     'review' => [

@@ -32,6 +32,8 @@ use Baobab\Console\Commands\ModuleUninstallCommand;
 use Baobab\Console\Commands\NotificationsPurgeCommand;
 use Baobab\Console\Commands\NotifyTestCommand;
 use Baobab\Console\Commands\SuperAdminCommand;
+use Baobab\Console\Commands\ThemeActivateCommand;
+use Baobab\Console\Commands\ThemePreviewCommand;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Fields\Types\BooleanField;
 use Baobab\ContentTypes\Fields\Types\DateField;
@@ -59,7 +61,6 @@ use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
 use Baobab\Modules\ModuleDiscovery;
 use Baobab\Notify\Notifier;
-use Baobab\Rendering\ActiveThemeResolver;
 use Baobab\Rendering\PublicRouteRegistrar;
 use Baobab\Scheduler\SchedulerRegistrar;
 use Baobab\Support\Logger as SupportLogger;
@@ -142,7 +143,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
         $this->loadAdminRoutes();
-        $this->registerActiveThemeViews();
+        $this->registerThemePreviewRoutes();
         $this->registerPublicRoutes();
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'baobab');
         $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'baobab');
@@ -211,6 +212,8 @@ class BaobabServiceProvider extends ServiceProvider
                 MailTemplatesCommand::class,
                 NotifyTestCommand::class,
                 NotificationsPurgeCommand::class,
+                ThemeActivateCommand::class,
+                ThemePreviewCommand::class,
             ]);
         }
 
@@ -299,25 +302,15 @@ class BaobabServiceProvider extends ServiceProvider
     }
 
     /**
-     * Espace de vues `theme::` pointant sur le thème actif (spec 03 §7) —
-     * lecture minimale ici (ActiveThemeResolver), le cycle de vie complet
-     * (exclusivité, activation atomique, préview, parent) est M6 point 2.
+     * Entrée/sortie de préview de thème (spec 03 §7, M6 point 2) — deux
+     * routes signées/simples, patron closures de `routes/web.php`. Doit être
+     * chargé avant `registerPublicRoutes()` : `/theme-preview/*` doit être
+     * tenté avant la route générique `/{prefix}/{slug?}`, qui matcherait
+     * sinon en premier (même forme d'URI).
      */
-    private function registerActiveThemeViews(): void
+    private function registerThemePreviewRoutes(): void
     {
-        try {
-            if (! Schema::hasTable('modules')) {
-                return;
-            }
-        } catch (Throwable) {
-            return;
-        }
-
-        $theme = $this->app->make(ActiveThemeResolver::class)->current();
-
-        if ($theme !== null) {
-            View::addNamespace('theme', $theme->path.'/resources/views');
-        }
+        Route::middleware('web')->group(__DIR__.'/../routes/theme-preview.php');
     }
 
     /**
@@ -637,6 +630,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: null,
                     url: route('admin.branding.index'),
                     order: -15,
+                );
+            }
+
+            if ($user->can('baobab.system.themes.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -7,
+                    label: __('baobab::admin.sidebar.themes'),
+                    icon: null,
+                    url: route('admin.themes.index'),
+                    order: -16,
                 );
             }
 

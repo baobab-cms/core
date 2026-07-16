@@ -8,6 +8,7 @@ use Baobab\Rendering\Actions\RenderContentArchive;
 use Baobab\Rendering\Actions\RenderContentEntry;
 use Baobab\Rendering\Actions\RenderNotFound;
 use Baobab\Rendering\Actions\ResolveAddressableContentType;
+use Baobab\Themes\Http\Middleware\ResolveActiveTheme;
 use Illuminate\Routing\Router;
 
 /**
@@ -18,12 +19,15 @@ use Illuminate\Routing\Router;
  * attendre un redémarrage de l'application (contrairement à une boucle
  * d'enregistrement au boot). `slug` absent = archive, présent = détail. Un
  * fallback couvre le reste des URLs publiques non résolues (§4, « 404 »).
+ * `ResolveActiveTheme` (M6 point 2) enregistre les vues du thème actif/en
+ * préview une fois par requête sur ce même groupe, avant la résolution de
+ * template (M6 point 1).
  */
 final class PublicRouteRegistrar
 {
     public function register(Router $router): void
     {
-        $router->middleware('web')->group(function () use ($router): void {
+        $router->middleware(['web', ResolveActiveTheme::class])->group(function () use ($router): void {
             $router->get('/{prefix}/{slug?}', function (string $prefix, ?string $slug = null) {
                 if ($prefix === (string) config('baobab.admin.path', 'admin')) {
                     abort(404);

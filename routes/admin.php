@@ -12,6 +12,7 @@ use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
 use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
 use Baobab\Admin\Notifications\Http\Controllers\NotificationController;
+use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
 use Baobab\Audit\Http\Controllers\AuditLogController;
@@ -67,6 +68,15 @@ Route::middleware('can:baobab.system.branding.manage')
     ->group(function (): void {
         Route::get('/', [BrandingController::class, 'index'])->name('index');
         Route::post('/', [BrandingController::class, 'update'])->name('update');
+    });
+
+Route::middleware('can:baobab.system.themes.manage')
+    ->prefix('themes')
+    ->name('themes.')
+    ->group(function (): void {
+        Route::get('/', [ThemesController::class, 'index'])->name('index');
+        Route::post('/{theme}/activate', [ThemesController::class, 'activate'])->name('activate');
+        Route::get('/{theme}/preview', [ThemesController::class, 'preview'])->name('preview');
     });
 
 Route::middleware('can:baobab.users.impersonate')

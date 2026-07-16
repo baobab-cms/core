@@ -1,0 +1,18 @@
+{
+  "name": "acme/theme",
+  "title": "Acme Theme",
+  "description": "Fixture thème parent — templates de base + emplacements de menus/zones de widgets pour tester l'activation, la cascade parent/enfant et la réservation des emplacements.",
+  "version": "1.0.0",
+  "type": "theme",
+  "provider": "Acme\\Theme\\Providers\\ThemeServiceProvider",
+  "theme": {
+    "parent": null,
+    "menus": {
+      "primary": "Menu principal",
+      "footer": "Menu pied de page"
+    },
+    "widget_zones": {
+      "sidebar": "Barre latérale"
+    }
+  }
+}
