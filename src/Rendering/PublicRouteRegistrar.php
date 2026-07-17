@@ -6,6 +6,7 @@ namespace Baobab\Rendering;
 
 use Baobab\Rendering\Actions\RenderContentArchive;
 use Baobab\Rendering\Actions\RenderContentEntry;
+use Baobab\Rendering\Actions\RenderHomepage;
 use Baobab\Rendering\Actions\RenderNotFound;
 use Baobab\Rendering\Actions\ResolveAddressableContentType;
 use Baobab\Themes\Http\Middleware\ResolveActiveTheme;
@@ -21,13 +22,18 @@ use Illuminate\Routing\Router;
  * fallback couvre le reste des URLs publiques non résolues (§4, « 404 »).
  * `ResolveActiveTheme` (M6 point 2) enregistre les vues du thème actif/en
  * préview une fois par requête sur ce même groupe, avant la résolution de
- * template (M6 point 1).
+ * template (M6 point 1). La page d'accueil (`/`, spec 03 §4 amendement du
+ * 17 juillet 2026) vit ici plutôt que dans `routes/web.php` : elle a besoin
+ * du même middleware `ResolveActiveTheme` pour que `theme::` soit résolu
+ * quand un réglage de lecture pointe vers une page statique ou une archive.
  */
 final class PublicRouteRegistrar
 {
     public function register(Router $router): void
     {
         $router->middleware(['web', ResolveActiveTheme::class])->group(function () use ($router): void {
+            $router->get('/', RenderHomepage::class)->name('baobab.welcome');
+
             $router->get('/{prefix}/{slug?}', function (string $prefix, ?string $slug = null) {
                 if ($prefix === (string) config('baobab.admin.path', 'admin')) {
                     abort(404);

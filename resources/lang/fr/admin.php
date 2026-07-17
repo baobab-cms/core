@@ -55,6 +55,7 @@ return [
         'branding' => 'Marque',
         'menus' => 'Menus',
         'widgets' => 'Widgets',
+        'reading' => 'Lecture',
     ],
 
     'audit' => [
@@ -239,6 +240,25 @@ return [
         'primary_color_label' => 'Couleur primaire',
         'save_action' => 'Enregistrer',
         'updated' => 'Réglages de marque mis à jour.',
+    ],
+
+    'reading' => [
+        'title' => 'Lecture',
+        'mode_label' => 'La page d\'accueil affiche',
+        'mode_default' => 'Par défaut (page d\'accueil du thème actif)',
+        'mode_static_page' => 'Une page statique',
+        'mode_latest_posts' => 'Les derniers contenus',
+        'page_content_type_label' => 'Type de contenu',
+        'page_entry_label' => 'Page',
+        'posts_content_type_label' => 'Type de contenu',
+        'save_action' => 'Enregistrer',
+        'updated' => 'Réglages de lecture mis à jour.',
+        'no_entries_hint' => 'Aucune entrée publiée pour ce type.',
+    ],
+
+    'admin_bar' => [
+        'dashboard' => 'Tableau de bord',
+        'logout' => 'Se déconnecter',
     ],
 
     'menus' => [

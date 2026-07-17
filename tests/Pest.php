@@ -15,6 +15,28 @@ function fixtureModulesPath(string $path = ''): string
     return __DIR__.'/Fixtures/modules'.($path !== '' ? '/'.$path : '');
 }
 
+/**
+ * Supprime un lien publié par `Baobab\Themes\Actions\PublishThemeAssets`
+ * (`public/themes/{slug}`). Sur Windows, `PublishThemeAssets` crée une
+ * jonction de répertoire (`mklink /J`) — `is_link()` ne la reconnaît pas
+ * (retourne toujours faux) et `Illuminate\Filesystem\Filesystem::delete()`
+ * appelle `unlink()`, qui échoue silencieusement dessus (aucune exception,
+ * `false` ignoré) : la jonction reste, et le prochain test échoue à la
+ * recréer (« Impossible de créer un fichier déjà existant »). `rmdir()`
+ * supprime la jonction elle-même sans jamais toucher sa cible, sur les deux
+ * plateformes (symlink Unix ou jonction Windows).
+ */
+function removeThemeLink(string $slug): void
+{
+    $path = public_path("themes/{$slug}");
+
+    if (is_dir($path)) {
+        rmdir($path);
+    } elseif (is_link($path) || file_exists($path)) {
+        unlink($path);
+    }
+}
+
 function makeActiveModule(string $name = 'acme/manual'): Module
 {
     return Module::create([

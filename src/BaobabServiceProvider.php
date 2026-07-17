@@ -728,6 +728,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            if ($user->can('baobab.system.reading.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -10,
+                    label: __('baobab::admin.sidebar.reading'),
+                    icon: null,
+                    url: route('admin.reading.index'),
+                    order: -19,
+                );
+            }
+
             return $items->concat($coreItems);
         });
     }

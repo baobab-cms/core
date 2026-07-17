@@ -13,6 +13,7 @@ use Baobab\Admin\Media\Http\Controllers\MediaController;
 use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
 use Baobab\Admin\Menus\Http\Controllers\MenusController;
 use Baobab\Admin\Notifications\Http\Controllers\NotificationController;
+use Baobab\Admin\Rendering\Http\Controllers\ReadingSettingsController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
@@ -70,6 +71,14 @@ Route::middleware('can:baobab.system.branding.manage')
     ->group(function (): void {
         Route::get('/', [BrandingController::class, 'index'])->name('index');
         Route::post('/', [BrandingController::class, 'update'])->name('update');
+    });
+
+Route::middleware('can:baobab.system.reading.manage')
+    ->prefix('reading')
+    ->name('reading.')
+    ->group(function (): void {
+        Route::get('/', [ReadingSettingsController::class, 'index'])->name('index');
+        Route::post('/', [ReadingSettingsController::class, 'update'])->name('update');
     });
 
 Route::middleware('can:baobab.system.themes.manage')

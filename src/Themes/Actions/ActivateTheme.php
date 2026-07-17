@@ -25,6 +25,7 @@ final class ActivateTheme
         private readonly ActivateModule $activate,
         private readonly DeactivateModule $deactivate,
         private readonly SyncThemeLocations $syncLocations,
+        private readonly PublishThemeAssets $publishAssets,
     ) {}
 
     public function __invoke(string $name): Module
@@ -51,6 +52,7 @@ final class ActivateTheme
 
             $activated = ($this->activate)($name);
             ($this->syncLocations)($activated);
+            ($this->publishAssets)($activated);
 
             Hook::action('baobab.theme.activated', $previous, $activated);
 

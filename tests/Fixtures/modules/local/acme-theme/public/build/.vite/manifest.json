@@ -1,0 +1,8 @@
+{
+    "resources/assets/css/app.css": {
+        "file": "assets/app-test.css",
+        "name": "app",
+        "src": "resources/assets/css/app.css",
+        "isEntry": true
+    }
+}

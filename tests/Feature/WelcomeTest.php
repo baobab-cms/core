@@ -2,11 +2,10 @@
 
 use Baobab\Tests\TestCase;
 
-it('loads the Baobab welcome page from the core package', function () {
+it('falls back to the Core index template when no theme is active and no reading setting is configured', function () {
     /** @var TestCase $this */
     $response = $this->get('/');
 
     $response->assertOk();
-    $response->assertViewIs('baobab::welcome');
-    $response->assertSee('Baobab est là');
+    $response->assertViewIs('baobab::templates.index');
 });

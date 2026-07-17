@@ -12,6 +12,13 @@ beforeEach(function () {
     config(['baobab.modules.paths' => ['local' => [fixtureModulesPath('local/*')]]]);
 });
 
+afterEach(function () {
+    // acme-theme embarque un public/build (fixture partagée avec
+    // PublishThemeAssetsTest/ViteComponentTest) — ActivateTheme publie
+    // désormais ses assets à chaque activation (M6 point 5).
+    removeThemeLink('acme-theme');
+});
+
 it('activates a theme and reserves its declared menu locations and widget zones', function () {
     app(InstallModule::class)('acme/theme');
 
