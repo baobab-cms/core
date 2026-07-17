@@ -104,6 +104,20 @@ it('resolves a parameterized route for a menu item declaring route_params', func
 
 // ── Extension via le hook baobab.admin.menu ───────────────────────────────────
 
+// ── Éléments Core (registerCoreSidebarItems) ──────────────────────────────────
+
+it('shows a Core-provided sidebar item once the user holds its permission', function () {
+    $user = User::create(['name' => 'Admin viewer', 'email' => 'admin-viewer@example.com', 'password' => 'secret']);
+
+    expect(app(SidebarBuilder::class)->build($user)->pluck('label'))->not->toContain(__('baobab::admin.sidebar.access'));
+
+    app(GrantPermission::class)($user, 'baobab.access.manage');
+
+    $sidebar = app(SidebarBuilder::class)->build($user->fresh());
+
+    expect($sidebar->pluck('label'))->toContain(__('baobab::admin.sidebar.access'));
+});
+
 it('lets the baobab.admin.menu filter inject an extra sidebar item', function () {
     $user = User::create(['name' => 'Viewer', 'email' => 'viewer3@example.com', 'password' => 'secret']);
 

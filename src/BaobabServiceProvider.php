@@ -631,7 +631,7 @@ class BaobabServiceProvider extends ServiceProvider
      */
     private function registerCoreSidebarItems(): void
     {
-        Hook::listen('baobab.admin.menu', function (Collection $items, ?User $user) {
+        Hook::modify('baobab.admin.menu', function (Collection $items, ?User $user) {
             if ($user === null) {
                 return $items;
             }
