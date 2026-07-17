@@ -6,10 +6,10 @@ namespace Baobab\Seo\Actions;
 
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
-use Baobab\Media\Models\Media;
 use Baobab\Seo\Models\SeoContentTypeSetting;
 use Baobab\Seo\Models\SeoMeta;
 use Baobab\Seo\Models\SeoSetting;
+use Baobab\Seo\Support\FirstImageFieldResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -23,6 +23,8 @@ use Illuminate\Support\Str;
  */
 final class ComposeSeoMeta
 {
+    public function __construct(private readonly FirstImageFieldResolver $imageResolver) {}
+
     /**
      * @return array{
      *     title: string,
@@ -47,6 +49,16 @@ final class ComposeSeoMeta
             $contentType !== null => $this->forArchive($contentType, $settings, $siteName),
             default => $this->forSite($settings, $siteName),
         };
+
+        // Fusion avec l'environnement (spec 07 §6, §8) : hors production,
+        // noindex s'impose sur les 3 cas d'un coup, sauf dérogation
+        // explicite — même règle que l'en-tête HTTP posé par
+        // ForceStagingNoindexHeader, appliquée ici avant le filtre pour
+        // qu'un module reste libre de la neutraliser volontairement via
+        // baobab.seo.meta s'il en a vraiment besoin.
+        if (! app()->environment('production') && ! $settings->force_index_on_staging) {
+            $seo['robots_noindex'] = true;
+        }
 
         /** @var array{title: string, description: string|null, robots_noindex: bool, robots_nofollow: bool, canonical: string, og_title: string, og_description: string|null, og_image_url: string|null, og_type: string, site_name: string} $filtered */
         $filtered = Hook::filter('baobab.seo.meta', $seo, $contentType, $entry);
@@ -75,7 +87,7 @@ final class ComposeSeoMeta
             $settings->default_meta_description,
         ]);
 
-        $image = $meta->ogImage ?? $this->firstImageOnEntry($contentType, $entry) ?? $settings->defaultShareMedia;
+        $image = $meta->ogImage ?? ($this->imageResolver)($contentType, $entry) ?? $settings->defaultShareMedia;
 
         return [
             'title' => $title,
@@ -164,22 +176,6 @@ final class ComposeSeoMeta
         }
 
         return Str::limit(trim(strip_tags($raw)), 160);
-    }
-
-    private function firstImageOnEntry(ContentType $contentType, Model $entry): ?Media
-    {
-        /** @var array<int, array<string, mixed>> $fields */
-        $fields = (array) ($contentType->blueprint['fields'] ?? []);
-
-        $field = collect($fields)->first(fn (array $field): bool => ($field['type'] ?? null) === 'image');
-
-        if ($field === null) {
-            return null;
-        }
-
-        $mediaId = $entry->getAttribute((string) $field['key']);
-
-        return $mediaId !== null ? Media::find((int) $mediaId) : null;
     }
 
     /**

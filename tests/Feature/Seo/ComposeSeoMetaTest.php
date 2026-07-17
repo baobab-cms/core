@@ -85,6 +85,11 @@ function seoTestMedia(): Media
 }
 
 it('falls back to the raw entry title and article og:type when nothing is configured', function () {
+    // Hors production, l'environnement force noindex par défaut (spec 07
+    // §8, Pass C) — ce cas "rien n'est configuré" ne se vérifie qu'en
+    // production ; la fusion environnement a son propre test dédié.
+    $this->app['env'] = 'production';
+
     [$type, $modelClass] = buildSeoCar();
     $entry = createSeoCarEntry($modelClass);
 

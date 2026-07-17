@@ -20,6 +20,8 @@
 <body class="flex h-full flex-col bg-surface text-foreground antialiased" x-data="{ sidebarOpen: false }">
     @include('baobab::layouts.partials.impersonation-banner')
 
+    @include('baobab::layouts.partials.staging-noindex-banner')
+
     @include('baobab::layouts.partials.admin-topbar')
 
     <div class="flex flex-1 overflow-hidden">

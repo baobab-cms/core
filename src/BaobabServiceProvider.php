@@ -32,6 +32,7 @@ use Baobab\Console\Commands\ModuleUninstallCommand;
 use Baobab\Console\Commands\NotFoundPurgeCommand;
 use Baobab\Console\Commands\NotificationsPurgeCommand;
 use Baobab\Console\Commands\NotifyTestCommand;
+use Baobab\Console\Commands\SeoSitemapCommand;
 use Baobab\Console\Commands\SuperAdminCommand;
 use Baobab\Console\Commands\ThemeActivateCommand;
 use Baobab\Console\Commands\ThemePreviewCommand;
@@ -68,10 +69,12 @@ use Baobab\Rendering\PublicRouteRegistrar;
 use Baobab\Scheduler\SchedulerRegistrar;
 use Baobab\Seo\Actions\CreateRedirect;
 use Baobab\Seo\Actions\DeleteRedirect;
+use Baobab\Seo\Actions\InvalidateSitemapCache;
 use Baobab\Seo\Actions\UpdateRedirect;
 use Baobab\Seo\Actions\UpdateSeoMeta;
 use Baobab\Seo\Models\Redirect;
 use Baobab\Seo\Models\SeoMeta;
+use Baobab\Seo\Models\SeoSetting;
 use Baobab\Seo\SeoContext;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
@@ -103,6 +106,7 @@ use PragmaRX\Google2FA\Google2FA;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionServiceProvider;
+use Spatie\Sitemap\SitemapServiceProvider;
 use Throwable;
 
 class BaobabServiceProvider extends ServiceProvider
@@ -115,6 +119,7 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->app->register(PermissionServiceProvider::class);
         $this->app->register(PurifierServiceProvider::class);
+        $this->app->register(SitemapServiceProvider::class);
 
         $this->configurePurifier();
 
@@ -189,6 +194,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerImpersonationBannerComposer();
 
+        $this->registerStagingNoindexBannerComposer();
+
         $this->registerBrandingComposer();
 
         $this->registerNotificationCenterComposer();
@@ -206,6 +213,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerSeoSaveListener();
 
         $this->registerSlugRedirectListener();
+
+        $this->registerSitemapCacheInvalidationListener();
 
         $this->registerWorkflowNotificationListeners();
 
@@ -249,6 +258,7 @@ class BaobabServiceProvider extends ServiceProvider
                 ThemePreviewCommand::class,
                 ThemeValidateCommand::class,
                 NotFoundPurgeCommand::class,
+                SeoSitemapCommand::class,
             ]);
         }
 
@@ -397,6 +407,20 @@ class BaobabServiceProvider extends ServiceProvider
             $impersonatedUser = session('baobab.impersonator_id') ? auth('baobab')->user() : null;
 
             $view->with('impersonatedUser', $impersonatedUser);
+        });
+    }
+
+    /**
+     * Bandeau admin visible quand la protection des environnements
+     * (spec 07 §8, Pass C) est active — même condition que la fusion
+     * noindex de `ComposeSeoMeta` et l'en-tête de `ForceStagingNoindexHeader`.
+     */
+    private function registerStagingNoindexBannerComposer(): void
+    {
+        View::composer('baobab::layouts.partials.staging-noindex-banner', function (ViewContract $view): void {
+            $active = ! $this->app->environment('production') && ! SeoSetting::current()->force_index_on_staging;
+
+            $view->with('stagingNoindexActive', $active);
         });
     }
 
@@ -766,6 +790,31 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             app(CreateRedirect::class)(['source' => $source, 'target' => $target, 'status_code' => 301, 'source_kind' => 'auto']);
+        });
+    }
+
+    /**
+     * Le sitemap d'un Content Type dépend de ses propres entrées
+     * uniquement (spec 07 §5 : « cache invalidé à la publication/
+     * modification ») — l'index n'est jamais concerné ici, la liste des
+     * types éligibles ne change pas quand une entrée est sauvegardée
+     * (seule une bascule `exclude_from_sitemap`, gérée par
+     * `UpdateSeoSettings`, peut la faire varier).
+     */
+    private function registerSitemapCacheInvalidationListener(): void
+    {
+        $invalidate = function (ContentType $contentType): void {
+            if ($contentType->is_addressable) {
+                app(InvalidateSitemapCache::class)->forType($contentType->key);
+            }
+        };
+
+        Hook::listen('baobab.content.saved', function (ContentType $contentType, Model $entry, bool $isNew, array $data = []) use ($invalidate): void {
+            $invalidate($contentType);
+        });
+
+        Hook::listen('baobab.content.transitioned', function (ContentType $contentType, Model $entry, string $from, string $to, ?User $actor = null) use ($invalidate): void {
+            $invalidate($contentType);
         });
     }
 

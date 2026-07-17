@@ -68,6 +68,11 @@ it('renders a noindex robots meta tag when the entry is flagged noindex', functi
 });
 
 it('omits the robots meta tag entirely when no directive is set', function () {
+    // Hors production, ComposeSeoMeta force noindex par défaut (spec 07 §8,
+    // Pass C) — ce test vérifie le cas "rien n'est configuré", qui n'existe
+    // qu'en production.
+    $this->app['env'] = 'production';
+
     [, $modelClass] = buildSeoHeadCar();
     $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'peugeot-208', 'status' => 'published']);
 

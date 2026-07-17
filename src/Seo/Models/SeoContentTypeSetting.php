@@ -17,16 +17,35 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $content_type_id
  * @property string|null $title_template
+ * @property bool $exclude_from_sitemap
  */
 class SeoContentTypeSetting extends Model
 {
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'exclude_from_sitemap' => false,
+    ];
+
     /**
      * @var list<string>
      */
     protected $fillable = [
         'content_type_id',
         'title_template',
+        'exclude_from_sitemap',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'exclude_from_sitemap' => 'boolean',
+        ];
+    }
 
     /**
      * @return BelongsTo<ContentType, $this>

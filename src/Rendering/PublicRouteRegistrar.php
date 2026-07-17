@@ -9,6 +9,10 @@ use Baobab\Rendering\Actions\RenderContentEntry;
 use Baobab\Rendering\Actions\RenderHomepage;
 use Baobab\Rendering\Actions\RenderNotFound;
 use Baobab\Rendering\Actions\ResolveAddressableContentType;
+use Baobab\Seo\Actions\ComposeRobotsTxt;
+use Baobab\Seo\Actions\RenderContentTypeSitemap;
+use Baobab\Seo\Actions\RenderSitemapIndex;
+use Baobab\Seo\Http\Middleware\ForceStagingNoindexHeader;
 use Baobab\Seo\Http\Middleware\NormalizePublicUrl;
 use Baobab\Seo\Http\Middleware\ResolveRedirect;
 use Baobab\Themes\Http\Middleware\ResolveActiveTheme;
@@ -30,14 +34,33 @@ use Illuminate\Routing\Router;
  * quand un réglage de lecture pointe vers une page statique ou une archive.
  * `NormalizePublicUrl`/`ResolveRedirect` (spec 07 §3-4, M5 point 5 Pass B)
  * s'exécutent en premier — inutile de normaliser/résoudre un thème pour une
- * requête qui va de toute façon être redirigée.
+ * requête qui va de toute façon être redirigée. `ForceStagingNoindexHeader`
+ * (spec 07 §8, Pass C) pose l'en-tête `X-Robots-Tag` sur toute réponse du
+ * groupe, sitemap/robots.txt compris.
+ *
+ * `/sitemap.xml`, `/sitemaps/{type}.xml` et `/robots.txt` (spec 07 §5, §8)
+ * sont enregistrées avant la route générique `/{prefix}/{slug?}` — sinon
+ * `/sitemap.xml` serait capturée comme `prefix=sitemap.xml` par cette
+ * dernière. Les trois segments sont réservés côté blueprint
+ * (`baobab.rendering.reserved_prefixes`, `ContentTypeBlueprint::validateUrlPrefix()`)
+ * pour qu'un Content Type ne puisse jamais les revendiquer.
  */
 final class PublicRouteRegistrar
 {
     public function register(Router $router): void
     {
-        $router->middleware(['web', NormalizePublicUrl::class, ResolveRedirect::class, ResolveActiveTheme::class])->group(function () use ($router): void {
+        $router->middleware(['web', NormalizePublicUrl::class, ResolveRedirect::class, ResolveActiveTheme::class, ForceStagingNoindexHeader::class])->group(function () use ($router): void {
             $router->get('/', RenderHomepage::class)->name('baobab.welcome');
+
+            $router->get('/sitemap.xml', RenderSitemapIndex::class)->name('baobab.sitemap.index');
+
+            $router->get('/sitemaps/{type}.xml', function (string $type) {
+                return app(RenderContentTypeSitemap::class)($type);
+            })->where('type', '[^/]+')->name('baobab.sitemap.type');
+
+            $router->get('/robots.txt', function () {
+                return response(app(ComposeRobotsTxt::class)(), 200, ['Content-Type' => 'text/plain']);
+            })->name('baobab.robots');
 
             $router->get('/{prefix}/{slug?}', function (string $prefix, ?string $slug = null) {
                 if ($prefix === (string) config('baobab.admin.path', 'admin')) {

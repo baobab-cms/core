@@ -15,6 +15,10 @@ return [
         'placeholder' => 'Le tableau de bord arrive dans une prochaine étape.',
     ],
 
+    'staging_banner' => [
+        'message' => 'Environnement non-production : le site public est fermé à l\'indexation (noindex + robots.txt bloquant). Réglable dans SEO > réglages globaux.',
+    ],
+
     'auth' => [
         'login_title' => 'Connexion',
         'email' => 'E-mail',
@@ -279,6 +283,13 @@ return [
         'og_title_label' => 'Titre de partage social',
         'og_description_label' => 'Description de partage social',
         'og_image_label' => 'Image de partage social',
+        'robots_section_title' => 'Sitemap & robots.txt',
+        'robots_txt_label' => 'Contenu de robots.txt',
+        'robots_txt_hint' => 'Laisser vide pour le contenu par défaut (autorise tout, référence le sitemap, bloque l\'admin). Ignoré hors production sauf dérogation ci-dessous.',
+        'robots_txt_invalid' => 'Chaque ligne doit être un commentaire (#) ou une directive reconnue (User-agent, Allow, Disallow, Sitemap, Crawl-delay).',
+        'force_index_on_staging_label' => 'Autoriser l\'indexation hors production',
+        'force_index_on_staging_hint' => 'Par défaut, un environnement non-production (APP_ENV ≠ production) force noindex partout et bloque robots.txt — à activer uniquement si vraiment nécessaire.',
+        'exclude_from_sitemap_label' => 'Exclure du sitemap',
     ],
 
     'redirects' => [

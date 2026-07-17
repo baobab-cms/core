@@ -113,3 +113,49 @@ it('saves a title template for a specific content type', function () {
 
     expect(SeoContentTypeSetting::forContentType($type)->title_template)->toBe('{title} — {site_name}');
 });
+
+it('saves robots.txt content and the staging override', function () {
+    $user = seoSettingsActor(['baobab.system.seo.manage']);
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.seo.update'), [
+            'title_separator' => '—',
+            'robots_txt' => "User-agent: *\nDisallow: /private\n",
+            'force_index_on_staging' => '1',
+        ])
+        ->assertRedirect(route('admin.seo.index'));
+
+    $setting = SeoSetting::current();
+
+    // TrimStrings (middleware global Laravel) trime le texte soumis, y
+    // compris le saut de ligne final — attendu, pas un bug de l'action.
+    expect($setting->robots_txt)->toBe("User-agent: *\nDisallow: /private")
+        ->and($setting->force_index_on_staging)->toBeTrue();
+});
+
+it('rejects a syntactically invalid robots.txt', function () {
+    $user = seoSettingsActor(['baobab.system.seo.manage']);
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.seo.update'), [
+            'title_separator' => '—',
+            'robots_txt' => "Ceci n'est pas du tout du robots.txt",
+        ])
+        ->assertSessionHasErrors('robots_txt');
+
+    expect(SeoSetting::current()->robots_txt)->toBeNull();
+});
+
+it('excludes a content type from the sitemap', function () {
+    [$type] = buildSeoSettingsCarType();
+    $user = seoSettingsActor(['baobab.system.seo.manage']);
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.seo.update'), [
+            'title_separator' => '—',
+            'exclude_from_sitemap' => ['SeoSettingsCar' => '1'],
+        ])
+        ->assertRedirect(route('admin.seo.index'));
+
+    expect(SeoContentTypeSetting::forContentType($type)->exclude_from_sitemap)->toBeTrue();
+});

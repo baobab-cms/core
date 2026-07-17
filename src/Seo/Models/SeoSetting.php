@@ -18,9 +18,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $title_separator
  * @property int|null $default_share_media_id
  * @property string|null $default_meta_description
+ * @property string|null $robots_txt
+ * @property bool $force_index_on_staging
  */
 class SeoSetting extends Model
 {
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'force_index_on_staging' => false,
+    ];
+
     /**
      * @var list<string>
      */
@@ -29,7 +38,19 @@ class SeoSetting extends Model
         'title_separator',
         'default_share_media_id',
         'default_meta_description',
+        'robots_txt',
+        'force_index_on_staging',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'force_index_on_staging' => 'boolean',
+        ];
+    }
 
     public static function current(): self
     {

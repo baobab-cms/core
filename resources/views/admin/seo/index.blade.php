@@ -32,17 +32,44 @@
                     :value="$setting->default_meta_description"
                 />
 
+                <h3 class="mb-2 mt-6 text-sm font-medium text-foreground">{{ __('baobab::admin.seo.robots_section_title') }}</h3>
+
+                <x-baobab::field.textarea
+                    name="robots_txt"
+                    :label="__('baobab::admin.seo.robots_txt_label')"
+                    :value="$setting->robots_txt"
+                    placeholder="User-agent: *&#10;Allow: /&#10;Sitemap: {{ url('/sitemap.xml') }}"
+                />
+                <p class="-mt-3 mb-4 text-xs text-muted">{{ __('baobab::admin.seo.robots_txt_hint') }}</p>
+
+                <x-baobab::field.checkbox
+                    name="force_index_on_staging"
+                    :label="__('baobab::admin.seo.force_index_on_staging_label')"
+                    :checked="$setting->force_index_on_staging"
+                />
+                <p class="-mt-3 mb-4 text-xs text-muted">{{ __('baobab::admin.seo.force_index_on_staging_hint') }}</p>
+
                 @if ($contentTypes->isNotEmpty())
                     <h3 class="mb-2 mt-6 text-sm font-medium text-foreground">{{ __('baobab::admin.seo.title_templates_title') }}</h3>
                     <p class="mb-4 text-xs text-muted">{{ __('baobab::admin.seo.title_templates_hint') }}</p>
 
                     @foreach ($contentTypes as $contentType)
-                        <x-baobab::field.text
-                            name="title_templates[{{ $contentType->key }}]"
-                            :label="$contentType->blueprint['label']['singular'] ?? $contentType->key"
-                            :value="$titleTemplates[$contentType->key] ?? null"
-                            placeholder="{title} — {site_name}"
-                        />
+                        <div class="mb-4 flex items-end gap-4">
+                            <div class="flex-1">
+                                <x-baobab::field.text
+                                    name="title_templates[{{ $contentType->key }}]"
+                                    :label="$contentType->blueprint['label']['singular'] ?? $contentType->key"
+                                    :value="$typeSettings[$contentType->key]->title_template"
+                                    placeholder="{title} — {site_name}"
+                                />
+                            </div>
+
+                            <x-baobab::field.checkbox
+                                name="exclude_from_sitemap[{{ $contentType->key }}]"
+                                :label="__('baobab::admin.seo.exclude_from_sitemap_label')"
+                                :checked="$typeSettings[$contentType->key]->exclude_from_sitemap"
+                            />
+                        </div>
                     @endforeach
                 @endif
 

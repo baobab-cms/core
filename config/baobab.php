@@ -312,7 +312,8 @@ return [
     |
     | reserved_prefixes : segments d'URL qu'un Content Type adressable ne peut
     | pas revendiquer comme url_prefix (collision avec l'admin, l'API — spec
-    | 08, à venir M7 — ou la préview de thème, spec 03 §7, M6 point 2).
+    | 08, à venir M7 — la préview de thème, spec 03 §7, M6 point 2 — ou le
+    | sitemap/robots.txt, spec 07 §5/§8, M5 point 5 Pass C).
     | per_page : taille de page des archives de types adressables.
     |
     */
@@ -321,6 +322,9 @@ return [
             env('BAOBAB_ADMIN_PATH', 'admin'),
             'api',
             'theme-preview',
+            'sitemap.xml',
+            'sitemaps',
+            'robots.txt',
         ],
         'per_page' => (int) env('BAOBAB_RENDERING_PER_PAGE', 15),
     ],

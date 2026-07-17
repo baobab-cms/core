@@ -164,6 +164,15 @@ it('rejects a url_prefix reserved for the admin path', function () {
     ])))->toThrow(InvalidBlueprintException::class);
 });
 
+it('rejects a url_prefix reserved for the sitemap or robots.txt', function (string $prefix) {
+    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'fields' => [['key' => 'brand', 'type' => 'text']],
+        'is_addressable' => true,
+        'title_field' => 'brand',
+        'url_prefix' => $prefix,
+    ])))->toThrow(InvalidBlueprintException::class);
+})->with(['sitemap.xml', 'sitemaps', 'robots.txt']);
+
 it('rejects a url_prefix already used by another addressable Content Type', function () {
     ContentType::create([
         'key' => 'Brand',
