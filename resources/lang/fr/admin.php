@@ -56,6 +56,7 @@ return [
         'menus' => 'Menus',
         'widgets' => 'Widgets',
         'reading' => 'Lecture',
+        'seo' => 'SEO',
     ],
 
     'audit' => [
@@ -254,6 +255,29 @@ return [
         'save_action' => 'Enregistrer',
         'updated' => 'Réglages de lecture mis à jour.',
         'no_entries_hint' => 'Aucune entrée publiée pour ce type.',
+    ],
+
+    'seo' => [
+        'title' => 'SEO',
+        'global_section_title' => 'Réglages globaux',
+        'site_name_label' => 'Nom du site',
+        'title_separator_label' => 'Séparateur de titre',
+        'default_share_media_label' => 'Image de partage par défaut',
+        'default_meta_description_label' => 'Description par défaut',
+        'title_templates_title' => 'Gabarits de titre par type de contenu',
+        'title_templates_hint' => 'Variables disponibles : {title}, {site_name}. Laisser vide pour utiliser le titre brut du contenu.',
+        'save_action' => 'Enregistrer',
+        'updated' => 'Réglages SEO mis à jour.',
+        'metabox_title' => 'SEO',
+        'meta_title_label' => 'Titre méta',
+        'meta_description_label' => 'Description méta',
+        'serp_preview_label' => 'Aperçu dans les résultats de recherche',
+        'robots_noindex_label' => 'Empêcher l\'indexation (noindex)',
+        'robots_nofollow_label' => 'Empêcher le suivi des liens (nofollow)',
+        'canonical_label' => 'URL canonique',
+        'og_title_label' => 'Titre de partage social',
+        'og_description_label' => 'Description de partage social',
+        'og_image_label' => 'Image de partage social',
     ],
 
     'admin_bar' => [

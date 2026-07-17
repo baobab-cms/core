@@ -29,7 +29,7 @@ function writeValidThemeSkeleton(string $path): void
 {
     File::ensureDirectoryExists($path.'/resources/views/layouts');
     File::ensureDirectoryExists($path.'/resources/views/templates');
-    File::put($path.'/resources/views/layouts/app.blade.php', '<html></html>');
+    File::put($path.'/resources/views/layouts/app.blade.php', '<html><head><x-baobab::seo-head /></head></html>');
     File::put($path.'/resources/views/templates/index.blade.php', '<p>index</p>');
     File::put($path.'/screenshot.png', 'stand-in — the structural check only verifies presence');
 }
@@ -237,5 +237,17 @@ it('warns, without blocking, about an externally sourced script', function () {
     $violations = validateThemeFixture();
 
     expect(hasViolation($violations, 'CDN', blocking: false))->toBeTrue()
+        ->and(collect($violations)->contains(fn ($v) => $v->blocking))->toBeFalse();
+});
+
+// ── <x-baobab::seo-head /> (spec 07 §6) ───────────────────────────────────────
+
+it('warns, without blocking, when the layout omits <x-baobab::seo-head />', function () {
+    writeValidThemeSkeleton(themeFixturePath());
+    File::put(themeFixturePath().'/resources/views/layouts/app.blade.php', '<html></html>');
+
+    $violations = validateThemeFixture();
+
+    expect(hasViolation($violations, 'seo-head', blocking: false))->toBeTrue()
         ->and(collect($violations)->contains(fn ($v) => $v->blocking))->toBeFalse();
 });

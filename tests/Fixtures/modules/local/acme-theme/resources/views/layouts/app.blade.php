@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>@yield('title')</title>
+    <x-baobab::seo-head />
 </head>
 <body>
     @yield('content')

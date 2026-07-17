@@ -7,6 +7,8 @@ namespace Baobab\Rendering\Actions;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
 use Baobab\Rendering\TemplateHierarchyResolver;
+use Baobab\Seo\Actions\ComposeSeoMeta;
+use Baobab\Seo\SeoContext;
 use Baobab\Support\Logger;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Response;
@@ -25,6 +27,8 @@ final class RenderContentEntry
         private readonly TemplateHierarchyResolver $hierarchy,
         private readonly RenderNotFound $notFound,
         private readonly Logger $logger,
+        private readonly ComposeSeoMeta $seo,
+        private readonly SeoContext $seoContext,
     ) {}
 
     public function __invoke(ContentType $contentType, string $slug): Response
@@ -49,6 +53,8 @@ final class RenderContentEntry
 
             return ($this->notFound)();
         }
+
+        $this->seoContext->set(($this->seo)($contentType, $entry));
 
         $view = $this->hierarchy->resolve($this->candidates($contentType, $slug));
         $html = (string) Hook::filter('baobab.content.render', view($view, $data)->render(), $contentType, $entry);

@@ -145,6 +145,7 @@ final class ContentController
             'formMethod' => 'POST',
             'formAction' => route('admin.content.store', ['contentType' => $contentType]),
             'fields' => $this->formFieldsForView($type, null),
+            'sections' => $this->formSections($type, null),
         ]);
     }
 
@@ -192,6 +193,7 @@ final class ContentController
             'formMethod' => 'PUT',
             'formAction' => route('admin.content.update', ['contentType' => $contentType, 'entry' => $model->getKey()]),
             'fields' => $this->formFieldsForView($type, $model),
+            'sections' => $this->formSections($type, $model),
             'entryId' => $model->getKey(),
             'currentStatus' => $status,
             'publishedAt' => $model->getAttribute('published_at'),
@@ -875,6 +877,24 @@ final class ContentController
     private function label(ContentType $type): string
     {
         return $type->blueprint['label']['singular'] ?? $type->key;
+    }
+
+    /**
+     * Blocs HTML entiers pré-rendus, injectés par un module après la liste
+     * de champs (ex. la metabox SEO) — distinct de `baobab.content.form.fields`
+     * (champs simples, valeur lue via `getAttribute()`, validés par
+     * `validationRules()`) : une section porte sa propre validation/
+     * sauvegarde, câblée via `baobab.content.saved`, jamais connue de ce
+     * contrôleur (spec 07 §1 : « le moteur de contenu ne le connaît pas »).
+     *
+     * @return list<string>
+     */
+    private function formSections(ContentType $type, ?Model $entry): array
+    {
+        /** @var list<string> $sections */
+        $sections = Hook::filter('baobab.content.form.sections', [], $type, $entry);
+
+        return $sections;
     }
 
     /**
