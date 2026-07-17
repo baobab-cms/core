@@ -17,22 +17,31 @@ function fixtureModulesPath(string $path = ''): string
 
 /**
  * Supprime un lien publié par `Baobab\Themes\Actions\PublishThemeAssets`
- * (`public/themes/{slug}`). Sur Windows, `PublishThemeAssets` crée une
- * jonction de répertoire (`mklink /J`) — `is_link()` ne la reconnaît pas
- * (retourne toujours faux) et `Illuminate\Filesystem\Filesystem::delete()`
- * appelle `unlink()`, qui échoue silencieusement dessus (aucune exception,
- * `false` ignoré) : la jonction reste, et le prochain test échoue à la
- * recréer (« Impossible de créer un fichier déjà existant »). `rmdir()`
- * supprime la jonction elle-même sans jamais toucher sa cible, sur les deux
- * plateformes (symlink Unix ou jonction Windows).
+ * (`public/themes/{slug}`). Ni `is_link()` ni `is_dir()` ne sont fiables
+ * ici pour décider entre `unlink()`/`rmdir()` : sur Windows, appeler
+ * `is_link()` puis `is_dir()` sur le **même chemin** en séquence retourne
+ * un résultat incohérent pour une jonction (`is_dir()` renvoie alors faux,
+ * alors qu'appelé seul il renvoie vrai — un bug de cache de stat propre à
+ * PHP sur Windows, découvert en écrivant ce helper) ; sur Linux, un
+ * symlink vers un répertoire est aussi reconnu par `is_dir()` (il suit le
+ * lien), et `rmdir()` dessus échoue (exige une vraie entrée répertoire,
+ * pas un lien — erreur POSIX ENOTDIR promue en ErrorException par le
+ * handler d'erreurs de Laravel). Plutôt que d'introspecter le système de
+ * fichiers, on rejoue la même décision que `Filesystem::link()`
+ * (`PublishThemeAssets`) : jonction sur Windows → `rmdir()` ; symlink
+ * partout ailleurs → `unlink()`.
  */
 function removeThemeLink(string $slug): void
 {
     $path = public_path("themes/{$slug}");
 
-    if (is_dir($path)) {
+    if (! file_exists($path)) {
+        return;
+    }
+
+    if (windows_os()) {
         rmdir($path);
-    } elseif (is_link($path) || file_exists($path)) {
+    } else {
         unlink($path);
     }
 }

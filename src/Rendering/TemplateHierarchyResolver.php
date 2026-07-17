@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Rendering;
 
-use Illuminate\Support\Facades\View;
+use Illuminate\Contracts\View\Factory;
 use RuntimeException;
 
 /**
@@ -16,18 +16,30 @@ use RuntimeException;
  */
 final class TemplateHierarchyResolver
 {
+    public function __construct(private readonly Factory $views) {}
+
     /**
      * @param  list<string>  $candidates  Du plus spécifique au plus générique.
+     * @return view-string
      */
     public function resolve(array $candidates): string
     {
         foreach ($candidates as $candidate) {
-            if (View::exists("theme::templates.{$candidate}")) {
-                return "theme::templates.{$candidate}";
+            // Factory::exists() porte `@phpstan-assert-if-true view-string $view`
+            // (stub Larastan) : dans cette branche, le type de $themeView/
+            // $coreView est affiné en view-string — appelé sur l'instance du
+            // contrat (pas la façade statique View::, dont la résolution ne
+            // propage pas fiablement cette assertion).
+            $themeView = "theme::templates.{$candidate}";
+
+            if ($this->views->exists($themeView)) {
+                return $themeView;
             }
 
-            if (View::exists("baobab::templates.{$candidate}")) {
-                return "baobab::templates.{$candidate}";
+            $coreView = "baobab::templates.{$candidate}";
+
+            if ($this->views->exists($coreView)) {
+                return $coreView;
             }
         }
 

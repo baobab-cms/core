@@ -200,7 +200,7 @@ final class ForbiddenConstructVisitor extends NodeVisitorAbstract
     }
 
     /**
-     * @param  list<Node\Arg|Node\VariadicPlaceholder>  $args
+     * @param  array<int, Node\Arg|Node\VariadicPlaceholder>  $args
      */
     private function firstArgIsUrl(array $args): bool
     {
@@ -214,7 +214,7 @@ final class ForbiddenConstructVisitor extends NodeVisitorAbstract
     }
 
     /**
-     * @param  list<Node\Arg|Node\VariadicPlaceholder>  $args
+     * @param  array<int, Node\Arg|Node\VariadicPlaceholder>  $args
      */
     private function fopenIsWriteMode(array $args): bool
     {
