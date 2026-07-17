@@ -11,6 +11,7 @@ use Baobab\Admin\Content\Http\Controllers\TrashController;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
 use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
+use Baobab\Admin\Menus\Http\Controllers\MenusController;
 use Baobab\Admin\Notifications\Http\Controllers\NotificationController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
@@ -77,6 +78,19 @@ Route::middleware('can:baobab.system.themes.manage')
         Route::get('/', [ThemesController::class, 'index'])->name('index');
         Route::post('/{theme}/activate', [ThemesController::class, 'activate'])->name('activate');
         Route::get('/{theme}/preview', [ThemesController::class, 'preview'])->name('preview');
+    });
+
+Route::middleware('can:baobab.menus.manage')
+    ->prefix('menus')
+    ->name('menus.')
+    ->group(function (): void {
+        Route::get('/', [MenusController::class, 'index'])->name('index');
+        Route::get('/create', [MenusController::class, 'create'])->name('create');
+        Route::post('/', [MenusController::class, 'store'])->name('store');
+        Route::get('/search-content', [MenusController::class, 'searchContent'])->name('search-content');
+        Route::get('/{menu}', [MenusController::class, 'edit'])->name('edit');
+        Route::post('/{menu}', [MenusController::class, 'update'])->name('update');
+        Route::delete('/{menu}', [MenusController::class, 'destroy'])->name('destroy');
     });
 
 Route::middleware('can:baobab.users.impersonate')

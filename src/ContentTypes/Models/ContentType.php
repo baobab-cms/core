@@ -62,6 +62,21 @@ class ContentType extends Model
     }
 
     /**
+     * Le Content Type propriétaire d'une classe de modèle Eloquent générée
+     * (relation inverse de `modelClass()`) — utilisé pour retrouver le
+     * préfixe d'URL d'une entrée dont on n'a que l'instance (ex. résolution
+     * d'un item de menu pointant vers un contenu, spec 10 §2.2). Aucune
+     * colonne dédiée à interroger : le nombre de Content Types reste modeste,
+     * un balayage en mémoire suffit.
+     *
+     * @param  class-string<Model>  $class
+     */
+    public static function forModelClass(string $class): ?self
+    {
+        return self::all()->first(fn (self $contentType): bool => $contentType->modelClass() === $class);
+    }
+
+    /**
      * Répertoire du module généré (convention de ContentTypeModuleGenerator :
      * racine `baobab.content_types.modules_path`, dossier `content-{slug}`).
      */

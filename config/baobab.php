@@ -325,4 +325,19 @@ return [
         'per_page' => (int) env('BAOBAB_RENDERING_PER_PAGE', 15),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Menus (spec 10 §2, M6 point 4a)
+    |--------------------------------------------------------------------------
+    |
+    | max_depth : profondeur maximale d'imbrication (spec §4 décision 2,
+    | défaut 4 niveaux). cache_ttl : durée du cache de l'arbre résolu par
+    | menu (spec §2.4), en secondes.
+    |
+    */
+    'menus' => [
+        'max_depth' => (int) env('BAOBAB_MENUS_MAX_DEPTH', 4),
+        'cache_ttl' => (int) env('BAOBAB_MENUS_CACHE_TTL', 3600),
+    ],
+
 ];

@@ -58,6 +58,7 @@ use Baobab\Facades\Hook;
 use Baobab\Hooks\HookRegistry;
 use Baobab\Media\Actions\SyncMediaUsagesFromEntry;
 use Baobab\Media\Conversions\PresetRegistry;
+use Baobab\Menus\Actions\InvalidateMenuCacheForEntry;
 use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
 use Baobab\Modules\ModuleDiscovery;
@@ -176,6 +177,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerAuditListeners();
 
         $this->registerMediaUsageListener();
+
+        $this->registerMenuCacheInvalidationListener();
 
         $this->registerWorkflowNotificationListeners();
 
@@ -561,6 +564,27 @@ class BaobabServiceProvider extends ServiceProvider
     }
 
     /**
+     * Invalide le cache d'un menu dès qu'une entrée qu'il référence est
+     * sauvegardée ou change de statut éditorial (spec 10 §2.4) — l'URL/le
+     * libellé résolus ou la visibilité (masqué si dépublié/en corbeille)
+     * peuvent avoir changé.
+     */
+    private function registerMenuCacheInvalidationListener(): void
+    {
+        $invalidate = function (Model $entry): void {
+            app(InvalidateMenuCacheForEntry::class)($entry);
+        };
+
+        Hook::listen('baobab.content.saved', function (ContentType $contentType, Model $entry, bool $isNew, array $data = []) use ($invalidate): void {
+            $invalidate($entry);
+        });
+
+        Hook::listen('baobab.content.transitioned', function (ContentType $contentType, Model $entry, string $from, string $to, ?User $actor = null) use ($invalidate): void {
+            $invalidate($entry);
+        });
+    }
+
+    /**
      * Le Core est son propre premier consommateur du hook d'extension de la
      * sidebar (spec 04 §3.3) : les écrans Audit/Accès ne viennent pas d'un
      * module, donc pas de module_menu_items — on les injecte comme le ferait
@@ -642,6 +666,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: null,
                     url: route('admin.themes.index'),
                     order: -16,
+                );
+            }
+
+            if ($user->can('baobab.menus.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -8,
+                    label: __('baobab::admin.sidebar.menus'),
+                    icon: null,
+                    url: route('admin.menus.index'),
+                    order: -17,
                 );
             }
 
