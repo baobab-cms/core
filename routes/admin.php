@@ -16,6 +16,7 @@ use Baobab\Admin\Notifications\Http\Controllers\NotificationController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
+use Baobab\Admin\Widgets\Http\Controllers\WidgetsController;
 use Baobab\Audit\Http\Controllers\AuditLogController;
 use Illuminate\Support\Facades\Route;
 
@@ -91,6 +92,20 @@ Route::middleware('can:baobab.menus.manage')
         Route::get('/{menu}', [MenusController::class, 'edit'])->name('edit');
         Route::post('/{menu}', [MenusController::class, 'update'])->name('update');
         Route::delete('/{menu}', [MenusController::class, 'destroy'])->name('destroy');
+    });
+
+Route::middleware('can:baobab.widgets.manage')
+    ->prefix('widgets')
+    ->name('widgets.')
+    ->group(function (): void {
+        Route::get('/', [WidgetsController::class, 'index'])->name('index');
+        Route::get('/create', [WidgetsController::class, 'create'])->name('create');
+        Route::post('/', [WidgetsController::class, 'store'])->name('store');
+        Route::get('/{instance}/edit', [WidgetsController::class, 'edit'])->name('edit');
+        Route::post('/{instance}', [WidgetsController::class, 'update'])->name('update');
+        Route::delete('/{instance}', [WidgetsController::class, 'destroy'])->name('destroy');
+        Route::post('/{instance}/move-up', [WidgetsController::class, 'moveUp'])->name('move-up');
+        Route::post('/{instance}/move-down', [WidgetsController::class, 'moveDown'])->name('move-down');
     });
 
 Route::middleware('can:baobab.users.impersonate')

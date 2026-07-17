@@ -67,6 +67,12 @@ use Baobab\Rendering\PublicRouteRegistrar;
 use Baobab\Scheduler\SchedulerRegistrar;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
+use Baobab\Widgets\Core\CustomHtmlWidget;
+use Baobab\Widgets\Core\MenuWidget;
+use Baobab\Widgets\Core\RecentContentsWidget;
+use Baobab\Widgets\Core\RichTextWidget;
+use Baobab\Widgets\Models\WidgetInstance;
+use Baobab\Widgets\WidgetRegistry;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
@@ -75,6 +81,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -118,6 +125,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->singleton(SupportLogger::class);
 
         $this->app->singleton(FieldRegistry::class);
+
+        $this->app->singleton(WidgetRegistry::class);
 
         $this->app->singleton(PresetRegistry::class);
 
@@ -180,6 +189,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerMenuCacheInvalidationListener();
 
+        $this->registerWidgetCacheInvalidationListener();
+
         $this->registerWorkflowNotificationListeners();
 
         $this->registerSecurityNotificationListeners();
@@ -187,6 +198,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerCoreSidebarItems();
 
         $this->registerCoreFieldTypes();
+
+        $this->registerCoreWidgets();
 
         $this->registerCorePresets();
 
@@ -585,6 +598,32 @@ class BaobabServiceProvider extends ServiceProvider
     }
 
     /**
+     * Contrairement aux menus (FK polymorphe explicite sur l'item, cible
+     * précisément invalidable), les réglages d'un widget sont un JSON opaque
+     * — impossible de savoir statiquement de quel contenu dépend une
+     * instance sans exécuter sa requête. Simplification documentée (suivi
+     * des différés) : invalide toutes les instances du widget « Contenus
+     * récents » à chaque sauvegarde/transition de contenu, pas seulement
+     * celles concernées — nombre d'instances toujours modeste en pratique.
+     */
+    private function registerWidgetCacheInvalidationListener(): void
+    {
+        $invalidate = function (): void {
+            WidgetInstance::where('widget_key', RecentContentsWidget::key())
+                ->get()
+                ->each(fn (WidgetInstance $instance) => Cache::forget("baobab.widget.{$instance->id}"));
+        };
+
+        Hook::listen('baobab.content.saved', function (ContentType $contentType, Model $entry, bool $isNew, array $data = []) use ($invalidate): void {
+            $invalidate();
+        });
+
+        Hook::listen('baobab.content.transitioned', function (ContentType $contentType, Model $entry, string $from, string $to, ?User $actor = null) use ($invalidate): void {
+            $invalidate();
+        });
+    }
+
+    /**
      * Le Core est son propre premier consommateur du hook d'extension de la
      * sidebar (spec 04 §3.3) : les écrans Audit/Accès ne viennent pas d'un
      * module, donc pas de module_menu_items — on les injecte comme le ferait
@@ -679,6 +718,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            if ($user->can('baobab.widgets.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -9,
+                    label: __('baobab::admin.sidebar.widgets'),
+                    icon: null,
+                    url: route('admin.widgets.index'),
+                    order: -18,
+                );
+            }
+
             return $items->concat($coreItems);
         });
     }
@@ -712,6 +761,27 @@ class BaobabServiceProvider extends ServiceProvider
             GalleryField::class,
         ] as $fieldType) {
             $registry->register($fieldType);
+        }
+    }
+
+    /**
+     * Widgets Core, v1 (spec 10 §3.2) — l'enregistrement de widgets fournis
+     * par un module via son manifest n'est pas câblé : aucun mécanisme
+     * générique manifest → classes n'existe encore dans ce code base,
+     * indépendamment des widgets (suivi des différés).
+     */
+    private function registerCoreWidgets(): void
+    {
+        /** @var WidgetRegistry $registry */
+        $registry = $this->app->make(WidgetRegistry::class);
+
+        foreach ([
+            RecentContentsWidget::class,
+            MenuWidget::class,
+            RichTextWidget::class,
+            CustomHtmlWidget::class,
+        ] as $widget) {
+            $registry->register($widget);
         }
     }
 
