@@ -9,6 +9,8 @@ use Baobab\Rendering\Actions\RenderContentEntry;
 use Baobab\Rendering\Actions\RenderHomepage;
 use Baobab\Rendering\Actions\RenderNotFound;
 use Baobab\Rendering\Actions\ResolveAddressableContentType;
+use Baobab\Seo\Http\Middleware\NormalizePublicUrl;
+use Baobab\Seo\Http\Middleware\ResolveRedirect;
 use Baobab\Themes\Http\Middleware\ResolveActiveTheme;
 use Illuminate\Routing\Router;
 
@@ -26,12 +28,15 @@ use Illuminate\Routing\Router;
  * 17 juillet 2026) vit ici plutôt que dans `routes/web.php` : elle a besoin
  * du même middleware `ResolveActiveTheme` pour que `theme::` soit résolu
  * quand un réglage de lecture pointe vers une page statique ou une archive.
+ * `NormalizePublicUrl`/`ResolveRedirect` (spec 07 §3-4, M5 point 5 Pass B)
+ * s'exécutent en premier — inutile de normaliser/résoudre un thème pour une
+ * requête qui va de toute façon être redirigée.
  */
 final class PublicRouteRegistrar
 {
     public function register(Router $router): void
     {
-        $router->middleware(['web', ResolveActiveTheme::class])->group(function () use ($router): void {
+        $router->middleware(['web', NormalizePublicUrl::class, ResolveRedirect::class, ResolveActiveTheme::class])->group(function () use ($router): void {
             $router->get('/', RenderHomepage::class)->name('baobab.welcome');
 
             $router->get('/{prefix}/{slug?}', function (string $prefix, ?string $slug = null) {

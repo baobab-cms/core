@@ -29,6 +29,7 @@ use Baobab\Console\Commands\ModuleDeactivateCommand;
 use Baobab\Console\Commands\ModuleInstallCommand;
 use Baobab\Console\Commands\ModuleListCommand;
 use Baobab\Console\Commands\ModuleUninstallCommand;
+use Baobab\Console\Commands\NotFoundPurgeCommand;
 use Baobab\Console\Commands\NotificationsPurgeCommand;
 use Baobab\Console\Commands\NotifyTestCommand;
 use Baobab\Console\Commands\SuperAdminCommand;
@@ -65,7 +66,11 @@ use Baobab\Modules\ModuleDiscovery;
 use Baobab\Notify\Notifier;
 use Baobab\Rendering\PublicRouteRegistrar;
 use Baobab\Scheduler\SchedulerRegistrar;
+use Baobab\Seo\Actions\CreateRedirect;
+use Baobab\Seo\Actions\DeleteRedirect;
+use Baobab\Seo\Actions\UpdateRedirect;
 use Baobab\Seo\Actions\UpdateSeoMeta;
+use Baobab\Seo\Models\Redirect;
 use Baobab\Seo\Models\SeoMeta;
 use Baobab\Seo\SeoContext;
 use Baobab\Support\Logger as SupportLogger;
@@ -200,6 +205,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerSeoSaveListener();
 
+        $this->registerSlugRedirectListener();
+
         $this->registerWorkflowNotificationListeners();
 
         $this->registerSecurityNotificationListeners();
@@ -241,10 +248,13 @@ class BaobabServiceProvider extends ServiceProvider
                 ThemeActivateCommand::class,
                 ThemePreviewCommand::class,
                 ThemeValidateCommand::class,
+                NotFoundPurgeCommand::class,
             ]);
         }
 
         $this->registerMediaPurgeSchedule();
+
+        $this->registerNotFoundPurgeSchedule();
 
         $this->registerSchedulerTasks();
     }
@@ -278,6 +288,20 @@ class BaobabServiceProvider extends ServiceProvider
             $schedule = $this->app->make(Schedule::class);
 
             $schedule->command(MediaPurgeTrashCommand::class)->daily();
+        });
+    }
+
+    /**
+     * `seo:purge-404-log` (spec 07 §4) — même patron que
+     * `registerMediaPurgeSchedule()`.
+     */
+    private function registerNotFoundPurgeSchedule(): void
+    {
+        $this->app->booted(function (): void {
+            /** @var Schedule $schedule */
+            $schedule = $this->app->make(Schedule::class);
+
+            $schedule->command(NotFoundPurgeCommand::class)->daily();
         });
     }
 
@@ -692,6 +716,60 @@ class BaobabServiceProvider extends ServiceProvider
     }
 
     /**
+     * Historique de slug → redirection 301 automatique (spec 07 §3) : toute
+     * modification du slug d'une entrée déjà publiée d'un type adressable
+     * crée (ou met à jour, si l'ancienne URL avait déjà une redirection —
+     * cas d'un renommage A→B puis B→A) une redirection de l'ancienne URL
+     * vers la nouvelle. Écouté sur `baobab.content.saving` (avant
+     * `$entry->fill($data)` dans `SaveContentEntry`), pas `.saved` :
+     * `save()` appelle `syncOriginal()` en interne, donc `getOriginal()`
+     * reflète déjà la **nouvelle** valeur une fois `.saved` émis —
+     * `wasChanged()` reste vrai mais l'ancienne valeur n'est plus
+     * récupérable à ce stade. Comparer `$entry` (encore intact) à `$data`
+     * directement, avant la sauvegarde, est le seul point fiable.
+     */
+    private function registerSlugRedirectListener(): void
+    {
+        Hook::listen('baobab.content.saving', function (ContentType $contentType, Model $entry, array $data = []): void {
+            if (! $entry->exists || ! $contentType->is_addressable || ! array_key_exists('slug', $data)) {
+                return;
+            }
+
+            $oldSlug = $entry->getAttribute('slug');
+            $newSlug = $data['slug'];
+
+            if ($oldSlug === null || $newSlug === null || $oldSlug === $newSlug) {
+                return;
+            }
+
+            $source = "/{$contentType->urlPrefix()}/{$oldSlug}";
+            $target = "/{$contentType->urlPrefix()}/{$newSlug}";
+
+            // Le nouveau slug redevient l'URL vivante : une redirection
+            // existante partant de cette même URL est désormais périmée et
+            // formerait une boucle (ex. A→B puis un renommage retour B→A
+            // sans ce nettoyage laisserait A→B ET B→A actives en même
+            // temps). Supprimée plutôt que mise à jour — sa cible n'a plus
+            // de sens une fois la source redevenue vivante.
+            $stale = Redirect::where('source', $target)->where('source_kind', 'auto')->first();
+
+            if ($stale !== null) {
+                app(DeleteRedirect::class)($stale);
+            }
+
+            $existing = Redirect::where('source', $source)->first();
+
+            if ($existing !== null) {
+                app(UpdateRedirect::class)($existing, ['target' => $target, 'status_code' => 301, 'is_active' => true, 'source_kind' => 'auto']);
+
+                return;
+            }
+
+            app(CreateRedirect::class)(['source' => $source, 'target' => $target, 'status_code' => 301, 'source_kind' => 'auto']);
+        });
+    }
+
+    /**
      * Le Core est son propre premier consommateur du hook d'extension de la
      * sidebar (spec 04 §3.3) : les écrans Audit/Accès ne viennent pas d'un
      * module, donc pas de module_menu_items — on les injecte comme le ferait
@@ -813,6 +891,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: null,
                     url: route('admin.seo.index'),
                     order: -14,
+                );
+            }
+
+            if ($user->can('baobab.system.redirects.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -12,
+                    label: __('baobab::admin.sidebar.redirects'),
+                    icon: null,
+                    url: route('admin.redirects.index'),
+                    order: -13,
                 );
             }
 

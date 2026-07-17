@@ -340,4 +340,22 @@ return [
         'cache_ttl' => (int) env('BAOBAB_MENUS_CACHE_TTL', 3600),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Redirections & journal 404 (spec 07 §3-4, M5 point 5 Pass B)
+    |--------------------------------------------------------------------------
+    |
+    | trailing_slash : forme canonique imposée par NormalizePublicUrl —
+    | "strip" (défaut, /voitures/208/ → /voitures/208) ou "append" (l'inverse,
+    | spec 07 §3 dernière puce : « ou l'inverse, réglage »).
+    | not_found_retention_days : purge automatique du journal des 404
+    | (seo:purge-404-log) au-delà de ce délai, patron
+    | notifications.retention_days.
+    |
+    */
+    'redirects' => [
+        'trailing_slash' => env('BAOBAB_REDIRECTS_TRAILING_SLASH', 'strip'),
+        'not_found_retention_days' => (int) env('BAOBAB_NOT_FOUND_RETENTION_DAYS', 90),
+    ],
+
 ];

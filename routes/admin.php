@@ -14,6 +14,8 @@ use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
 use Baobab\Admin\Menus\Http\Controllers\MenusController;
 use Baobab\Admin\Notifications\Http\Controllers\NotificationController;
 use Baobab\Admin\Rendering\Http\Controllers\ReadingSettingsController;
+use Baobab\Admin\Seo\Http\Controllers\NotFoundLogController;
+use Baobab\Admin\Seo\Http\Controllers\RedirectsController;
 use Baobab\Admin\Seo\Http\Controllers\SeoSettingsController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
@@ -88,6 +90,21 @@ Route::middleware('can:baobab.system.seo.manage')
     ->group(function (): void {
         Route::get('/', [SeoSettingsController::class, 'index'])->name('index');
         Route::post('/', [SeoSettingsController::class, 'update'])->name('update');
+    });
+
+Route::middleware('can:baobab.system.redirects.manage')
+    ->prefix('redirects')
+    ->name('redirects.')
+    ->group(function (): void {
+        Route::get('/', [RedirectsController::class, 'index'])->name('index');
+        Route::get('/create', [RedirectsController::class, 'create'])->name('create');
+        Route::post('/', [RedirectsController::class, 'store'])->name('store');
+        Route::get('/export', [RedirectsController::class, 'export'])->name('export');
+        Route::post('/import', [RedirectsController::class, 'import'])->name('import');
+        Route::get('/not-found', [NotFoundLogController::class, 'index'])->name('not-found');
+        Route::get('/{redirect}', [RedirectsController::class, 'edit'])->name('edit');
+        Route::put('/{redirect}', [RedirectsController::class, 'update'])->name('update');
+        Route::delete('/{redirect}', [RedirectsController::class, 'destroy'])->name('destroy');
     });
 
 Route::middleware('can:baobab.system.themes.manage')
