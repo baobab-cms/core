@@ -14,6 +14,7 @@ use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
 use Baobab\Admin\Menus\Http\Controllers\MenusController;
 use Baobab\Admin\Notifications\Http\Controllers\NotificationController;
 use Baobab\Admin\Rendering\Http\Controllers\ReadingSettingsController;
+use Baobab\Admin\Seo\Http\Controllers\SeoSettingsController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
@@ -79,6 +80,14 @@ Route::middleware('can:baobab.system.reading.manage')
     ->group(function (): void {
         Route::get('/', [ReadingSettingsController::class, 'index'])->name('index');
         Route::post('/', [ReadingSettingsController::class, 'update'])->name('update');
+    });
+
+Route::middleware('can:baobab.system.seo.manage')
+    ->prefix('seo')
+    ->name('seo.')
+    ->group(function (): void {
+        Route::get('/', [SeoSettingsController::class, 'index'])->name('index');
+        Route::post('/', [SeoSettingsController::class, 'update'])->name('update');
     });
 
 Route::middleware('can:baobab.system.themes.manage')

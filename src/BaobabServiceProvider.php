@@ -65,6 +65,9 @@ use Baobab\Modules\ModuleDiscovery;
 use Baobab\Notify\Notifier;
 use Baobab\Rendering\PublicRouteRegistrar;
 use Baobab\Scheduler\SchedulerRegistrar;
+use Baobab\Seo\Actions\UpdateSeoMeta;
+use Baobab\Seo\Models\SeoMeta;
+use Baobab\Seo\SeoContext;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
 use Baobab\Widgets\Core\CustomHtmlWidget;
@@ -130,6 +133,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->app->singleton(PresetRegistry::class);
 
+        $this->app->singleton(SeoContext::class);
+
         $this->app->singleton(ImageManager::class, function (Application $app): ImageManager {
             /** @var string $driver */
             $driver = $app->make('config')->get('baobab.media.image_driver', 'gd');
@@ -190,6 +195,10 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerMenuCacheInvalidationListener();
 
         $this->registerWidgetCacheInvalidationListener();
+
+        $this->registerSeoFormSection();
+
+        $this->registerSeoSaveListener();
 
         $this->registerWorkflowNotificationListeners();
 
@@ -624,6 +633,65 @@ class BaobabServiceProvider extends ServiceProvider
     }
 
     /**
+     * Injecte la metabox SEO (spec 07 §2.1) après la liste de champs de
+     * chaque formulaire de contenu adressable, via `baobab.content.form.sections`
+     * — pas `baobab.content.form.fields` (câblé uniquement pour des champs
+     * plats validés par `validationRules()`, valeur lue par `getAttribute()` :
+     * inadapté à une metabox qui vit dans sa propre table polymorphique,
+     * cf. docblock de `ContentController::formSections()`). `$entry` absent
+     * en création : la metabox s'affiche quand même, vide, pour permettre de
+     * pré-remplir le SEO dès la création (même POST que le contenu).
+     */
+    private function registerSeoFormSection(): void
+    {
+        Hook::modify('baobab.content.form.sections', function (array $sections, ContentType $type, ?Model $entry) {
+            if (! $type->is_addressable) {
+                return $sections;
+            }
+
+            $seoMeta = $entry !== null ? SeoMeta::forEntry($entry) : new SeoMeta;
+
+            $previewUrl = null;
+
+            if ($entry !== null && $entry->getAttribute('slug') !== null) {
+                $previewUrl = url("/{$type->urlPrefix()}/{$entry->getAttribute('slug')}");
+            }
+
+            $sections[] = view('baobab::admin.seo.metabox', [
+                'seoMeta' => $seoMeta,
+                'previewUrl' => $previewUrl,
+                'previewFallbackTitle' => $this->label($type),
+            ])->render();
+
+            return $sections;
+        });
+    }
+
+    private function label(ContentType $type): string
+    {
+        return $type->blueprint['label']['singular'] ?? $type->key;
+    }
+
+    /**
+     * Sauvegarde la metabox SEO (spec 07 §2.1) — lit `request()->input('seo', [])`
+     * directement plutôt que `$data` (le tableau validé transmis par
+     * `baobab.content.saved` ne porte que les champs déclarés dans
+     * `ContentController::validationRules()`, jamais filtré par
+     * `baobab.content.form.fields`/`.sections` : découplage total,
+     * `UpdateSeoMeta` valide et journalise lui-même).
+     */
+    private function registerSeoSaveListener(): void
+    {
+        Hook::listen('baobab.content.saved', function (ContentType $contentType, Model $entry, bool $isNew, array $data = []): void {
+            if (! $contentType->is_addressable) {
+                return;
+            }
+
+            app(UpdateSeoMeta::class)($entry, (array) request()->input('seo', []));
+        });
+    }
+
+    /**
      * Le Core est son propre premier consommateur du hook d'extension de la
      * sidebar (spec 04 §3.3) : les écrans Audit/Accès ne viennent pas d'un
      * module, donc pas de module_menu_items — on les injecte comme le ferait
@@ -735,6 +803,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: null,
                     url: route('admin.reading.index'),
                     order: -19,
+                );
+            }
+
+            if ($user->can('baobab.system.seo.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -11,
+                    label: __('baobab::admin.sidebar.seo'),
+                    icon: null,
+                    url: route('admin.seo.index'),
+                    order: -14,
                 );
             }
 

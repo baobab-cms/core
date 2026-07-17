@@ -37,6 +37,7 @@ final class ThemeValidator
             ...$this->checkBladePhpTags($path),
             ...$this->checkForbiddenConstructs($manifest, $path),
             ...$this->checkBladeWarnings($path),
+            ...$this->checkSeoHeadPresence($manifest, $path),
         ];
     }
 
@@ -238,6 +239,40 @@ final class ThemeValidator
         }
 
         return $violations;
+    }
+
+    /**
+     * Le thème n'écrit lui-même aucune balise SEO — il place
+     * `<x-baobab::seo-head />` dans son layout, le Core compose le reste
+     * (spec 07 §6 dernière phrase). Non bloquant (contrairement aux
+     * fichiers requis, `checkRequiredFiles`) : un thème sans ce composant
+     * reste fonctionnel, juste moins bien référencé. Même repli parent/
+     * enfant que le layout lui-même (spec 03 §6).
+     *
+     * @return list<ThemeViolation>
+     */
+    private function checkSeoHeadPresence(ModuleManifest $manifest, string $path): array
+    {
+        $relative = 'resources/views/layouts/app.blade.php';
+        $parentPath = $this->parentPath($manifest);
+
+        $layoutPath = match (true) {
+            is_file("{$path}/{$relative}") => "{$path}/{$relative}",
+            $parentPath !== null && is_file("{$parentPath}/{$relative}") => "{$parentPath}/{$relative}",
+            default => null,
+        };
+
+        if ($layoutPath === null) {
+            return [];
+        }
+
+        $contents = (string) file_get_contents($layoutPath);
+
+        if (str_contains($contents, '<x-baobab::seo-head')) {
+            return [];
+        }
+
+        return [new ThemeViolation($relative, null, 'Composant <x-baobab::seo-head /> absent du layout — le thème ne fournira aucune balise SEO (spec 07 §6).', blocking: false)];
     }
 
     /**

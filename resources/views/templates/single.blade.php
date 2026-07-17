@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <title>{{ $title }}</title>
+    <x-baobab::seo-head />
 </head>
 <body>
     <h1>{{ $title }}</h1>

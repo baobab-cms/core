@@ -8,6 +8,8 @@ use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
 use Baobab\Rendering\Models\ReadingSetting;
 use Baobab\Rendering\TemplateHierarchyResolver;
+use Baobab\Seo\Actions\ComposeSeoMeta;
+use Baobab\Seo\SeoContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
@@ -32,7 +34,11 @@ use Illuminate\Support\Str;
  */
 final class RenderHomepage
 {
-    public function __construct(private readonly TemplateHierarchyResolver $hierarchy) {}
+    public function __construct(
+        private readonly TemplateHierarchyResolver $hierarchy,
+        private readonly ComposeSeoMeta $seo,
+        private readonly SeoContext $seoContext,
+    ) {}
 
     public function __invoke(): Response
     {
@@ -78,6 +84,8 @@ final class RenderHomepage
             return null;
         }
 
+        $this->seoContext->set(($this->seo)($contentType, $entry));
+
         $slug = (string) $entry->getAttribute('slug');
         $view = $this->hierarchy->resolve(['home', "page-{$slug}", 'page', 'index']);
         $html = (string) Hook::filter('baobab.content.render', view($view, $data)->render(), $contentType, $entry);
@@ -113,6 +121,8 @@ final class RenderHomepage
             return null;
         }
 
+        $this->seoContext->set(($this->seo)($contentType, null));
+
         $key = Str::kebab($contentType->key);
         $view = $this->hierarchy->resolve(['home', "archive-{$key}", 'archive', 'index']);
         $html = (string) Hook::filter('baobab.content.render', view($view, $data)->render(), $contentType);
@@ -128,6 +138,10 @@ final class RenderHomepage
         // (pas render() manuel) conserve la vue d'origine sur la réponse —
         // Illuminate\Http\Response::setContent() ne la perd que si on lui
         // passe déjà une chaîne, utile pour assertViewIs() en test.
+        // ComposeSeoMeta(null, null) reste pertinent ici : seuls les réglages
+        // globaux (nom du site, description/image par défaut) s'appliquent.
+        $this->seoContext->set(($this->seo)(null, null));
+
         $view = $this->hierarchy->resolve(['home', 'index']);
 
         return response()->view($view);

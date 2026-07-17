@@ -196,6 +196,10 @@
             @endif
         @endif
 
+        @foreach ($sections ?? [] as $section)
+            {!! $section !!}
+        @endforeach
+
         @php
             // Calculé en dehors de la balise du composant : Blade ne compile pas correctement
             // des directives @if/@endif placées à l'intérieur de la liste d'attributs d'un tag

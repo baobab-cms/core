@@ -7,6 +7,8 @@ namespace Baobab\Rendering\Actions;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
 use Baobab\Rendering\TemplateHierarchyResolver;
+use Baobab\Seo\Actions\ComposeSeoMeta;
+use Baobab\Seo\SeoContext;
 use Baobab\Support\Logger;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +27,8 @@ final class RenderContentArchive
         private readonly TemplateHierarchyResolver $hierarchy,
         private readonly RenderNotFound $notFound,
         private readonly Logger $logger,
+        private readonly ComposeSeoMeta $seo,
+        private readonly SeoContext $seoContext,
     ) {}
 
     public function __invoke(ContentType $contentType): Response
@@ -47,6 +51,8 @@ final class RenderContentArchive
 
             return ($this->notFound)();
         }
+
+        $this->seoContext->set(($this->seo)($contentType, null));
 
         $key = Str::kebab($contentType->key);
         $view = $this->hierarchy->resolve(["archive-{$key}", 'archive', 'index']);
