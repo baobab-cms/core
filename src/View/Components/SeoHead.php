@@ -39,6 +39,9 @@ final class SeoHead extends Component
 
     public string $siteName;
 
+    /** @var list<array<string, mixed>> */
+    public array $jsonld;
+
     public function __construct(SeoContext $context)
     {
         $seo = $context->get();
@@ -53,6 +56,7 @@ final class SeoHead extends Component
         $this->ogImageUrl = $seo['og_image_url'] ?? null;
         $this->ogType = $seo['og_type'] ?? 'website';
         $this->siteName = $seo['site_name'] ?? (string) config('app.name', 'Baobab');
+        $this->jsonld = $seo['jsonld'] ?? [];
     }
 
     public function render(): ViewContract

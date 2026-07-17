@@ -49,6 +49,25 @@
                 />
                 <p class="-mt-3 mb-4 text-xs text-muted">{{ __('baobab::admin.seo.force_index_on_staging_hint') }}</p>
 
+                <h3 class="mb-2 mt-6 text-sm font-medium text-foreground">{{ __('baobab::admin.seo.jsonld_section_title') }}</h3>
+                <p class="mb-4 text-xs text-muted">{{ __('baobab::admin.seo.jsonld_logo_hint') }}</p>
+
+                <x-baobab::field.select
+                    name="organization_type"
+                    :label="__('baobab::admin.seo.organization_type_label')"
+                    :options="['Organization' => __('baobab::admin.seo.organization_type_organization'), 'Person' => __('baobab::admin.seo.organization_type_person')]"
+                    :value="$setting->organization_type"
+                />
+                <p class="-mt-3 mb-4 text-xs text-muted">{{ __('baobab::admin.seo.organization_type_hint') }}</p>
+
+                <x-baobab::field.textarea
+                    name="social_profiles"
+                    :label="__('baobab::admin.seo.social_profiles_label')"
+                    :value="$setting->social_profiles"
+                    placeholder="https://facebook.com/monsite&#10;https://twitter.com/monsite"
+                />
+                <p class="-mt-3 mb-4 text-xs text-muted">{{ __('baobab::admin.seo.social_profiles_hint') }}</p>
+
                 @if ($contentTypes->isNotEmpty())
                     <h3 class="mb-2 mt-6 text-sm font-medium text-foreground">{{ __('baobab::admin.seo.title_templates_title') }}</h3>
                     <p class="mb-4 text-xs text-muted">{{ __('baobab::admin.seo.title_templates_hint') }}</p>

@@ -9,6 +9,7 @@ use Baobab\Facades\Hook;
 use Baobab\Seo\Models\SeoContentTypeSetting;
 use Baobab\Seo\Models\SeoMeta;
 use Baobab\Seo\Models\SeoSetting;
+use Baobab\Seo\Support\EntryTitleResolver;
 use Baobab\Seo\Support\FirstImageFieldResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -23,7 +24,11 @@ use Illuminate\Support\Str;
  */
 final class ComposeSeoMeta
 {
-    public function __construct(private readonly FirstImageFieldResolver $imageResolver) {}
+    public function __construct(
+        private readonly FirstImageFieldResolver $imageResolver,
+        private readonly EntryTitleResolver $titleResolver,
+        private readonly ComposeJsonLd $jsonld,
+    ) {}
 
     /**
      * @return array{
@@ -37,6 +42,7 @@ final class ComposeSeoMeta
      *     og_image_url: string|null,
      *     og_type: string,
      *     site_name: string,
+     *     jsonld: list<array<string, mixed>>,
      * }
      */
     public function __invoke(?ContentType $contentType, ?Model $entry): array
@@ -60,7 +66,9 @@ final class ComposeSeoMeta
             $seo['robots_noindex'] = true;
         }
 
-        /** @var array{title: string, description: string|null, robots_noindex: bool, robots_nofollow: bool, canonical: string, og_title: string, og_description: string|null, og_image_url: string|null, og_type: string, site_name: string} $filtered */
+        $seo['jsonld'] = ($this->jsonld)($contentType, $entry);
+
+        /** @var array{title: string, description: string|null, robots_noindex: bool, robots_nofollow: bool, canonical: string, og_title: string, og_description: string|null, og_image_url: string|null, og_type: string, site_name: string, jsonld: list<array<string, mixed>>} $filtered */
         $filtered = Hook::filter('baobab.seo.meta', $seo, $contentType, $entry);
 
         return $filtered;
@@ -152,10 +160,7 @@ final class ComposeSeoMeta
 
     private function rawTitle(ContentType $contentType, Model $entry): string
     {
-        /** @var string|null $titleField */
-        $titleField = $contentType->blueprint['title_field'] ?? null;
-
-        return $titleField !== null ? (string) $entry->getAttribute($titleField) : $contentType->key;
+        return ($this->titleResolver)($contentType, $entry);
     }
 
     private function excerptFromEntry(ContentType $contentType, Model $entry): ?string

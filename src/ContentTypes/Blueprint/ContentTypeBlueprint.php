@@ -42,6 +42,7 @@ final readonly class ContentTypeBlueprint
         self::validateRelations($data['relations'] ?? [], $relationTargets ?? app(RelationTargetResolver::class));
         self::validateTitleField($data);
         self::validateUrlPrefix($data);
+        self::validateSeoSchema($data);
 
         return new self($data);
     }
@@ -168,6 +169,59 @@ final readonly class ContentTypeBlueprint
     }
 
     /**
+     * Chaque jeton `{xxx}` trouvé dans `seo.schema.properties` (spec 07 §7)
+     * doit désigner `title` (jeton spécial, `EntryTitleResolver`) ou un
+     * `fields[].key` existant — même patron que `validateTitleField()`,
+     * cross-vérification au niveau structurel plutôt qu'un échec silencieux
+     * au rendu (`ComposeJsonLd` ne fait plus confiance à un mapping non
+     * validé).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private static function validateSeoSchema(array $data): void
+    {
+        $properties = $data['seo']['schema']['properties'] ?? null;
+
+        if ($properties === null) {
+            return;
+        }
+
+        /** @var list<string> $fieldKeys */
+        $fieldKeys = collect((array) ($data['fields'] ?? []))->pluck('key')->all();
+
+        foreach (self::extractTokens($properties) as $token) {
+            if ($token !== 'title' && ! in_array($token, $fieldKeys, true)) {
+                throw InvalidBlueprintException::forField(
+                    'seo.schema.properties',
+                    "Le jeton « {{$token}} » ne correspond à aucun champ déclaré dans fields[] (ni « title »)."
+                );
+            }
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function extractTokens(mixed $value): array
+    {
+        if (is_array($value)) {
+            $tokens = [];
+
+            foreach ($value as $item) {
+                array_push($tokens, ...self::extractTokens($item));
+            }
+
+            return $tokens;
+        }
+
+        if (! is_string($value) || preg_match('/^\{([a-z_][a-z0-9_]*)\}$/', $value, $matches) !== 1) {
+            return [];
+        }
+
+        return [$matches[1]];
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     private static function resolveUrlPrefix(array $data): string
@@ -247,6 +301,18 @@ final readonly class ContentTypeBlueprint
     public function revisionsExcept(): array
     {
         return $this->data['revisions']['except'] ?? [];
+    }
+
+    /**
+     * Mapping schema.org optionnel (spec 07 §7), consommé par
+     * `Baobab\Seo\Actions\ComposeJsonLd` — `null` si le blueprint n'en
+     * déclare aucun.
+     *
+     * @return array{type: string, properties?: array<string, mixed>}|null
+     */
+    public function seoSchema(): ?array
+    {
+        return $this->data['seo']['schema'] ?? null;
     }
 
     public function blueprintVersion(): int

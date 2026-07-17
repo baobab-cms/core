@@ -24,7 +24,7 @@ final class UpdateSeoSettings
     ) {}
 
     /**
-     * @param  array{site_name?: string|null, title_separator?: string, default_share_media_id?: int|null, default_meta_description?: string|null, robots_txt?: string|null, force_index_on_staging?: bool}  $data
+     * @param  array{site_name?: string|null, title_separator?: string, default_share_media_id?: int|null, default_meta_description?: string|null, robots_txt?: string|null, force_index_on_staging?: bool, organization_type?: string, social_profiles?: string|null}  $data
      * @param  array<string, array{title_template?: string|null, exclude_from_sitemap?: bool}>  $typeSettings  Réglages par clé de Content Type.
      */
     public function __invoke(array $data, array $typeSettings = []): SeoSetting

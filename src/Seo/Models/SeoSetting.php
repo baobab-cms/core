@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $default_meta_description
  * @property string|null $robots_txt
  * @property bool $force_index_on_staging
+ * @property string $organization_type
+ * @property string|null $social_profiles
  */
 class SeoSetting extends Model
 {
@@ -28,6 +30,7 @@ class SeoSetting extends Model
      */
     protected $attributes = [
         'force_index_on_staging' => false,
+        'organization_type' => 'Organization',
     ];
 
     /**
@@ -40,6 +43,8 @@ class SeoSetting extends Model
         'default_meta_description',
         'robots_txt',
         'force_index_on_staging',
+        'organization_type',
+        'social_profiles',
     ];
 
     /**

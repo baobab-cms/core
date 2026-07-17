@@ -56,6 +56,21 @@ final class SeoSettingsController
                 },
             ],
             'force_index_on_staging' => ['nullable', 'boolean'],
+            'organization_type' => ['nullable', 'string', 'in:Organization,Person'],
+            'social_profiles' => [
+                'nullable',
+                'string',
+                'max:2000',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    foreach (preg_split('/\r\n|\r|\n/', (string) $value) ?: [] as $line) {
+                        $line = trim($line);
+
+                        if ($line !== '' && filter_var($line, FILTER_VALIDATE_URL) === false) {
+                            $fail(__('baobab::admin.seo.social_profiles_invalid', ['url' => $line]));
+                        }
+                    }
+                },
+            ],
             'title_templates' => ['nullable', 'array'],
             'title_templates.*' => ['nullable', 'string', 'max:255'],
             'exclude_from_sitemap' => ['nullable', 'array'],
@@ -79,6 +94,8 @@ final class SeoSettingsController
                 'default_meta_description' => $validated['default_meta_description'] ?? null,
                 'robots_txt' => $validated['robots_txt'] ?? null,
                 'force_index_on_staging' => (bool) ($validated['force_index_on_staging'] ?? false),
+                'organization_type' => $validated['organization_type'] ?? 'Organization',
+                'social_profiles' => $validated['social_profiles'] ?? null,
             ],
             $typeSettings,
         );

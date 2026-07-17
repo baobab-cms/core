@@ -290,6 +290,15 @@ return [
         'force_index_on_staging_label' => 'Autoriser l\'indexation hors production',
         'force_index_on_staging_hint' => 'Par défaut, un environnement non-production (APP_ENV ≠ production) force noindex partout et bloque robots.txt — à activer uniquement si vraiment nécessaire.',
         'exclude_from_sitemap_label' => 'Exclure du sitemap',
+        'jsonld_section_title' => 'Données structurées (JSON-LD)',
+        'jsonld_logo_hint' => 'Le logo utilisé pour les données structurées est celui de Réglages > Marque.',
+        'organization_type_label' => 'Type d\'organisation',
+        'organization_type_organization' => 'Organisation',
+        'organization_type_person' => 'Personne',
+        'organization_type_hint' => 'Détermine le type schema.org (Organization ou Person) du bloc global.',
+        'social_profiles_label' => 'Profils sociaux',
+        'social_profiles_hint' => 'Une URL par ligne (Facebook, Twitter/X, LinkedIn...) — publiées comme sameAs.',
+        'social_profiles_invalid' => 'URL invalide : :url',
     ],
 
     'redirects' => [

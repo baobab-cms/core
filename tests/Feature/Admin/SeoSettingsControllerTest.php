@@ -146,6 +146,46 @@ it('rejects a syntactically invalid robots.txt', function () {
     expect(SeoSetting::current()->robots_txt)->toBeNull();
 });
 
+it('saves the organization type and social profiles', function () {
+    $user = seoSettingsActor(['baobab.system.seo.manage']);
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.seo.update'), [
+            'title_separator' => '—',
+            'organization_type' => 'Person',
+            'social_profiles' => "https://facebook.com/acme\nhttps://twitter.com/acme",
+        ])
+        ->assertRedirect(route('admin.seo.index'));
+
+    $setting = SeoSetting::current();
+
+    expect($setting->organization_type)->toBe('Person')
+        ->and($setting->social_profiles)->toBe("https://facebook.com/acme\nhttps://twitter.com/acme");
+});
+
+it('defaults organization_type to Organization when omitted', function () {
+    $user = seoSettingsActor(['baobab.system.seo.manage']);
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.seo.update'), ['title_separator' => '—'])
+        ->assertRedirect(route('admin.seo.index'));
+
+    expect(SeoSetting::current()->organization_type)->toBe('Organization');
+});
+
+it('rejects an invalid URL in social_profiles', function () {
+    $user = seoSettingsActor(['baobab.system.seo.manage']);
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.seo.update'), [
+            'title_separator' => '—',
+            'social_profiles' => "https://facebook.com/acme\nnot-a-url",
+        ])
+        ->assertSessionHasErrors('social_profiles');
+
+    expect(SeoSetting::current()->social_profiles)->toBeNull();
+});
+
 it('excludes a content type from the sitemap', function () {
     [$type] = buildSeoSettingsCarType();
     $user = seoSettingsActor(['baobab.system.seo.manage']);

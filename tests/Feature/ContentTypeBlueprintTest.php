@@ -195,3 +195,49 @@ it('does not consider a non-addressable url_prefix reserved or unique', function
 
     expect($blueprint->isAddressable())->toBeFalse();
 });
+
+it('accepts a seo.schema mapping whose tokens reference declared fields or the special title token', function () {
+    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'fields' => [
+            ['key' => 'brand', 'type' => 'text'],
+            ['key' => 'price', 'type' => 'decimal'],
+        ],
+        'seo' => [
+            'schema' => [
+                'type' => 'Product',
+                'properties' => [
+                    'name' => '{title}',
+                    'brand' => '{brand}',
+                    'offers' => ['price' => '{price}', 'priceCurrency' => 'XOF'],
+                ],
+            ],
+        ],
+    ]));
+
+    expect($blueprint->seoSchema())->toBe([
+        'type' => 'Product',
+        'properties' => [
+            'name' => '{title}',
+            'brand' => '{brand}',
+            'offers' => ['price' => '{price}', 'priceCurrency' => 'XOF'],
+        ],
+    ]);
+});
+
+it('defaults seoSchema to null when the blueprint declares none', function () {
+    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson());
+
+    expect($blueprint->seoSchema())->toBeNull();
+});
+
+it('rejects a seo.schema mapping token that references neither a declared field nor title', function () {
+    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+        'fields' => [['key' => 'brand', 'type' => 'text']],
+        'seo' => [
+            'schema' => [
+                'type' => 'Product',
+                'properties' => ['name' => '{unknown_field}'],
+            ],
+        ],
+    ])))->toThrow(InvalidBlueprintException::class);
+});

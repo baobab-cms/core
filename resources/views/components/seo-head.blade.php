@@ -34,3 +34,6 @@
 @if ($ogDescription)
     <meta name="twitter:description" content="{{ $ogDescription }}">
 @endif
+@if (! empty($jsonld))
+    <script type="application/ld+json">{!! json_encode(['@context' => 'https://schema.org', '@graph' => $jsonld], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+@endif
