@@ -7,7 +7,15 @@ namespace Baobab\Api\Http\Controllers;
 use Baobab\Api\Actions\ResolveApiContentType;
 use Baobab\Api\Http\Resources\ContentEntryResource;
 use Baobab\Api\Support\ContentQueryBuilder;
+use Baobab\ContentTypes\Actions\DeleteContentEntry;
+use Baobab\ContentTypes\Actions\PublishContentEntry;
+use Baobab\ContentTypes\Actions\PurgeContentEntry;
+use Baobab\ContentTypes\Actions\RestoreContentEntryFromTrash;
+use Baobab\ContentTypes\Actions\SaveContentEntry;
+use Baobab\ContentTypes\Editorial\Models\Revision;
 use Baobab\ContentTypes\Models\ContentType;
+use Baobab\ContentTypes\Support\ContentEntryRules;
+use Baobab\ContentTypes\Support\ContentTrash;
 use Baobab\Users\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -75,6 +83,173 @@ final class ContentController
         return response()->json([
             'data' => (new ContentEntryResource($model, $contentType, $fields, $includes))->resolve($request),
         ]);
+    }
+
+    public function store(Request $request, string $type): JsonResponse
+    {
+        $contentType = $this->resolveOrAbort($type);
+        $actor = $this->authorizeClass('create', $contentType);
+
+        $rules = app(ContentEntryRules::class);
+        $validated = $request->validate($rules->rules($contentType));
+
+        if ($contentType->is_addressable && isset($validated['slug'])) {
+            $validated['slug'] = $rules->uniqueSlug($contentType, (string) $validated['slug'], null);
+        }
+
+        $entry = app(SaveContentEntry::class)($contentType, $validated, $actor);
+
+        return response()->json(
+            ['data' => (new ContentEntryResource($entry, $contentType))->resolve($request)],
+            201,
+            ['Location' => route('api.v1.content.show', ['type' => $type, 'entry' => $entry->getKey()])],
+        );
+    }
+
+    public function update(Request $request, string $type, int|string $entry): JsonResponse
+    {
+        $contentType = $this->resolveOrAbort($type);
+        $model = $this->findEntry($contentType, $entry);
+        $actor = $this->authorizeInstance('update', $model);
+
+        $rules = app(ContentEntryRules::class);
+        $validated = $request->validate($rules->rules($contentType, partial: true));
+
+        if ($contentType->is_addressable && isset($validated['slug'])) {
+            $validated['slug'] = $rules->uniqueSlug($contentType, (string) $validated['slug'], $model);
+        }
+
+        $updated = app(SaveContentEntry::class)($contentType, $validated, $actor, $model);
+
+        return response()->json(['data' => (new ContentEntryResource($updated, $contentType))->resolve($request)]);
+    }
+
+    public function destroy(Request $request, string $type, int|string $entry): JsonResponse
+    {
+        $contentType = $this->resolveOrAbort($type);
+
+        if ($request->boolean('force')) {
+            /** @var class-string<Model> $modelClass */
+            $modelClass = $contentType->modelClass();
+
+            $model = ContentTrash::withTrashed($modelClass)->find($entry);
+            abort_if($model === null, 404);
+
+            $this->authorizeInstance('forceDelete', $model);
+
+            app(PurgeContentEntry::class)($contentType, $model);
+
+            return response()->json(null, 204);
+        }
+
+        $model = $this->findEntry($contentType, $entry);
+        $this->authorizeInstance('delete', $model);
+
+        app(DeleteContentEntry::class)($contentType, $model);
+
+        return response()->json(null, 204);
+    }
+
+    public function publish(Request $request, string $type, int|string $entry): JsonResponse
+    {
+        $contentType = $this->resolveOrAbort($type);
+        $model = $this->findEntry($contentType, $entry);
+        $actor = $this->authorizeInstance('publish', $model);
+
+        $updated = app(PublishContentEntry::class)($contentType, $model, $actor);
+
+        return response()->json(['data' => (new ContentEntryResource($updated, $contentType))->resolve($request)]);
+    }
+
+    public function restore(Request $request, string $type, int|string $entry): JsonResponse
+    {
+        $contentType = $this->resolveOrAbort($type);
+
+        /** @var class-string<Model> $modelClass */
+        $modelClass = $contentType->modelClass();
+
+        $model = ContentTrash::onlyTrashed($modelClass)->find($entry);
+        abort_if($model === null, 404);
+
+        $this->authorizeInstance('restore', $model);
+
+        $restored = app(RestoreContentEntryFromTrash::class)($contentType, $model);
+
+        return response()->json(['data' => (new ContentEntryResource($restored, $contentType))->resolve($request)]);
+    }
+
+    /**
+     * Historique manuel/pre_restore (spec 09 §6, même filtre que l'admin,
+     * `ContentController::revisions()`) — jamais `autosave`/`working_draft`,
+     * invisibles hors du contexte d'édition en cours. Décision de périmètre :
+     * expose id/type/summary/author/created_at, jamais le `snapshot` brut
+     * (contiendrait des champs non `exposed_in_api`) ; pas de restauration
+     * de révision ni de diff via l'API en Pass B, non nommés par la spec.
+     */
+    public function revisions(string $type, int|string $entry): JsonResponse
+    {
+        $contentType = $this->resolveOrAbort($type);
+        $model = $this->findEntry($contentType, $entry);
+        $this->authorizeInstance('update', $model);
+
+        $revisions = Revision::where('revisionable_type', $model->getMorphClass())
+            ->where('revisionable_id', $model->getKey())
+            ->whereIn('type', ['manual', 'pre_restore'])
+            ->orderByDesc('id')
+            ->with('author')
+            ->get();
+
+        return response()->json([
+            'data' => $revisions->map(fn (Revision $revision): array => [
+                'id' => $revision->id,
+                'type' => $revision->type,
+                'summary' => $revision->summary,
+                'author' => $revision->author === null ? null : [
+                    'id' => $revision->author->id,
+                    'name' => $revision->author->name,
+                ],
+                'created_at' => $revision->created_at,
+            ])->all(),
+        ]);
+    }
+
+    private function findEntry(ContentType $type, int|string $id): Model
+    {
+        /** @var class-string<Model> $modelClass */
+        $modelClass = $type->modelClass();
+
+        $model = $modelClass::query()->find($id);
+
+        abort_if($model === null, 404);
+
+        return $model;
+    }
+
+    private function authorizeClass(string $ability, ContentType $type): User
+    {
+        $actor = $this->requireActor();
+
+        abort_unless($actor->can($ability, $type->modelClass()), 403);
+
+        return $actor;
+    }
+
+    private function authorizeInstance(string $ability, Model $model): User
+    {
+        $actor = $this->requireActor();
+
+        abort_unless($actor->can($ability, $model), 403);
+
+        return $actor;
+    }
+
+    private function requireActor(): User
+    {
+        $actor = $this->actor();
+
+        abort_unless($actor instanceof User, 401);
+
+        return $actor;
     }
 
     private function resolveOrAbort(string $type): ContentType

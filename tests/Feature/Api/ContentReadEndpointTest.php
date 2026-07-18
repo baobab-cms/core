@@ -1,12 +1,8 @@
 <?php
 
-use Baobab\Access\Actions\GrantPermission;
 use Baobab\ContentTypes\Actions\BuildContentType;
-use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
-use Baobab\Users\Models\User;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\File;
 
 beforeEach(function () {
@@ -18,82 +14,6 @@ beforeEach(function () {
 afterEach(function () {
     File::deleteDirectory(generatedModulesPath());
 });
-
-/**
- * @param  array<string, mixed>  $overrides
- * @return array{0: ContentType, 1: class-string<Model>}
- */
-function buildApiCar(array $overrides = []): array
-{
-    $contentType = app(BuildContentType::class)((string) json_encode(array_replace([
-        'key' => 'ApiCar',
-        'label' => ['singular' => 'Voiture', 'plural' => 'Voitures'],
-        'is_addressable' => true,
-        'title_field' => 'brand',
-        'fields' => [
-            ['key' => 'brand', 'type' => 'text', 'required' => true],
-            ['key' => 'price', 'type' => 'decimal'],
-            ['key' => 'internal_note', 'type' => 'text', 'exposed_in_api' => false],
-        ],
-    ], $overrides)));
-
-    $module = Module::findOrFail($contentType->module_id);
-    app(ModuleAutoloader::class)->registerFor($module);
-
-    /** @var class-string<Model> $modelClass */
-    $modelClass = $contentType->modelClass();
-
-    $fresh = $contentType->fresh();
-
-    if ($fresh === null) {
-        throw new RuntimeException('Expected the newly built ApiCar content type to be refetchable.');
-    }
-
-    return [$fresh, $modelClass];
-}
-
-/**
- * @return class-string<Model>
- */
-function buildApiManufacturer(): string
-{
-    $contentType = app(BuildContentType::class)((string) json_encode([
-        'key' => 'ApiManufacturer',
-        'label' => ['singular' => 'Fabricant', 'plural' => 'Fabricants'],
-        'fields' => [
-            ['key' => 'name', 'type' => 'text', 'required' => true],
-        ],
-    ]));
-
-    $module = Module::findOrFail($contentType->module_id);
-    app(ModuleAutoloader::class)->registerFor($module);
-
-    /** @var class-string<Model> $modelClass */
-    $modelClass = $contentType->modelClass();
-
-    return $modelClass;
-}
-
-/**
- * @param  list<string>  $permissions
- */
-function apiActor(array $permissions): User
-{
-    static $counter = 0;
-    $counter++;
-
-    $user = User::create([
-        'name' => "API Actor {$counter}",
-        'email' => "api-actor-{$counter}@example.com",
-        'password' => 'secret',
-    ]);
-
-    foreach ($permissions as $permission) {
-        app(GrantPermission::class)($user, $permission);
-    }
-
-    return $user;
-}
 
 it('serves a published entry of a public addressable type without authentication', function () {
     [, $carClass] = buildApiCar();

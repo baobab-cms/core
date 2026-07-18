@@ -1,9 +1,13 @@
 <?php
 
 use Baobab\Access\Actions\GrantPermission;
+use Baobab\ContentTypes\Actions\BuildContentType;
+use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Modules\Models\Module;
+use Baobab\Modules\ModuleAutoloader;
 use Baobab\Tests\TestCase;
 use Baobab\Users\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 
@@ -217,4 +221,90 @@ function createTestJpegWithExif(int $orientation, int $width = 20, int $height =
     file_put_contents($jpegPath, substr($jpegBytes, 0, 2).$app1.substr($jpegBytes, 2));
 
     return $jpegPath;
+}
+
+/**
+ * Content Type "ApiCar" (addressable, brand/price/internal_note dont
+ * internal_note n'est pas exposé en API) utilisé par les tests REST
+ * (lecture et écriture, `tests/Feature/Api/`).
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array{0: ContentType, 1: class-string<Model>}
+ */
+function buildApiCar(array $overrides = []): array
+{
+    $contentType = app(BuildContentType::class)((string) json_encode(array_replace([
+        'key' => 'ApiCar',
+        'label' => ['singular' => 'Voiture', 'plural' => 'Voitures'],
+        'is_addressable' => true,
+        'title_field' => 'brand',
+        'fields' => [
+            ['key' => 'brand', 'type' => 'text', 'required' => true],
+            ['key' => 'price', 'type' => 'decimal'],
+            ['key' => 'internal_note', 'type' => 'text', 'exposed_in_api' => false],
+        ],
+    ], $overrides)));
+
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    /** @var class-string<Model> $modelClass */
+    $modelClass = $contentType->modelClass();
+
+    $fresh = $contentType->fresh();
+
+    if ($fresh === null) {
+        throw new RuntimeException('Expected the newly built ApiCar content type to be refetchable.');
+    }
+
+    return [$fresh, $modelClass];
+}
+
+/**
+ * Content Type "ApiManufacturer" — cible de relation pour les tests
+ * `?include=` des tests REST.
+ *
+ * @return class-string<Model>
+ */
+function buildApiManufacturer(): string
+{
+    $contentType = app(BuildContentType::class)((string) json_encode([
+        'key' => 'ApiManufacturer',
+        'label' => ['singular' => 'Fabricant', 'plural' => 'Fabricants'],
+        'fields' => [
+            ['key' => 'name', 'type' => 'text', 'required' => true],
+        ],
+    ]));
+
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    /** @var class-string<Model> $modelClass */
+    $modelClass = $contentType->modelClass();
+
+    return $modelClass;
+}
+
+/**
+ * Utilisateur sans rôle, avec seulement les permissions données — acteur des
+ * tests REST (`tests/Feature/Api/`).
+ *
+ * @param  list<string>  $permissions
+ */
+function apiActor(array $permissions): User
+{
+    static $counter = 0;
+    $counter++;
+
+    $user = User::create([
+        'name' => "API Actor {$counter}",
+        'email' => "api-actor-{$counter}@example.com",
+        'password' => 'secret',
+    ]);
+
+    foreach ($permissions as $permission) {
+        app(GrantPermission::class)($user, $permission);
+    }
+
+    return $user;
 }

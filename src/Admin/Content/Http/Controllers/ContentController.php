@@ -33,8 +33,8 @@ use Baobab\ContentTypes\Editorial\Models\Revision;
 use Baobab\ContentTypes\Editorial\Support\RevisionDiffer;
 use Baobab\ContentTypes\Exceptions\ContentLockedException;
 use Baobab\ContentTypes\Exceptions\InvalidContentTransitionException;
-use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Models\ContentType;
+use Baobab\ContentTypes\Support\ContentEntryRules;
 use Baobab\ContentTypes\Support\ContentTrash;
 use Baobab\Facades\Hook;
 use Baobab\Media\Models\Media;
@@ -62,8 +62,8 @@ use Illuminate\Support\Str;
 final class ContentController
 {
     public function __construct(
-        private readonly FieldRegistry $fields,
         private readonly ContentStateMachine $machine,
+        private readonly ContentEntryRules $entryRules,
     ) {}
 
     public function index(Request $request, string $contentType): View
@@ -772,7 +772,7 @@ final class ContentController
             }
         }
 
-        $validated = $request->validate($this->validationRules($type));
+        $validated = $request->validate($this->entryRules->rules($type));
 
         foreach ((array) ($type->blueprint['fields'] ?? []) as $field) {
             if (($field['type'] ?? null) === 'boolean') {
@@ -781,75 +781,10 @@ final class ContentController
         }
 
         if ($type->is_addressable && isset($validated['slug'])) {
-            $validated['slug'] = $this->uniqueSlug($type, (string) $validated['slug'], $entry);
+            $validated['slug'] = $this->entryRules->uniqueSlug($type, (string) $validated['slug'], $entry);
         }
 
         return $validated;
-    }
-
-    /**
-     * Désambiguïse un slug en conflit en lui ajoutant un suffixe `-2`, `-3`,
-     * etc. (convention WordPress) plutôt que de rejeter la soumission — la
-     * colonne `slug` reste unique en base, ce n'est qu'un choix d'UX côté
-     * admin. Les lignes passées en corbeille comptent toujours : la
-     * contrainte d'unicité en base ne les exempte pas.
-     */
-    private function uniqueSlug(ContentType $type, string $desired, ?Model $entry): string
-    {
-        /** @var class-string<Model> $modelClass */
-        $modelClass = $type->modelClass();
-        $entryId = $entry?->getKey();
-
-        $slug = $desired;
-        $suffix = 2;
-
-        while (
-            $modelClass::query()
-                ->withoutGlobalScopes()
-                ->where('slug', $slug)
-                ->when($entryId !== null, fn (Builder $query): Builder => $query->where('id', '!=', $entryId))
-                ->exists()
-        ) {
-            $slug = "{$desired}-{$suffix}";
-            $suffix++;
-        }
-
-        return $slug;
-    }
-
-    /**
-     * @return array<string, array<int, mixed>>
-     */
-    private function validationRules(ContentType $type): array
-    {
-        $rules = [];
-
-        if ($type->is_addressable) {
-            $rules['slug'] = array_merge(
-                ['required'],
-                $this->fields->resolve('slug')->rules('slug', []),
-            );
-        }
-
-        if ($type->unpublishAtColumnExists()) {
-            $rules['unpublish_at'] = ['nullable', 'date', 'after:now'];
-        }
-
-        foreach ((array) ($type->blueprint['fields'] ?? []) as $field) {
-            $fieldType = $this->fields->resolve($field['type']);
-            $typeRules = $fieldType->rules($field['key'], $field['options'] ?? []);
-
-            $rules[$field['key']] = array_merge(
-                ($field['required'] ?? false) ? ['required'] : ['nullable'],
-                $typeRules,
-            );
-
-            if ($field['type'] === 'gallery') {
-                $rules["{$field['key']}.*"] = ['integer', 'exists:media,id'];
-            }
-        }
-
-        return $rules;
     }
 
     /**

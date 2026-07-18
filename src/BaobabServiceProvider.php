@@ -373,12 +373,19 @@ class BaobabServiceProvider extends ServiceProvider
      * (`baobab.rendering.reserved_prefixes`, `ContentTypeBlueprint::validateUrlPrefix()`),
      * structurellement disjoint de la route générique publique `/{prefix}/{slug?}`
      * (celle-ci ne matche jamais plus de 2 segments). Auth via le guard de
-     * session `baobab` existant en Pass A (lecture) — Sanctum/Bearer arrive
-     * avec M7 point 2, sans retoucher l'autorisation déjà posée ici.
+     * session `baobab` existant en Pass A/B (lecture et écriture) —
+     * Sanctum/Bearer arrive avec M7 point 2, sans retoucher l'autorisation
+     * déjà posée ici. Groupe `web`, pas `api` : le groupe `api` par défaut de
+     * Laravel ne démarre pas la session (`StartSession`/`EncryptCookies`
+     * absents) — un cookie de session `baobab` existant (navigateur déjà
+     * connecté à l'admin) ne serait jamais reconnu sur ces routes sans lui.
+     * `VerifyCsrfToken` s'applique donc aussi, cohérent avec le reste des
+     * écritures `web` de cette codebase tant qu'aucun token porteur
+     * (Sanctum, point 2) n'existe.
      */
     private function loadApiRoutes(): void
     {
-        Route::middleware(['api'])
+        Route::middleware(['web'])
             ->prefix('api/v1')
             ->name('api.v1.')
             ->group(__DIR__.'/../routes/api.php');

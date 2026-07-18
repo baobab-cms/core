@@ -30,6 +30,20 @@ final class ContentTrash
         return $modelClass::query()->withoutGlobalScope(SoftDeletingScope::class)->whereNotNull('deleted_at');
     }
 
+    /**
+     * Équivalent de `SoftDeletes::withTrashed()` — une ligne vivante *ou* en
+     * corbeille, en un seul appel (ex. `DELETE ?force=true` REST, M7 point 1
+     * Pass B : purge directe d'une entrée jamais mise en corbeille au
+     * préalable).
+     *
+     * @param  class-string<Model>  $modelClass
+     * @return Builder<Model>
+     */
+    public static function withTrashed(string $modelClass): Builder
+    {
+        return $modelClass::query()->withoutGlobalScope(SoftDeletingScope::class);
+    }
+
     public static function restore(Model $entry): void
     {
         $entry->setAttribute('deleted_at', null);
