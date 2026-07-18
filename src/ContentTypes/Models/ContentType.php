@@ -159,4 +159,31 @@ class ContentType extends Model
     {
         return $this->blueprint['url_prefix'] ?? Str::kebab(Str::plural($this->key));
     }
+
+    /**
+     * Sous-ensemble des champs du blueprint marqués `exposed_in_api` (spec
+     * 02 §3, spec 08 §2.1) — seuls ces champs apparaissent dans les
+     * Resources REST et sont éligibles à `?filter[]`/`?sort=`. Vrai par
+     * défaut : un champ reste exposé tant qu'il n'en est pas retiré
+     * explicitement.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function apiExposedFields(): array
+    {
+        return array_values(array_filter(
+            (array) ($this->blueprint['fields'] ?? []),
+            static fn (array $field): bool => $field['exposed_in_api'] ?? true,
+        ));
+    }
+
+    /**
+     * Lecture publique sans authentification des entrées `published` de ce
+     * type (spec 08 §2.3) — n'a de sens que si `is_addressable` est vrai ;
+     * activée par défaut (« désactivable par type »).
+     */
+    public function publicApiReadEnabled(): bool
+    {
+        return (bool) ($this->blueprint['public_api_read'] ?? true);
+    }
 }

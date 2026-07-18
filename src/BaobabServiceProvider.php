@@ -11,6 +11,7 @@ use Baobab\Admin\Access\PermissionMatrixBuilder;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
 use Baobab\Admin\Sidebar\SidebarBuilder;
 use Baobab\Admin\Sidebar\SidebarItem;
+use Baobab\Api\Support\ProblemDetailsRenderer;
 use Baobab\Audit\AuditLogger;
 use Baobab\Auth\TwoFactorManager;
 use Baobab\Branding\Models\BrandingSetting;
@@ -86,9 +87,12 @@ use Baobab\Widgets\Models\WidgetInstance;
 use Baobab\Widgets\WidgetRegistry;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Config\Repository;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Exceptions\Handler;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Blade;
@@ -169,6 +173,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
         $this->loadAdminRoutes();
+        $this->loadApiRoutes();
+        $this->registerApiExceptionRendering();
         $this->registerThemePreviewRoutes();
         $this->registerPublicRoutes();
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'baobab');
@@ -360,6 +366,45 @@ class BaobabServiceProvider extends ServiceProvider
             ->prefix($this->app->make('config')->get('baobab.admin.path', 'admin'))
             ->name('admin.')
             ->group(__DIR__.'/../routes/admin.php');
+    }
+
+    /**
+     * REST v1 (spec 08 §2, M7 point 1) — préfixe déjà réservé côté blueprint
+     * (`baobab.rendering.reserved_prefixes`, `ContentTypeBlueprint::validateUrlPrefix()`),
+     * structurellement disjoint de la route générique publique `/{prefix}/{slug?}`
+     * (celle-ci ne matche jamais plus de 2 segments). Auth via le guard de
+     * session `baobab` existant en Pass A (lecture) — Sanctum/Bearer arrive
+     * avec M7 point 2, sans retoucher l'autorisation déjà posée ici.
+     */
+    private function loadApiRoutes(): void
+    {
+        Route::middleware(['api'])
+            ->prefix('api/v1')
+            ->name('api.v1.')
+            ->group(__DIR__.'/../routes/api.php');
+    }
+
+    /**
+     * Rendu RFC 9457 des erreurs `/api/*` (spec 08 §2.2) — enregistré ici,
+     * depuis le package, plutôt que dans le `bootstrap/app.php` de
+     * l'application hôte : `$exceptions->render()` (mécanisme habituel
+     * documenté par Laravel) n'existe qu'au bootstrap de l'app réelle,
+     * jamais sous Orchestra Testbench (les tests du package n'exécutent que
+     * `BaobabServiceProvider`, jamais `bootstrap/app.php`) — et une
+     * installation de `baobab/core` comme dépendance Composer ne doit pas
+     * exiger de modification du `bootstrap/app.php` de l'app hôte pour que
+     * son contrat d'erreur fonctionne. `Handler::renderable()` est le même
+     * mécanisme sous-jacent, appelable depuis n'importe où après résolution
+     * du handler dans le conteneur.
+     */
+    private function registerApiExceptionRendering(): void
+    {
+        /** @var Handler $handler */
+        $handler = $this->app->make(ExceptionHandler::class);
+
+        $handler->renderable(fn (Throwable $e, Request $request) => $request->is('api/*')
+            ? $this->app->make(ProblemDetailsRenderer::class)->render($e)
+            : null);
     }
 
     /**

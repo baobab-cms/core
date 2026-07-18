@@ -59,6 +59,11 @@
             "description": "Whether this type carries the optional unpublish_at convention column (scheduled auto-archive, spec 09 §4). On by default; set to false to opt a type out.",
             "default": true
         },
+        "public_api_read": {
+            "type": "boolean",
+            "description": "Whether published entries of this (addressable) type are readable via REST/GraphQL without authentication (spec 08 §2.3). On by default — a public site already exposes this data in HTML; set to false to require an authenticated, permitted actor even for published entries.",
+            "default": true
+        },
         "revisions": {
             "type": "object",
             "description": "Revision behaviour override for this type (spec 09 §6, spec 02 §9 decision 4). Omit to use the global default (baobab.content.revisions_limit).",
@@ -116,6 +121,11 @@
                     "indexed": {
                         "type": "boolean",
                         "default": false
+                    },
+                    "exposed_in_api": {
+                        "type": "boolean",
+                        "description": "Whether this field is serialized in REST/GraphQL responses and eligible as a ?filter[]/?sort= target (spec 02 §3, spec 08 §2.1). On by default — a field opts out explicitly rather than needing every existing blueprint updated to opt in.",
+                        "default": true
                     },
                     "options": {
                         "type": "object",

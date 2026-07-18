@@ -9,6 +9,7 @@ use Baobab\ContentTypes\Exceptions\UnknownRelationTargetException;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\ContentTypes\Relations\RelationTargetResolver;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -283,6 +284,17 @@ final readonly class ContentTypeBlueprint
     }
 
     /**
+     * Lecture publique sans authentification des entrées `published` de ce
+     * type (spec 08 §2.3) — n'a de sens que si `isAddressable()` est vrai ;
+     * activée par défaut (« désactivable par type »), la lecture des autres
+     * statuts/types exige toujours un acteur autorisé.
+     */
+    public function publicApiReadEnabled(): bool
+    {
+        return $this->data['public_api_read'] ?? true;
+    }
+
+    /**
      * Quota de révisions du type (spec 09 §6, spec 02 §9 décision 4) — `null`
      * signifie "utiliser `config('baobab.content.revisions_limit')`", `0`
      * désactive les révisions sur ce type.
@@ -326,6 +338,22 @@ final readonly class ContentTypeBlueprint
     public function fields(): array
     {
         return $this->data['fields'] ?? [];
+    }
+
+    /**
+     * Sous-ensemble de `fields()` marqué `exposed_in_api` (spec 02 §3, spec
+     * 08 §2.1) — seuls ces champs apparaissent dans les Resources REST et
+     * sont éligibles à `?filter[]`/`?sort=`. Vrai par défaut : un champ
+     * existant reste exposé tant qu'il n'en est pas retiré explicitement.
+     *
+     * @return list<array{key: string, type: string}>
+     */
+    public function apiExposedFields(): array
+    {
+        return array_values(array_filter(
+            $this->fields(),
+            static fn (array $field): bool => (bool) Arr::get($field, 'exposed_in_api', true),
+        ));
     }
 
     /**
