@@ -17,6 +17,7 @@ use Baobab\ContentTypes\Models\ContentType;
 use Baobab\ContentTypes\Support\ContentEntryRules;
 use Baobab\ContentTypes\Support\ContentTrash;
 use Baobab\Users\Models\User;
+use Illuminate\Auth\RequestGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -298,10 +299,39 @@ final class ContentController
         abort_unless($actor->can('view', $entry), 403);
     }
 
+    /**
+     * Guard `sanctum` (M7 point 2), pas `baobab` directement : résout la
+     * même session admin qu'avant (repli « statefull » de Sanctum
+     * configuré sur `baobab`, `registerSanctumGuard()`) *ou* un Bearer
+     * token — une seule résolution d'acteur pour les deux, la restriction
+     * aux abilities du token étant appliquée globalement par
+     * `User::can()`, jamais ici. `forgetUser()` avant résolution :
+     * `RequestGuard::user()` (driver `sanctum`) mémoïse l'utilisateur
+     * résolu pour toute la durée de vie de l'instance de guard, jamais
+     * rafraîchi tant qu'un process/conteneur survit à plusieurs requêtes
+     * (Octane — même classe de bug déjà rencontrée dans ce code base, M6
+     * point 2 : « un même process peut traiter plusieurs requêtes »),
+     * jamais un souci en PHP-FPM classique où chaque requête repart d'un
+     * conteneur neuf. `Auth::forgetGuards()` (toutes les guards) casserait
+     * `actingAs()` du guard `baobab` sous-jacent, qui ne mute qu'un
+     * utilisateur en mémoire sur l'instance de guard existante
+     * (`GuardHelpers::setUser()`), jamais la session réelle — reconstruire
+     * ce guard-là le désauthentifierait. `forgetUser()` (`GuardHelpers`,
+     * absent du contrat `Guard` mais bien présent sur `RequestGuard`, le
+     * driver réel derrière `sanctum`) cible donc uniquement ce guard :
+     * même instance, cache vidé, la prochaine résolution relit le guard
+     * `baobab` (inchangé) à travers lui.
+     */
     private function actor(): ?User
     {
+        $sanctumGuard = Auth::guard('sanctum');
+
+        if ($sanctumGuard instanceof RequestGuard) {
+            $sanctumGuard->forgetUser();
+        }
+
         /** @var User|null $user */
-        $user = Auth::guard('baobab')->user();
+        $user = $sanctumGuard->user();
 
         return $user;
     }

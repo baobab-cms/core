@@ -117,6 +117,13 @@
                         {{ __('baobab::admin.account.security.title') }}
                     </a>
 
+                    <a
+                        href="{{ route('admin.account.api-tokens.index') }}"
+                        class="block whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle"
+                    >
+                        {{ __('baobab::admin.account.api_tokens.title') }}
+                    </a>
+
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit" class="w-full whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle">

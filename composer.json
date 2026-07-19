@@ -24,7 +24,8 @@
         "intervention/image": "^3.0",
         "tijsverkoyen/css-to-inline-styles": "^2.3",
         "nikic/php-parser": "^5.0",
-        "spatie/laravel-sitemap": "^8.2"
+        "spatie/laravel-sitemap": "^8.2",
+        "laravel/sanctum": "^4.3"
     },
     "autoload": {
         "psr-4": {

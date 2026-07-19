@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Baobab\Admin\Access\Http\Controllers\AccessMatrixController;
+use Baobab\Admin\Account\Http\Controllers\ApiTokenController;
 use Baobab\Admin\Account\Http\Controllers\NotificationPreferencesController;
 use Baobab\Admin\Account\Http\Controllers\SecurityController;
 use Baobab\Admin\Branding\Http\Controllers\BrandingController;
@@ -41,6 +42,14 @@ Route::prefix('account/notifications')
     ->group(function (): void {
         Route::get('/', [NotificationPreferencesController::class, 'show'])->name('show');
         Route::post('/', [NotificationPreferencesController::class, 'update'])->name('update');
+    });
+
+Route::prefix('account/api-tokens')
+    ->name('account.api-tokens.')
+    ->group(function (): void {
+        Route::get('/', [ApiTokenController::class, 'index'])->name('index');
+        Route::post('/', [ApiTokenController::class, 'store'])->name('store');
+        Route::delete('/{token}', [ApiTokenController::class, 'destroy'])->name('destroy');
     });
 
 Route::prefix('notifications')

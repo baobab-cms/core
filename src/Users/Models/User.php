@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Request as RequestFacade;
+use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 /**
@@ -21,6 +23,8 @@ use Spatie\Permission\Traits\HasRoles;
  */
 class User extends Authenticatable
 {
+    use HasApiTokens;
+
     /** @use HasFactory<Factory<static>> */
     use HasFactory;
 
@@ -69,5 +73,62 @@ class User extends Authenticatable
     public function level(): int
     {
         return (int) $this->roles->max('level');
+    }
+
+    /**
+     * Restreint toute vérification de permission aux abilities du token
+     * Sanctum courant (spec 08 §4.1 : « abilities = permissions du
+     * référentiel unique »), sans jamais toucher aux Policies générées —
+     * celles-ci délèguent déjà à un test de permission brut
+     * (`$user->can('content.{type}.update_any')`), qui repasse ici. `parent::can()`
+     * reste l'unique source de vérité sur ce que l'utilisateur peut faire
+     * *maintenant* : le token ne peut que restreindre, jamais élargir, et
+     * s'il perd une permission entre-temps, `parent::can()` la refuse déjà
+     * avant même de regarder le token — satisfait « perd la permission si
+     * son créateur la perd » sans logique dédiée. Ne filtre que les
+     * chaînes de permission brutes (`domaine.objet.action`, convention
+     * CLAUDE.md — reconnues à leur point) ; un nom d'ability Gate
+     * (`'create'`, `'update'`...) passe sans opinion, il se résout
+     * normalement vers une méthode de Policy qui rappelle `$user->can('...')`
+     * en interne, où la restriction s'applique alors au bon niveau.
+     * `currentAccessToken()` vaut `null` hors du guard `sanctum` (routes
+     * admin, toujours `auth:baobab` direct) — comportement inchangé ; pour
+     * une requête de session passée par le guard `sanctum`, Sanctum pose un
+     * `TransientToken` dont `can()` répond toujours vrai (accès complet,
+     * comme aujourd'hui) ; seul un vrai Bearer token restreint réellement.
+     *
+     * @param  iterable<array-key, string>|string  $abilities
+     * @param  array<array-key, mixed>|mixed  $arguments
+     */
+    public function can($abilities, $arguments = []): bool
+    {
+        if (! parent::can($abilities, $arguments)) {
+            return false;
+        }
+
+        // Discriminant sur la requête (`bearerToken()`, réellement typée
+        // nullable par Laravel), pas sur `currentAccessToken()` : ce
+        // dernier est typé `@return TToken` (jamais nullable) par le trait
+        // Sanctum — imprécis, la propriété sous-jacente est en réalité non
+        // typée et vaut `null` par défaut hors du guard `sanctum` (routes
+        // admin, guard `baobab` direct) — un `=== null`/`instanceof`/`?->`
+        // dessus se heurte donc à ce docblock erroné, quelle que soit la
+        // formulation. Si aucun Bearer token n'est présent sur la requête,
+        // aucune restriction (session, comportement Pass A/B inchangé) ;
+        // sinon le guard a déjà validé et attaché un vrai token avant que
+        // ce `can()` ne s'exécute, `currentAccessToken()` est fiable ici.
+        if (RequestFacade::bearerToken() === null) {
+            return true;
+        }
+
+        $token = $this->currentAccessToken();
+
+        foreach ((array) $abilities as $ability) {
+            if (str_contains($ability, '.') && ! $token->can($ability)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

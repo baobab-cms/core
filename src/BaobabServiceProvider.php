@@ -13,6 +13,7 @@ use Baobab\Admin\Sidebar\SidebarBuilder;
 use Baobab\Admin\Sidebar\SidebarItem;
 use Baobab\Api\Support\ProblemDetailsRenderer;
 use Baobab\Audit\AuditLogger;
+use Baobab\Auth\Models\PersonalAccessToken;
 use Baobab\Auth\TwoFactorManager;
 use Baobab\Branding\Models\BrandingSetting;
 use Baobab\Console\Commands\ContentPublishDueCommand;
@@ -105,6 +106,9 @@ use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Intervention\Image\ImageManager;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use Laravel\Sanctum\Sanctum;
+use Laravel\Sanctum\SanctumServiceProvider;
 use Mews\Purifier\PurifierServiceProvider;
 use PragmaRX\Google2FA\Google2FA;
 use Spatie\Permission\Models\Permission;
@@ -124,6 +128,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->register(PermissionServiceProvider::class);
         $this->app->register(PurifierServiceProvider::class);
         $this->app->register(SitemapServiceProvider::class);
+        $this->app->register(SanctumServiceProvider::class);
 
         $this->configurePurifier();
 
@@ -173,6 +178,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
         $this->loadAdminRoutes();
+        $this->registerSanctumGuard();
         $this->loadApiRoutes();
         $this->registerApiExceptionRendering();
         $this->registerThemePreviewRoutes();
@@ -369,23 +375,29 @@ class BaobabServiceProvider extends ServiceProvider
     }
 
     /**
-     * REST v1 (spec 08 §2, M7 point 1) — préfixe déjà réservé côté blueprint
-     * (`baobab.rendering.reserved_prefixes`, `ContentTypeBlueprint::validateUrlPrefix()`),
-     * structurellement disjoint de la route générique publique `/{prefix}/{slug?}`
-     * (celle-ci ne matche jamais plus de 2 segments). Auth via le guard de
-     * session `baobab` existant en Pass A/B (lecture et écriture) —
-     * Sanctum/Bearer arrive avec M7 point 2, sans retoucher l'autorisation
-     * déjà posée ici. Groupe `web`, pas `api` : le groupe `api` par défaut de
-     * Laravel ne démarre pas la session (`StartSession`/`EncryptCookies`
-     * absents) — un cookie de session `baobab` existant (navigateur déjà
-     * connecté à l'admin) ne serait jamais reconnu sur ces routes sans lui.
-     * `VerifyCsrfToken` s'applique donc aussi, cohérent avec le reste des
-     * écritures `web` de cette codebase tant qu'aucun token porteur
-     * (Sanctum, point 2) n'existe.
+     * REST v1 (spec 08 §2, M7 points 1-2) — préfixe déjà réservé côté
+     * blueprint (`baobab.rendering.reserved_prefixes`,
+     * `ContentTypeBlueprint::validateUrlPrefix()`), structurellement
+     * disjoint de la route générique publique `/{prefix}/{slug?}` (celle-ci
+     * ne matche jamais plus de 2 segments).
+     *
+     * `EnsureFrontendRequestsAreStateful` (Sanctum), pas le groupe `web` en
+     * dur (patron M7 point 1, corrigé ici) : ce middleware applique la
+     * pile session/cookies/CSRF complète **seulement** quand
+     * `Origin`/`Referer` correspond à un domaine « statefull »
+     * (`config('sanctum.stateful')`, couvre déjà `APP_URL` automatiquement,
+     * `Sanctum::currentApplicationUrlWithPort()`) — une session admin
+     * déjà connectée (navigateur, même origine) continue de fonctionner
+     * exactement comme en Pass A/B, mais un vrai client Bearer externe
+     * (aucune origine correspondante) n'a plus à satisfaire une exigence
+     * CSRF qui n'a jamais de sens pour lui (le CSRF protège l'auth par
+     * cookie, pas l'auth par token). Le guard `sanctum`
+     * (`registerSanctumGuard()`) fait le reste : session ou Bearer, une
+     * seule résolution d'acteur côté contrôleur REST.
      */
     private function loadApiRoutes(): void
     {
-        Route::middleware(['web'])
+        Route::middleware([EnsureFrontendRequestsAreStateful::class])
             ->prefix('api/v1')
             ->name('api.v1.')
             ->group(__DIR__.'/../routes/api.php');
@@ -1076,6 +1088,32 @@ class BaobabServiceProvider extends ServiceProvider
         $registry->register('thumb', ['width' => 300, 'fit' => 'contain']);
         $registry->register('medium', ['width' => 768, 'fit' => 'contain']);
         $registry->register('large', ['width' => 1600, 'fit' => 'contain']);
+    }
+
+    /**
+     * Guard `sanctum` (spec 08 §4.1, M7 point 2) — même patron d'injection
+     * programmatique que `registerGuard()`, mais appelé depuis `boot()`
+     * plutôt que `register()` : `SanctumServiceProvider::register()` doit
+     * avoir fusionné son `config/sanctum.php` par défaut avant qu'on
+     * écrase sa clé `guard` ici (seulement garanti une fois le `register()`
+     * de tous les providers terminé, donc en `boot()`, jamais en
+     * `register()` où l'ordre entre providers n'est pas maîtrisé).
+     */
+    private function registerSanctumGuard(): void
+    {
+        $this->app->make('config')->set('auth.guards.sanctum', [
+            'driver' => 'sanctum',
+            'provider' => 'baobab_users',
+        ]);
+
+        // Le repli « requête statefull » de Sanctum vérifie par défaut le
+        // guard `web` (config('sanctum.guard'), ['web']) — jamais utilisé
+        // par cette app, qui authentifie tout via son propre guard
+        // `baobab`. Sans cette ligne, une session admin déjà connectée ne
+        // serait jamais reconnue par le guard `sanctum`.
+        $this->app->make('config')->set('sanctum.guard', ['baobab']);
+
+        Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
     }
 
     private function registerGuard(): void
