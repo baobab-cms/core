@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Api\GraphQL\Actions;
 
+use Baobab\ContentTypes\Generator\ContentTypeModuleGenerator;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
 use Illuminate\Support\Facades\File;
@@ -19,9 +20,14 @@ use Nuwave\Lighthouse\Schema\AST\ASTCache;
  * Rejoué à `content-type:build`/`evolve` et à l'activation/désactivation d'un
  * module (`baobab.module.activated`/`.deactivated`) — voir
  * `BaobabServiceProvider::registerGraphqlSchemaCompilationListener()`.
+ * Auto-cicatrisant : régénère le fragment/résolveur de chaque type éligible
+ * avant de le lire, plutôt que de supposer qu'il existe déjà — couvre les
+ * Content Types construits avant l'introduction de ce point.
  */
 final class CompileGraphqlSchema
 {
+    public function __construct(private readonly ContentTypeModuleGenerator $generator) {}
+
     public function __invoke(): string
     {
         $path = (string) config('lighthouse.schema_path');
@@ -31,7 +37,18 @@ final class CompileGraphqlSchema
             ->whereHas('module', fn ($query) => $query->where('status', 'active'))
             ->get()
             ->filter(fn (ContentType $contentType): bool => $contentType->apiEnabled())
-            ->map(fn (ContentType $contentType): string => $this->readFragment($contentType))
+            // Régénéré avant lecture, jamais juste lu tel quel : un Content
+            // Type construit avant l'introduction de ce point (M7 point 3)
+            // n'a ni fragment ni résolveur sur disque — bug réel découvert
+            // en testant `Book` en environnement de développement réel,
+            // jamais rencontré par les tests package (qui ne construisent
+            // que des Content Types frais, déjà générés avec le fragment).
+            // Écriture protégée par checksum : sans effet si déjà à jour.
+            ->map(function (ContentType $contentType): string {
+                $this->generator->regenerateGraphql($contentType);
+
+                return $this->readFragment($contentType);
+            })
             ->filter()
             ->implode("\n\n");
 

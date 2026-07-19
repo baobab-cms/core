@@ -1,5 +1,6 @@
 <?php
 
+use Baobab\Api\GraphQL\Actions\CompileGraphqlSchema;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\File;
 use Illuminate\Testing\TestResponse;
@@ -100,4 +101,27 @@ it('drops a Content Type from the compiled schema when api_enabled is disabled',
     $response = graphqlQuery('query { apiCars { data { brand } } }');
 
     $response->assertOk()->assertJsonPath('errors.0.message', fn (string $message) => str_contains($message, 'apiCars'));
+});
+
+it('self-heals a Content Type built before the GraphQL fragment/resolver existed', function () {
+    [$contentType, $carClass] = buildApiCar();
+    $carClass::create(['brand' => 'Peugeot', 'price' => 10000, 'internal_note' => '', 'slug' => 'peugeot', 'status' => 'published']);
+
+    // Simule un Content Type construit avant M7 point 3 : ni fragment ni
+    // résolveur sur disque, seul le module.json/modèle/policy existent.
+    File::delete($contentType->moduleDir().'/graphql/ApiCar.graphql');
+    File::deleteDirectory($contentType->moduleDir().'/src/GraphQL');
+
+    // Recompiler (ex. `baobab:graphql:compile` sur un site existant après
+    // mise à jour) doit régénérer le fragment/résolveur manquants avant de
+    // les lire, pas simplement échouer à trouver `apiCars` dans le schéma.
+    app(CompileGraphqlSchema::class)();
+
+    expect(File::exists($contentType->moduleDir().'/graphql/ApiCar.graphql'))->toBeTrue()
+        ->and(File::exists($contentType->moduleDir().'/src/GraphQL/ApiCarResolver.php'))->toBeTrue();
+
+    $response = graphqlQuery('query { apiCars { data { brand } } }');
+
+    $response->assertOk()->assertJsonMissingPath('errors');
+    expect($response->json('data.apiCars.data.0.brand'))->toBe('Peugeot');
 });

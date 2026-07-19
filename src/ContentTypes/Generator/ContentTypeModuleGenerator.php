@@ -81,13 +81,7 @@ final class ContentTypeModuleGenerator
             'key' => $key,
         ]));
 
-        $this->checksums->write($moduleDir, "graphql/{$key}.graphql", $this->graphqlFragment($contentType, $namespace));
-
-        $this->checksums->write($moduleDir, "src/GraphQL/{$key}Resolver.php", $this->renderer->render(StubRenderer::stubPath('graphql-resolver'), [
-            'namespace' => $namespace,
-            'key' => $key,
-            'slug' => $dirSlug,
-        ]));
+        $this->regenerateGraphql($contentType);
 
         return $moduleName;
     }
@@ -105,21 +99,30 @@ final class ContentTypeModuleGenerator
     }
 
     /**
-     * Régénère uniquement le fragment `.graphql` (M7 point 3) — même usage
-     * qu'`regenerateModel()`, appelé par `EvolveContentType` après une
-     * évolution de blueprint pour que le schéma GraphQL compilé (§4) reste
-     * exact ; le résolveur généré n'a pas besoin d'être réécrit (aucune de
-     * ses lignes ne dérive du blueprint, contrairement au fragment).
+     * Régénère le fragment `.graphql` et son résolveur généré (M7 point 3) —
+     * même usage qu'`regenerateModel()`. Deux appelants : `EvolveContentType`
+     * après une évolution de blueprint (le fragment doit refléter les
+     * nouveaux champs) et `CompileGraphqlSchema` pour **chaque** type
+     * éligible avant de lire son fragment (un Content Type construit avant
+     * l'introduction de ce point n'a ni l'un ni l'autre sur disque — bug
+     * réel découvert en testant `Book`/`Article`/… en environnement réel,
+     * jamais rencontré dans les tests package qui ne construisent que des
+     * Content Types frais). Écriture protégée par checksum comme tout le
+     * reste du générateur : sans effet si le contenu n'a pas changé.
      */
-    public function regenerateGraphqlFragment(ContentType $contentType): void
+    public function regenerateGraphql(ContentType $contentType): void
     {
-        $namespace = "Modules\\{$contentType->key}";
+        $key = $contentType->key;
+        $namespace = "Modules\\{$key}";
+        $moduleDir = $contentType->moduleDir();
 
-        $this->checksums->write(
-            $contentType->moduleDir(),
-            "graphql/{$contentType->key}.graphql",
-            $this->graphqlFragment($contentType, $namespace),
-        );
+        $this->checksums->write($moduleDir, "graphql/{$key}.graphql", $this->graphqlFragment($contentType, $namespace));
+
+        $this->checksums->write($moduleDir, "src/GraphQL/{$key}Resolver.php", $this->renderer->render(StubRenderer::stubPath('graphql-resolver'), [
+            'namespace' => $namespace,
+            'key' => $key,
+            'slug' => Str::kebab(Str::plural($key)),
+        ]));
     }
 
     private function writeModel(ContentType $contentType, string $moduleDir): void
