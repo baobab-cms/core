@@ -1,0 +1,80 @@
+"""Assemblé par `Baobab\Api\GraphQL\Actions\CompileGraphqlSchema` (M7 point 3, spec 08 §3) — jamais édité à la main, jamais servi tel quel : socle sur lequel chaque fragment de Content Type actif s'ajoute (`extend type Query`)."""
+
+scalar Date @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\Date")
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+scalar Time @scalar(class: "Baobab\\Api\\GraphQL\\Scalars\\TimeScalar")
+scalar JSON @scalar(class: "Baobab\\Api\\GraphQL\\Scalars\\JsonScalar")
+
+enum SortDirection {
+  ASC @enum(value: "asc")
+  DESC @enum(value: "desc")
+}
+
+input StringFilterInput {
+  eq: String
+  neq: String
+  like: String
+  in: [String!]
+}
+
+input IntFilterInput {
+  eq: Int
+  neq: Int
+  lt: Int
+  lte: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+}
+
+input FloatFilterInput {
+  eq: Float
+  neq: Float
+  lt: Float
+  lte: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+}
+
+input BooleanFilterInput {
+  eq: Boolean
+}
+
+input IDFilterInput {
+  eq: ID
+  neq: ID
+  in: [ID!]
+}
+
+input DateTimeFilterInput {
+  eq: String
+  neq: String
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+}
+
+"""Média de la bibliothèque (spec 06) — cible des champs image/file/gallery et des relations vers `Media`."""
+type Media {
+  id: ID!
+  url: String!
+  alt: String
+  mimeType: String @rename(attribute: "mime_type")
+  width: Int
+  height: Int
+}
+
+"""Utilisateur (spec 05) — cible Core des relations `belongsTo` (ex. auteur)."""
+type User {
+  id: ID!
+  name: String!
+  email: String!
+}
+
+"""Racine des requêtes en lecture — chaque Content Type exposé l'étend (`extend type Query`, un fragment par type)."""
+type Query {
+  "Toujours vrai — endpoint de santé minimal garantissant un schéma valide même sans Content Type exposé à l'API."
+  ping: Boolean @field(resolver: "Baobab\\Api\\GraphQL\\HealthCheckResolver@ping")
+}

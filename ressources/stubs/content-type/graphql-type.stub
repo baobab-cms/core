@@ -1,0 +1,38 @@
+"""{{ label }}"""
+type {{ key }} {
+  id: ID!
+  status: String!
+  published_at: DateTime
+  created_at: DateTime!
+  updated_at: DateTime!
+{{ fields }}
+{{ relations }}
+}
+
+input {{ key }}Filter {
+  id: IDFilterInput
+  status: StringFilterInput
+  published_at: DateTimeFilterInput
+  created_at: DateTimeFilterInput
+  updated_at: DateTimeFilterInput
+{{ filter_fields }}
+}
+
+enum {{ key }}SortField {
+  ID @enum(value: "id")
+  STATUS @enum(value: "status")
+  PUBLISHED_AT @enum(value: "published_at")
+  CREATED_AT @enum(value: "created_at")
+  UPDATED_AT @enum(value: "updated_at")
+{{ sort_values }}
+}
+
+input {{ key }}Order {
+  field: {{ key }}SortField!
+  direction: SortDirection = ASC
+}
+
+extend type Query {
+  {{ query_plural }}(filter: {{ key }}Filter, orderBy: [{{ key }}Order!]): [{{ key }}!]! @paginate(type: PAGINATOR, builder: "{{ resolver_class }}@paginateQuery", defaultCount: 25, maxCount: 100)
+  {{ query_singular }}(id: ID, slug: String): {{ key }} @field(resolver: "{{ resolver_class }}@find")
+}

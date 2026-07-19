@@ -71,6 +71,31 @@ final class RelationDefinitionGenerator
     }
 
     /**
+     * Champ GraphQL de la relation (M7 point 3, spec 08 §3.2) — même méthode
+     * Eloquent que `eloquentMethod()` (nom de champ = nom de méthode camelCase,
+     * la résolution par défaut des directives Lighthouse), donc aucune
+     * directive n'a besoin d'un argument `relation:` explicite. `OneToOne` et
+     * `OneToMany` génèrent tous deux un `belongsTo()` côté déclarant (FK sur
+     * le type propriétaire, jamais l'inverse — voir docblock de classe) :
+     * même directive `@belongsTo`, même cardinalité simple côté GraphQL.
+     *
+     * @param  array<string, mixed>  $relation
+     * @param  ResolvedTarget  $target
+     */
+    public function graphqlField(array $relation, array $target): string
+    {
+        $type = RelationType::from((string) $relation['type']);
+        $field = Str::camel((string) $relation['key']);
+        $targetType = Str::studly((string) $target['key']);
+
+        return match ($type) {
+            RelationType::OneToOne, RelationType::OneToMany => "  {$field}: {$targetType} @belongsTo",
+            RelationType::ManyToMany => "  {$field}: [{$targetType}!]! @belongsToMany",
+            RelationType::Polymorphic => "  {$field}: {$targetType} @morphTo",
+        };
+    }
+
+    /**
      * @param  array<string, mixed>  $relation
      * @param  ResolvedTarget  $target
      * @return array{filename: string, contents: string}|null

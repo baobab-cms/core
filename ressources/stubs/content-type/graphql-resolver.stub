@@ -1,0 +1,36 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }}\GraphQL;
+
+use Baobab\Api\GraphQL\ContentTypeGraphqlResolver;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+
+/**
+ * Résolveur GraphQL de {{ key }} (M7 point 3, spec 08 §3) — fin par
+ * construction : toute la logique (visibilité, filtres, tri) vit dans
+ * `ContentTypeGraphqlResolver`, partagée par tous les Content Types.
+ * Éditable à la main sans risque : une régénération respecte
+ * l'anti-écrasement par checksum.
+ */
+final class {{ key }}Resolver
+{
+    /**
+     * @param  array<string, mixed>  $args
+     * @return Builder<Model>
+     */
+    public function paginateQuery(mixed $root, array $args): Builder
+    {
+        return (new ContentTypeGraphqlResolver('{{ slug }}'))->paginateQuery($root, $args);
+    }
+
+    /**
+     * @param  array<string, mixed>  $args
+     */
+    public function find(mixed $root, array $args): ?Model
+    {
+        return (new ContentTypeGraphqlResolver('{{ slug }}'))->find($root, $args);
+    }
+}

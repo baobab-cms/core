@@ -68,6 +68,7 @@ final class EvolveContentType
         $contentType = $contentType->fresh() ?? $contentType;
 
         $this->moduleGenerator->regenerateModel($contentType);
+        $this->moduleGenerator->regenerateGraphqlFragment($contentType);
 
         $this->audit->record('content_type.evolved', $contentType, ['diff' => $diff]);
 

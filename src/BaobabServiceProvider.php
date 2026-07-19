@@ -11,6 +11,7 @@ use Baobab\Admin\Access\PermissionMatrixBuilder;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
 use Baobab\Admin\Sidebar\SidebarBuilder;
 use Baobab\Admin\Sidebar\SidebarItem;
+use Baobab\Api\GraphQL\Actions\CompileGraphqlSchema;
 use Baobab\Api\Http\Middleware\EnsureApiEnabled;
 use Baobab\Api\Http\Middleware\HandleApiCors;
 use Baobab\Api\Models\ApiSetting;
@@ -24,6 +25,7 @@ use Baobab\Console\Commands\ContentPurgeTrashCommand;
 use Baobab\Console\Commands\ContentTypeBuildCommand;
 use Baobab\Console\Commands\ContentTypeMakeCommand;
 use Baobab\Console\Commands\ContentUnpublishDueCommand;
+use Baobab\Console\Commands\GraphqlCompileCommand;
 use Baobab\Console\Commands\HookListCommand;
 use Baobab\Console\Commands\MailTemplatesCommand;
 use Baobab\Console\Commands\MailTestCommand;
@@ -116,6 +118,19 @@ use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Laravel\Sanctum\Sanctum;
 use Laravel\Sanctum\SanctumServiceProvider;
 use Mews\Purifier\PurifierServiceProvider;
+use Nuwave\Lighthouse\Async\AsyncServiceProvider;
+use Nuwave\Lighthouse\Auth\AuthServiceProvider as LighthouseAuthServiceProvider;
+use Nuwave\Lighthouse\Bind\BindServiceProvider;
+use Nuwave\Lighthouse\Cache\CacheServiceProvider as LighthouseCacheServiceProvider;
+use Nuwave\Lighthouse\GlobalId\GlobalIdServiceProvider;
+use Nuwave\Lighthouse\Http\Middleware\AcceptJson;
+use Nuwave\Lighthouse\Http\Middleware\AttemptAuthentication;
+use Nuwave\Lighthouse\LighthouseServiceProvider;
+use Nuwave\Lighthouse\OrderBy\OrderByServiceProvider;
+use Nuwave\Lighthouse\Pagination\PaginationServiceProvider;
+use Nuwave\Lighthouse\SoftDeletes\SoftDeletesServiceProvider;
+use Nuwave\Lighthouse\Testing\TestingServiceProvider as LighthouseTestingServiceProvider;
+use Nuwave\Lighthouse\Validation\ValidationServiceProvider as LighthouseValidationServiceProvider;
 use PragmaRX\Google2FA\Google2FA;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -135,6 +150,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->register(PurifierServiceProvider::class);
         $this->app->register(SitemapServiceProvider::class);
         $this->app->register(SanctumServiceProvider::class);
+        $this->registerLighthouseProviders();
 
         $this->configurePurifier();
 
@@ -188,6 +204,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->excludeApiFromDefaultCors();
         $this->registerApiRateLimiter();
         $this->loadApiRoutes();
+        $this->configureGraphqlRoute();
         $this->registerApiExceptionRendering();
         $this->registerThemePreviewRoutes();
         $this->registerPublicRoutes();
@@ -236,6 +253,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerSitemapCacheInvalidationListener();
 
+        $this->registerGraphqlSchemaCompilationListener();
+
         $this->registerWorkflowNotificationListeners();
 
         $this->registerSecurityNotificationListeners();
@@ -279,6 +298,7 @@ class BaobabServiceProvider extends ServiceProvider
                 ThemeValidateCommand::class,
                 NotFoundPurgeCommand::class,
                 SeoSitemapCommand::class,
+                GraphqlCompileCommand::class,
             ]);
         }
 
@@ -449,6 +469,68 @@ class BaobabServiceProvider extends ServiceProvider
             ->prefix('api/v1')
             ->name('api.v1.')
             ->group(__DIR__.'/../routes/api.php');
+    }
+
+    /**
+     * Lighthouse (M7 point 3) est distribué comme un ensemble de
+     * sous-providers optionnels — chacun n'enregistre que ce dont sa
+     * fonctionnalité a besoin (ex. `PaginationServiceProvider` seul connaît
+     * la directive `@paginate`, `Nuwave\Lighthouse\Pagination`, jamais
+     * chargée par `LighthouseServiceProvider::boot()` qui n'annonce que
+     * `Schema\Directives` au hook `RegisterDirectiveNamespaces`). En usage
+     * normal, la découverte de paquets Laravel les enregistre tous depuis
+     * `composer.json` (`extra.laravel.providers`, la liste exacte reproduite
+     * ci-dessous) ; Testbench ne fait pas cette découverte (patron déjà
+     * établi pour Sanctum/Sitemap/Permission, cf. `register()`), donc chacun
+     * doit être explicite ici pour que le package fonctionne identiquement
+     * en test et en application hôte réelle.
+     */
+    private function registerLighthouseProviders(): void
+    {
+        $this->app->register(LighthouseServiceProvider::class);
+        $this->app->register(AsyncServiceProvider::class);
+        $this->app->register(LighthouseAuthServiceProvider::class);
+        $this->app->register(BindServiceProvider::class);
+        $this->app->register(LighthouseCacheServiceProvider::class);
+        $this->app->register(GlobalIdServiceProvider::class);
+        $this->app->register(OrderByServiceProvider::class);
+        $this->app->register(PaginationServiceProvider::class);
+        $this->app->register(SoftDeletesServiceProvider::class);
+        $this->app->register(LighthouseTestingServiceProvider::class);
+        $this->app->register(LighthouseValidationServiceProvider::class);
+    }
+
+    /**
+     * Lighthouse enregistre sa propre route `/graphql` depuis son `boot()`
+     * (config `lighthouse.route.*`, jamais un fichier de routes à charger
+     * nous-mêmes) — configurer plutôt que remplacer. Doit s'exécuter avant
+     * le `boot()` de `LighthouseServiceProvider` : comme ce dernier est
+     * enregistré *depuis* `register()` (patron Sanctum/Sitemap), son propre
+     * `boot()` s'exécute après celui-ci dans l'ordre d'ajout au conteneur —
+     * même mécanique que `registerSanctumGuard()` (config posée avant que
+     * Sanctum ne la lise). Middlewares transverses identiques au REST
+     * (`loadApiRoutes()`) + les deux propres à Lighthouse (`AcceptJson`,
+     * `AttemptAuthentication` — celle-ci n'est pas strictement nécessaire,
+     * les résolveurs GraphQL résolvent l'acteur eux-mêmes via `ApiActor`,
+     * comme REST, mais la garder évite une divergence si une directive
+     * `@guard` apparaît un jour). `lighthouse.guards` fixé à `sanctum` seul
+     * plutôt que le défaut Laravel (potentiellement `web`, jamais utilisé
+     * par cette app, cf. `registerSanctumGuard()`).
+     */
+    private function configureGraphqlRoute(): void
+    {
+        $config = $this->app->make('config');
+
+        $config->set('lighthouse.guards', ['sanctum']);
+        $config->set('lighthouse.schema_path', storage_path('app/baobab/graphql/schema.graphql'));
+        $config->set('lighthouse.route.middleware', [
+            HandleApiCors::class,
+            EnsureApiEnabled::class,
+            EnsureFrontendRequestsAreStateful::class,
+            'throttle:baobab-api',
+            AcceptJson::class,
+            AttemptAuthentication::class,
+        ]);
     }
 
     /**
@@ -951,6 +1033,27 @@ class BaobabServiceProvider extends ServiceProvider
         Hook::listen('baobab.content.transitioned', function (ContentType $contentType, Model $entry, string $from, string $to, ?User $actor = null) use ($invalidate): void {
             $invalidate($contentType);
         });
+    }
+
+    /**
+     * Schéma GraphQL global (M7 point 3, spec 08 §3.2) recompilé à chaque
+     * événement qui change la liste des types exposés ou leurs champs —
+     * jamais résolu à la volée (patron `CompileDesignTokens`, spec 18 §4.2).
+     * `content_type.created`/`.evolved` couvrent le fragment lui-même ;
+     * `module.activated`/`.deactivated` couvrent sa présence dans
+     * l'assemblage (un Content Type désactivé disparaît du schéma sans
+     * modification de son fragment).
+     */
+    private function registerGraphqlSchemaCompilationListener(): void
+    {
+        $compile = function (): void {
+            app(CompileGraphqlSchema::class)();
+        };
+
+        Hook::listen('baobab.content_type.created', fn (ContentType $contentType) => $compile());
+        Hook::listen('baobab.content_type.evolved', fn (ContentType $contentType, array $diff = []) => $compile());
+        Hook::listen('baobab.module.activated', fn (Module $module) => $compile());
+        Hook::listen('baobab.module.deactivated', fn (Module $module) => $compile());
     }
 
     /**

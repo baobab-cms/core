@@ -6,6 +6,7 @@ namespace Baobab\Api\Http\Controllers;
 
 use Baobab\Api\Actions\ResolveApiContentType;
 use Baobab\Api\Http\Resources\ContentEntryResource;
+use Baobab\Api\Support\ApiActor;
 use Baobab\Api\Support\ContentQueryBuilder;
 use Baobab\ContentTypes\Actions\DeleteContentEntry;
 use Baobab\ContentTypes\Actions\PublishContentEntry;
@@ -17,14 +18,12 @@ use Baobab\ContentTypes\Models\ContentType;
 use Baobab\ContentTypes\Support\ContentEntryRules;
 use Baobab\ContentTypes\Support\ContentTrash;
 use Baobab\Users\Models\User;
-use Illuminate\Auth\RequestGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * REST v1 lecture seule sur le registre des types (spec 08 §2, M7 point 1,
@@ -50,9 +49,9 @@ final class ContentController
         $this->applyListVisibility($query, $contentType);
 
         $queryBuilder = new ContentQueryBuilder($contentType);
-        $queryBuilder->applyFilters($query, $request);
-        $queryBuilder->applySort($query, $request);
-        $includes = $queryBuilder->applyIncludes($query, $request);
+        $queryBuilder->applyFilters($query, $this->requestFilters($request));
+        $queryBuilder->applySort($query, $this->requestSort($request));
+        $includes = $queryBuilder->applyIncludes($query, $this->requestIncludes($request));
 
         $fields = $this->requestedFields($request);
         $perPage = min(max((int) ($request->query('per_page') ?? 25), 1), 100);
@@ -72,7 +71,7 @@ final class ContentController
         $modelClass = $contentType->modelClass();
 
         $query = $modelClass::query();
-        $includes = (new ContentQueryBuilder($contentType))->applyIncludes($query, $request);
+        $includes = (new ContentQueryBuilder($contentType))->applyIncludes($query, $this->requestIncludes($request));
 
         $model = $query->find($entry);
         abort_if($model === null, 404);
@@ -269,13 +268,7 @@ final class ContentController
     {
         $actor = $this->actor();
 
-        if ($actor instanceof User && $actor->can('viewAny', $contentType->modelClass())) {
-            return;
-        }
-
-        if ($contentType->is_addressable && $contentType->publicApiReadEnabled()) {
-            $query->where('status', 'published');
-
+        if ((new ContentQueryBuilder($contentType))->scopeListVisibility($query, $actor)) {
             return;
         }
 
@@ -285,18 +278,52 @@ final class ContentController
 
     private function authorizeShow(ContentType $contentType, Model $entry): void
     {
-        if (
-            $contentType->is_addressable
-            && $contentType->publicApiReadEnabled()
-            && $entry->getAttribute('status') === 'published'
-        ) {
+        $actor = $this->actor();
+
+        if ((new ContentQueryBuilder($contentType))->canView($entry, $actor)) {
             return;
         }
 
-        $actor = $this->actor();
-
         abort_unless($actor instanceof User, 401);
-        abort_unless($actor->can('view', $entry), 403);
+        abort(403);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function requestFilters(Request $request): array
+    {
+        /** @var array<string, mixed> $filters */
+        $filters = (array) $request->query('filter', []);
+
+        return $filters;
+    }
+
+    /**
+     * @return list<array{key: string, direction: string}>
+     */
+    private function requestSort(Request $request): array
+    {
+        $sort = (string) $request->query('sort', '');
+
+        if ($sort === '') {
+            return [];
+        }
+
+        return array_map(
+            fn (string $token): array => str_starts_with($token, '-')
+                ? ['key' => ltrim($token, '-'), 'direction' => 'desc']
+                : ['key' => $token, 'direction' => 'asc'],
+            explode(',', $sort),
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function requestIncludes(Request $request): array
+    {
+        return array_values(array_filter(explode(',', (string) $request->query('include', ''))));
     }
 
     /**
@@ -324,16 +351,7 @@ final class ContentController
      */
     private function actor(): ?User
     {
-        $sanctumGuard = Auth::guard('sanctum');
-
-        if ($sanctumGuard instanceof RequestGuard) {
-            $sanctumGuard->forgetUser();
-        }
-
-        /** @var User|null $user */
-        $user = $sanctumGuard->user();
-
-        return $user;
+        return app(ApiActor::class)();
     }
 
     /**

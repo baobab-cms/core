@@ -81,6 +81,14 @@ final class ContentTypeModuleGenerator
             'key' => $key,
         ]));
 
+        $this->checksums->write($moduleDir, "graphql/{$key}.graphql", $this->graphqlFragment($contentType, $namespace));
+
+        $this->checksums->write($moduleDir, "src/GraphQL/{$key}Resolver.php", $this->renderer->render(StubRenderer::stubPath('graphql-resolver'), [
+            'namespace' => $namespace,
+            'key' => $key,
+            'slug' => $dirSlug,
+        ]));
+
         return $moduleName;
     }
 
@@ -94,6 +102,24 @@ final class ContentTypeModuleGenerator
     public function regenerateModel(ContentType $contentType): void
     {
         $this->writeModel($contentType, $contentType->moduleDir());
+    }
+
+    /**
+     * Régénère uniquement le fragment `.graphql` (M7 point 3) — même usage
+     * qu'`regenerateModel()`, appelé par `EvolveContentType` après une
+     * évolution de blueprint pour que le schéma GraphQL compilé (§4) reste
+     * exact ; le résolveur généré n'a pas besoin d'être réécrit (aucune de
+     * ses lignes ne dérive du blueprint, contrairement au fragment).
+     */
+    public function regenerateGraphqlFragment(ContentType $contentType): void
+    {
+        $namespace = "Modules\\{$contentType->key}";
+
+        $this->checksums->write(
+            $contentType->moduleDir(),
+            "graphql/{$contentType->key}.graphql",
+            $this->graphqlFragment($contentType, $namespace),
+        );
     }
 
     private function writeModel(ContentType $contentType, string $moduleDir): void
@@ -151,6 +177,109 @@ final class ContentTypeModuleGenerator
         ];
 
         return (string) json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Fragment `.graphql` du Content Type (M7 point 3, spec 08 §3.2) —
+     * `type`/`{Key}Filter`/`{Key}SortField`/`{Key}Order` dérivés du
+     * blueprint, plus l'extension `Query` qui expose la liste paginée et la
+     * lecture unité. Seuls les champs `exposed_in_api` (même filtre que le
+     * REST, `ContentType::apiExposedFields()`) apparaissent — parité stricte
+     * avec `Baobab\Api\Http\Resources\ContentEntryResource`.
+     */
+    private function graphqlFragment(ContentType $contentType, string $namespace): string
+    {
+        $key = $contentType->key;
+        $resolverClass = str_replace('\\', '\\\\', "{$namespace}\\GraphQL\\{$key}Resolver");
+        $label = $contentType->blueprint['label']['singular'] ?? $key;
+
+        return $this->renderer->render(StubRenderer::stubPath('graphql-type'), [
+            'label' => (string) $label,
+            'key' => $key,
+            'fields' => $this->graphqlTypeFields($contentType),
+            'relations' => $this->graphqlRelationFields($contentType),
+            'filter_fields' => $this->graphqlFilterFields($contentType),
+            'sort_values' => $this->graphqlSortValues($contentType),
+            'query_plural' => Str::camel(Str::plural($key)),
+            'query_singular' => Str::camel($key),
+            'resolver_class' => $resolverClass,
+        ]);
+    }
+
+    private function graphqlTypeFields(ContentType $contentType): string
+    {
+        $fields = $contentType->apiExposedFields();
+        $lines = $contentType->is_addressable ? ['  slug: String!'] : [];
+
+        foreach ($fields as $field) {
+            $graphqlType = $this->fields->resolve($field['type'])->graphqlType($field['options'] ?? []);
+            $lines[] = "  {$field['key']}: {$graphqlType}";
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function graphqlRelationFields(ContentType $contentType): string
+    {
+        return collect((array) ($contentType->blueprint['relations'] ?? []))
+            ->map(fn (array $relation): string => $this->relationDefinitions->graphqlField(
+                $relation,
+                $this->relationTargets->resolve((string) $relation['target']),
+            ))
+            ->implode("\n");
+    }
+
+    private function graphqlFilterFields(ContentType $contentType): string
+    {
+        $lines = $contentType->is_addressable ? ['  slug: StringFilterInput'] : [];
+
+        foreach ($contentType->apiExposedFields() as $field) {
+            $graphqlType = $this->fields->resolve($field['type'])->graphqlType($field['options'] ?? []);
+            $filterInput = $this->graphqlFilterInputFor($graphqlType);
+
+            if ($filterInput !== null) {
+                $lines[] = "  {$field['key']}: {$filterInput}";
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function graphqlSortValues(ContentType $contentType): string
+    {
+        $lines = $contentType->is_addressable ? ['  SLUG @enum(value: "slug")'] : [];
+
+        foreach ($contentType->apiExposedFields() as $field) {
+            $graphqlType = $this->fields->resolve($field['type'])->graphqlType($field['options'] ?? []);
+
+            if ($this->graphqlFilterInputFor($graphqlType) === null) {
+                continue;
+            }
+
+            $enumValue = Str::upper(Str::snake((string) $field['key']));
+            $lines[] = "  {$enumValue} @enum(value: \"{$field['key']}\")";
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Types filtrables/triables en GraphQL (M7 point 3) — uniquement les
+     * scalaires comparables par un opérateur simple (`ContentQueryBuilder`) ;
+     * `Media`/`[Media]`/`[String]`/`JSON` restent exposés comme champs mais
+     * sortent du vocabulaire de filtre/tri (un opérateur générique dessus
+     * n'a pas de sens SQL, contrairement aux scalaires).
+     */
+    private function graphqlFilterInputFor(string $graphqlType): ?string
+    {
+        return match ($graphqlType) {
+            'String' => 'StringFilterInput',
+            'Int' => 'IntFilterInput',
+            'Float' => 'FloatFilterInput',
+            'Boolean' => 'BooleanFilterInput',
+            'Date', 'DateTime', 'Time' => 'DateTimeFilterInput',
+            default => null,
+        };
     }
 
     private function fieldColumns(ContentType $contentType): string
