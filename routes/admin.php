@@ -6,6 +6,7 @@ use Baobab\Admin\Access\Http\Controllers\AccessMatrixController;
 use Baobab\Admin\Account\Http\Controllers\ApiTokenController;
 use Baobab\Admin\Account\Http\Controllers\NotificationPreferencesController;
 use Baobab\Admin\Account\Http\Controllers\SecurityController;
+use Baobab\Admin\Api\Http\Controllers\ApiSettingsController;
 use Baobab\Admin\Branding\Http\Controllers\BrandingController;
 use Baobab\Admin\Content\Http\Controllers\ContentController;
 use Baobab\Admin\Content\Http\Controllers\TrashController;
@@ -91,6 +92,14 @@ Route::middleware('can:baobab.system.reading.manage')
     ->group(function (): void {
         Route::get('/', [ReadingSettingsController::class, 'index'])->name('index');
         Route::post('/', [ReadingSettingsController::class, 'update'])->name('update');
+    });
+
+Route::middleware('can:baobab.system.api.manage')
+    ->prefix('api')
+    ->name('api.')
+    ->group(function (): void {
+        Route::get('/', [ApiSettingsController::class, 'index'])->name('index');
+        Route::post('/', [ApiSettingsController::class, 'update'])->name('update');
     });
 
 Route::middleware('can:baobab.system.seo.manage')

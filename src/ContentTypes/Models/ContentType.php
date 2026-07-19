@@ -186,4 +186,14 @@ class ContentType extends Model
     {
         return (bool) ($this->blueprint['public_api_read'] ?? true);
     }
+
+    /**
+     * Interrupteur API par Content Type (spec 08 §4.3, M7 point 2 Pass B) —
+     * désactivé, le type devient invisible pour l'API (404), indépendamment
+     * des permissions. Activé par défaut.
+     */
+    public function apiEnabled(): bool
+    {
+        return (bool) ($this->blueprint['api_enabled'] ?? true);
+    }
 }

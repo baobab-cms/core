@@ -62,6 +62,7 @@ return [
         'reading' => 'Lecture',
         'seo' => 'SEO',
         'redirects' => 'Redirections',
+        'api' => 'API',
     ],
 
     'audit' => [
@@ -262,6 +263,16 @@ return [
         'empty' => 'La corbeille est vide.',
         'deleted_at_label' => 'Supprimé le',
         'view_type_action' => 'Voir dans le type',
+    ],
+
+    'api' => [
+        'title' => 'API',
+        'rest_enabled_label' => 'API REST activée',
+        'rate_limit_label' => 'Limite de requêtes par minute',
+        'allowed_origins_label' => 'Origines CORS autorisées',
+        'allowed_origins_help' => 'Une origine par ligne (ex. https://mon-front.example). Vide par défaut : aucune origine externe.',
+        'save_action' => 'Enregistrer',
+        'updated' => 'Réglages API mis à jour.',
     ],
 
     'branding' => [

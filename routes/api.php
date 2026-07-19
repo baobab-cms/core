@@ -13,3 +13,16 @@ Route::delete('content/{type}/{entry}', [ContentController::class, 'destroy'])->
 Route::post('content/{type}/{entry}/publish', [ContentController::class, 'publish'])->name('content.publish');
 Route::post('content/{type}/{entry}/restore', [ContentController::class, 'restore'])->name('content.restore');
 Route::get('content/{type}/{entry}/revisions', [ContentController::class, 'revisions'])->name('content.revisions');
+
+/**
+ * Sans cette route, une requête `OPTIONS` ne correspond à aucune route
+ * déclarée ci-dessus (méthode différente) : le routeur répond alors lui-même
+ * en 200 avec un en-tête `Allow` généré automatiquement, sans jamais
+ * traverser la pile de middlewares du groupe (`HandleApiCors` n'aurait donc
+ * jamais l'occasion de répondre au préflight — bug découvert en écrivant les
+ * tests Pass B). Ce fourre-tout fait matcher `OPTIONS` sur n'importe quel
+ * sous-chemin pour que le groupe (et `HandleApiCors` en tête) s'exécute
+ * réellement ; son corps n'est jamais atteint, `HandleApiCors` répond déjà
+ * avant `$next()` pour toute requête `OPTIONS`.
+ */
+Route::options('{any}', fn () => response()->noContent())->where('any', '.*')->name('options');

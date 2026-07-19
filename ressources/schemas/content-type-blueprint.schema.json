@@ -59,6 +59,11 @@
             "description": "Whether this type carries the optional unpublish_at convention column (scheduled auto-archive, spec 09 §4). On by default; set to false to opt a type out.",
             "default": true
         },
+        "api_enabled": {
+            "type": "boolean",
+            "description": "Whether this Content Type is exposed on the REST/GraphQL API at all (spec 08 §4.3 — the per-Content-Type API kill switch). On by default; set to false to make the type behave as unknown to the API (404), regardless of permissions.",
+            "default": true
+        },
         "public_api_read": {
             "type": "boolean",
             "description": "Whether published entries of this (addressable) type are readable via REST/GraphQL without authentication (spec 08 §2.3). On by default — a public site already exposes this data in HTML; set to false to require an authenticated, permitted actor even for published entries.",

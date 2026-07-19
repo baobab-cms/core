@@ -11,6 +11,9 @@ use Baobab\Admin\Access\PermissionMatrixBuilder;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
 use Baobab\Admin\Sidebar\SidebarBuilder;
 use Baobab\Admin\Sidebar\SidebarItem;
+use Baobab\Api\Http\Middleware\EnsureApiEnabled;
+use Baobab\Api\Http\Middleware\HandleApiCors;
+use Baobab\Api\Models\ApiSetting;
 use Baobab\Api\Support\ProblemDetailsRenderer;
 use Baobab\Audit\AuditLogger;
 use Baobab\Auth\Models\PersonalAccessToken;
@@ -86,6 +89,7 @@ use Baobab\Widgets\Core\RecentContentsWidget;
 use Baobab\Widgets\Core\RichTextWidget;
 use Baobab\Widgets\Models\WidgetInstance;
 use Baobab\Widgets\WidgetRegistry;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Debug\ExceptionHandler;
@@ -96,10 +100,12 @@ use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
@@ -179,6 +185,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
         $this->loadAdminRoutes();
         $this->registerSanctumGuard();
+        $this->excludeApiFromDefaultCors();
+        $this->registerApiRateLimiter();
         $this->loadApiRoutes();
         $this->registerApiExceptionRendering();
         $this->registerThemePreviewRoutes();
@@ -375,6 +383,31 @@ class BaobabServiceProvider extends ServiceProvider
     }
 
     /**
+     * Laravel enregistre par défaut `Illuminate\Http\Middleware\HandleCors`
+     * en middleware global (`config('cors.paths')` inclut `api/*` même sans
+     * `config/cors.php` publié — Laravel 11 fusionne le stub du framework,
+     * cf. `vendor/laravel/framework/config/cors.php`). Middleware global =
+     * plus extérieur que la pile de route `loadApiRoutes()`, donc il
+     * s'exécute APRÈS `HandleApiCors` en phase de réponse et écrase
+     * `Access-Control-Allow-Origin` avec son propre défaut (`*`) — bug
+     * découvert en écrivant les tests Pass B (l'en-tête attendu par
+     * origine devenait toujours `*`). `/api/*` est entièrement réservé à
+     * Baobab dans cette architecture (aucun autre usage attendu côté app
+     * hôte) : on retire ce chemin de `cors.paths` pour laisser
+     * `HandleApiCors` seul juge, sans toucher `sanctum/csrf-cookie`
+     * (toujours nécessaire au flux SPA Sanctum).
+     */
+    private function excludeApiFromDefaultCors(): void
+    {
+        $paths = array_values(array_diff(
+            (array) $this->app->make('config')->get('cors.paths', []),
+            ['api/*'],
+        ));
+
+        $this->app->make('config')->set('cors.paths', $paths);
+    }
+
+    /**
      * REST v1 (spec 08 §2, M7 points 1-2) — préfixe déjà réservé côté
      * blueprint (`baobab.rendering.reserved_prefixes`,
      * `ContentTypeBlueprint::validateUrlPrefix()`), structurellement
@@ -394,13 +427,51 @@ class BaobabServiceProvider extends ServiceProvider
      * cookie, pas l'auth par token). Le guard `sanctum`
      * (`registerSanctumGuard()`) fait le reste : session ou Bearer, une
      * seule résolution d'acteur côté contrôleur REST.
+     *
+     * Trois middlewares transverses ajoutés en M7 point 2 Pass B (spec 08
+     * §4.3), dans cet ordre précis : `HandleApiCors` répond au préflight
+     * `OPTIONS` avant même l'interrupteur global (une requête de
+     * préflight ne doit jamais être bloquée par une vérification qui ne la
+     * concerne pas) ; `EnsureApiEnabled` (interrupteur global, le moins
+     * cher à vérifier) ; `EnsureFrontendRequestsAreStateful` ; enfin
+     * `throttle:baobab-api` — nommé ainsi, pas `api`, pour ne jamais
+     * collisionner avec un limiteur que l'app hôte définirait elle-même
+     * (même rationale que la table Sanctum dédiée, Pass A).
      */
     private function loadApiRoutes(): void
     {
-        Route::middleware([EnsureFrontendRequestsAreStateful::class])
+        Route::middleware([
+            HandleApiCors::class,
+            EnsureApiEnabled::class,
+            EnsureFrontendRequestsAreStateful::class,
+            'throttle:baobab-api',
+        ])
             ->prefix('api/v1')
             ->name('api.v1.')
             ->group(__DIR__.'/../routes/api.php');
+    }
+
+    /**
+     * Limiteur nommé `baobab-api` (spec 08 §4.3) — keyé par utilisateur
+     * (session guard `baobab` *ou* Bearer token, tous deux résolus par le
+     * guard `sanctum`) quand authentifié, repli sur l'IP sinon : satisfait
+     * à la fois « par token » et « par IP pour les endpoints publics » avec
+     * une seule règle. Pas d'override par-token pour cette version (décidé
+     * en Pass A) — un seul réglage global (`ApiSetting::rate_limit_per_minute`),
+     * lu à l'exécution comme toute requête normale (jamais au `boot()`
+     * lui-même — seule l'*enregistrement* du limiteur a lieu ici, son
+     * corps ne s'exécute qu'à chaque requête réelle). Aucun
+     * `RouteServiceProvider` dans cette app Laravel 11 minimale — patron
+     * déjà établi de tout garder côté package plutôt que de dépendre d'un
+     * fichier de l'app hôte.
+     */
+    private function registerApiRateLimiter(): void
+    {
+        RateLimiter::for('baobab-api', function (Request $request): Limit {
+            $key = Auth::guard('sanctum')->id() ?? $request->ip();
+
+            return Limit::perMinute(ApiSetting::current()->rate_limit_per_minute)->by((string) $key);
+        });
     }
 
     /**
@@ -1014,6 +1085,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: null,
                     url: route('admin.redirects.index'),
                     order: -13,
+                );
+            }
+
+            if ($user->can('baobab.system.api.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -13,
+                    label: __('baobab::admin.sidebar.api'),
+                    icon: null,
+                    url: route('admin.api.index'),
+                    order: -12,
                 );
             }
 
