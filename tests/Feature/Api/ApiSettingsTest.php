@@ -96,7 +96,7 @@ it('answers an OPTIONS preflight from an allowed origin with 204 without reachin
     [, $carClass] = buildApiCar();
     $carClass::create(['brand' => 'Peugeot', 'price' => 25000, 'internal_note' => '', 'slug' => 'peugeot', 'status' => 'published']);
 
-    ApiSetting::current()->fill(['allowed_origins' => "https://front.example.com"])->save();
+    ApiSetting::current()->fill(['allowed_origins' => 'https://front.example.com'])->save();
 
     $this->withHeader('Origin', 'https://front.example.com')
         ->json('OPTIONS', '/api/v1/content/api-cars')
@@ -127,7 +127,7 @@ it('shows and persists updates on the API settings screen for a user with baobab
         ->post(route('admin.api.update'), [
             'rest_enabled' => '1',
             'rate_limit_per_minute' => 120,
-            'allowed_origins' => "https://front.example.com",
+            'allowed_origins' => 'https://front.example.com',
         ])
         ->assertRedirect(route('admin.api.index'));
 
