@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\File;
 use Illuminate\Testing\TestResponse;
 
@@ -15,7 +16,7 @@ afterEach(function () {
 
 /**
  * @param  array<string, mixed>  $variables
- * @return TestResponse<\Illuminate\Http\JsonResponse>
+ * @return TestResponse<JsonResponse>
  */
 function graphqlQuery(string $query, array $variables = []): TestResponse
 {
