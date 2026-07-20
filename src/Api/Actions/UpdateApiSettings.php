@@ -18,7 +18,7 @@ final class UpdateApiSettings
     public function __construct(private readonly AuditLogger $audit) {}
 
     /**
-     * @param  array{rest_enabled?: bool, rate_limit_per_minute?: int, allowed_origins?: string|null}  $data
+     * @param  array{rest_enabled?: bool, rate_limit_per_minute?: int, allowed_origins?: string|null, graphql_enabled?: bool, graphql_introspection_enabled?: bool}  $data
      */
     public function __invoke(array $data): ApiSetting
     {

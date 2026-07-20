@@ -1,9 +1,7 @@
 <?php
 
 use Baobab\Api\GraphQL\Actions\CompileGraphqlSchema;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\File;
-use Illuminate\Testing\TestResponse;
 
 beforeEach(function () {
     File::deleteDirectory(generatedModulesPath());
@@ -14,15 +12,6 @@ beforeEach(function () {
 afterEach(function () {
     File::deleteDirectory(generatedModulesPath());
 });
-
-/**
- * @param  array<string, mixed>  $variables
- * @return TestResponse<JsonResponse>
- */
-function graphqlQuery(string $query, array $variables = []): TestResponse
-{
-    return test()->postJson('/graphql', ['query' => $query, 'variables' => $variables]);
-}
 
 it('lists a paginated, filtered and sorted GraphQL query mirroring REST semantics', function () {
     [, $carClass] = buildApiCar();

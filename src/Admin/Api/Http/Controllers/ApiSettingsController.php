@@ -30,9 +30,13 @@ final class ApiSettingsController
             'rest_enabled' => ['nullable', 'boolean'],
             'rate_limit_per_minute' => ['required', 'integer', 'min:1'],
             'allowed_origins' => ['nullable', 'string'],
+            'graphql_enabled' => ['nullable', 'boolean'],
+            'graphql_introspection_enabled' => ['nullable', 'boolean'],
         ]);
 
         $validated['rest_enabled'] = $request->boolean('rest_enabled');
+        $validated['graphql_enabled'] = $request->boolean('graphql_enabled');
+        $validated['graphql_introspection_enabled'] = $request->boolean('graphql_introspection_enabled');
 
         app(UpdateApiSettings::class)($validated);
 

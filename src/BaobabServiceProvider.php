@@ -13,6 +13,7 @@ use Baobab\Admin\Sidebar\SidebarBuilder;
 use Baobab\Admin\Sidebar\SidebarItem;
 use Baobab\Api\GraphQL\Actions\CompileGraphqlSchema;
 use Baobab\Api\Http\Middleware\EnsureApiEnabled;
+use Baobab\Api\Http\Middleware\EnsureGraphqlEnabled;
 use Baobab\Api\Http\Middleware\HandleApiCors;
 use Baobab\Api\Models\ApiSetting;
 use Baobab\Api\Support\ProblemDetailsRenderer;
@@ -151,6 +152,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->register(SitemapServiceProvider::class);
         $this->app->register(SanctumServiceProvider::class);
         $this->registerLighthouseProviders();
+        $this->configureGraphqlRoute();
 
         $this->configurePurifier();
 
@@ -204,7 +206,6 @@ class BaobabServiceProvider extends ServiceProvider
         $this->excludeApiFromDefaultCors();
         $this->registerApiRateLimiter();
         $this->loadApiRoutes();
-        $this->configureGraphqlRoute();
         $this->registerApiExceptionRendering();
         $this->registerThemePreviewRoutes();
         $this->registerPublicRoutes();
@@ -503,19 +504,42 @@ class BaobabServiceProvider extends ServiceProvider
     /**
      * Lighthouse enregistre sa propre route `/graphql` depuis son `boot()`
      * (config `lighthouse.route.*`, jamais un fichier de routes à charger
-     * nous-mêmes) — configurer plutôt que remplacer. Doit s'exécuter avant
-     * le `boot()` de `LighthouseServiceProvider` : comme ce dernier est
-     * enregistré *depuis* `register()` (patron Sanctum/Sitemap), son propre
-     * `boot()` s'exécute après celui-ci dans l'ordre d'ajout au conteneur —
-     * même mécanique que `registerSanctumGuard()` (config posée avant que
-     * Sanctum ne la lise). Middlewares transverses identiques au REST
-     * (`loadApiRoutes()`) + les deux propres à Lighthouse (`AcceptJson`,
-     * `AttemptAuthentication` — celle-ci n'est pas strictement nécessaire,
-     * les résolveurs GraphQL résolvent l'acteur eux-mêmes via `ApiActor`,
-     * comme REST, mais la garder évite une divergence si une directive
-     * `@guard` apparaît un jour). `lighthouse.guards` fixé à `sanctum` seul
-     * plutôt que le défaut Laravel (potentiellement `web`, jamais utilisé
-     * par cette app, cf. `registerSanctumGuard()`).
+     * nous-mêmes) — configurer plutôt que remplacer. **Doit s'exécuter
+     * pendant `register()`, pas `boot()`** : appelée depuis `boot()`
+     * jusqu'à cette découverte (Pass B, M7 point 3), cette méthode
+     * s'exécutait bien *après* `LighthouseServiceProvider::boot()`, pas
+     * avant comme le docblock précédent l'affirmait — `Application::register()`
+     * n'ajoute un provider à la liste bootée qu'*après* le retour de son
+     * propre `register()` ; comme `LighthouseServiceProvider` est enregistré
+     * *depuis l'intérieur* de `BaobabServiceProvider::register()`
+     * (`registerLighthouseProviders()`), il est ajouté à cette liste avant
+     * `BaobabServiceProvider` lui-même, donc bouté avant lui. Conséquence
+     * réelle, restée invisible faute de test exerçant `/graphql` avec un
+     * réglage non défaut : la route ne portait jamais que les deux
+     * middlewares par défaut de Lighthouse (`AcceptJson`,
+     * `AttemptAuthentication`) — jamais `HandleApiCors`/l'interrupteur
+     * dédié/`throttle:baobab-api`, un `Route::middleware` étant figé
+     * définitivement à l'appel de `addRoute()`, contrairement à un guard
+     * Auth (résolu paresseusement à chaque requête, cf. `registerSanctumGuard()`,
+     * qui n'a donc pas ce problème en restant dans `boot()`). Le déplacement
+     * en `register()` suffit : le repository de config est déjà résolvable
+     * à ce stade, et toutes les phases `register()` de tous les providers
+     * s'exécutent avant la moindre phase `boot()`. Middlewares transverses
+     * identiques au REST (`loadApiRoutes()`) + les deux propres à Lighthouse
+     * (`AcceptJson`, `AttemptAuthentication` — celle-ci n'est pas strictement
+     * nécessaire, les résolveurs GraphQL résolvent l'acteur eux-mêmes via
+     * `ApiActor`, comme REST, mais la garder évite une divergence si une
+     * directive `@guard` apparaît un jour). `lighthouse.guards` fixé à
+     * `sanctum` seul plutôt que le défaut Laravel (potentiellement `web`,
+     * jamais utilisé par cette app). `EnsureGraphqlEnabled` remplace
+     * `EnsureApiEnabled` (M7 point 3 Pass B, spec 08 §3.3/§4.3) :
+     * interrupteur dédié, indépendant de `rest_enabled`, qui configure aussi
+     * l'introspection pour cette requête (lue dynamiquement à chaque requête,
+     * donc non affectée par ce bug). Profondeur/complexité posées ici en dur
+     * (« config Lighthouse native », pas un réglage admin) — un GraphQL sans
+     * limites est un déni de service en libre-service ; également non
+     * affectées, lues à la construction du validateur, pas à l'enregistrement
+     * de la route.
      */
     private function configureGraphqlRoute(): void
     {
@@ -523,9 +547,11 @@ class BaobabServiceProvider extends ServiceProvider
 
         $config->set('lighthouse.guards', ['sanctum']);
         $config->set('lighthouse.schema_path', storage_path('app/baobab/graphql/schema.graphql'));
+        $config->set('lighthouse.security.max_query_depth', 10);
+        $config->set('lighthouse.security.max_query_complexity', 1000);
         $config->set('lighthouse.route.middleware', [
             HandleApiCors::class,
-            EnsureApiEnabled::class,
+            EnsureGraphqlEnabled::class,
             EnsureFrontendRequestsAreStateful::class,
             'throttle:baobab-api',
             AcceptJson::class,
@@ -569,12 +595,24 @@ class BaobabServiceProvider extends ServiceProvider
      * mécanisme sous-jacent, appelable depuis n'importe où après résolution
      * du handler dans le conteneur.
      */
+    /**
+     * `graphql` ajoutée au périmètre (M7 point 3 Pass B) : une exception HTTP
+     * levée *avant* l'exécution GraphQL (`EnsureGraphqlEnabled` → 404,
+     * `throttle:baobab-api` → 429 — les mêmes classes d'exception que le
+     * REST, jamais une erreur de requête GraphQL elle-même) doit recevoir le
+     * même contrat RFC 9457 que le REST plutôt que le rendu JSON par défaut
+     * de Laravel. Les erreurs de requête GraphQL propres (validation,
+     * exécution, `Unauthenticated.` résolu par les résolveurs eux-mêmes)
+     * restent inchangées : Lighthouse les convertit en `{"errors": [...]}`
+     * avec un 200, jamais une exception HTTP — ce renderer ne les voit
+     * jamais.
+     */
     private function registerApiExceptionRendering(): void
     {
         /** @var Handler $handler */
         $handler = $this->app->make(ExceptionHandler::class);
 
-        $handler->renderable(fn (Throwable $e, Request $request) => $request->is('api/*')
+        $handler->renderable(fn (Throwable $e, Request $request) => $request->is('api/*') || $request->is('graphql')
             ? $this->app->make(ProblemDetailsRenderer::class)->render($e)
             : null);
     }

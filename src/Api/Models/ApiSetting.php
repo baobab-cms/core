@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property bool $rest_enabled
  * @property int $rate_limit_per_minute
  * @property string|null $allowed_origins
+ * @property bool $graphql_enabled
+ * @property bool $graphql_introspection_enabled
  */
 class ApiSetting extends Model
 {
@@ -24,13 +26,16 @@ class ApiSetting extends Model
      * visité l'écran) doit se comporter comme la migration le prévoit —
      * sans ça, `rest_enabled`/`rate_limit_per_minute` vaudraient `null`
      * avant le tout premier `save()`, désactivant silencieusement l'API
-     * par défaut au lieu de l'activer.
+     * par défaut au lieu de l'activer. `graphql_introspection_enabled` n'y
+     * figure pas : son défaut dépend de l'environnement (spec 08 §3.3),
+     * une expression non constante — posé par `current()` à la place.
      *
      * @var array<string, mixed>
      */
     protected $attributes = [
         'rest_enabled' => true,
         'rate_limit_per_minute' => 60,
+        'graphql_enabled' => true,
     ];
 
     /**
@@ -40,6 +45,8 @@ class ApiSetting extends Model
         'rest_enabled',
         'rate_limit_per_minute',
         'allowed_origins',
+        'graphql_enabled',
+        'graphql_introspection_enabled',
     ];
 
     /**
@@ -50,12 +57,23 @@ class ApiSetting extends Model
         return [
             'rest_enabled' => 'boolean',
             'rate_limit_per_minute' => 'integer',
+            'graphql_enabled' => 'boolean',
+            'graphql_introspection_enabled' => 'boolean',
         ];
     }
 
+    /**
+     * Introspection activée par défaut hors production (spec 08 §3.3) tant
+     * qu'aucun admin n'a encore sauvegardé l'écran — `firstOrNew()` accepte
+     * un 2ᵉ tableau de valeurs additionnelles pour l'instance non trouvée,
+     * mécanisme Eloquent natif plutôt qu'un défaut statique (impossible ici,
+     * `app()->environment()` n'est pas une expression constante).
+     */
     public static function current(): self
     {
-        return self::query()->firstOrNew(['id' => 1]);
+        return self::query()->firstOrNew(['id' => 1], [
+            'graphql_introspection_enabled' => ! app()->environment('production'),
+        ]);
     }
 
     /**

@@ -9,6 +9,8 @@ use Baobab\Tests\TestCase;
 use Baobab\Users\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Role;
 
 pest()->extend(TestCase::class)->in('Unit');
@@ -307,4 +309,16 @@ function apiActor(array $permissions): User
     }
 
     return $user;
+}
+
+/**
+ * POST une requête GraphQL vers `/graphql`. Utilisé par les tests GraphQL
+ * (`tests/Feature/Api/`).
+ *
+ * @param  array<string, mixed>  $variables
+ * @return TestResponse<JsonResponse>
+ */
+function graphqlQuery(string $query, array $variables = []): TestResponse
+{
+    return test()->postJson('/graphql', ['query' => $query, 'variables' => $variables]);
 }
