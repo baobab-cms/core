@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 use Baobab\Api\Http\Controllers\ContentController;
+use Baobab\Api\Http\Controllers\OpenApiSpecController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('openapi.json', [OpenApiSpecController::class, 'show'])->name('openapi');
 
 Route::get('content/{type}', [ContentController::class, 'index'])->name('content.index');
 Route::post('content/{type}', [ContentController::class, 'store'])->name('content.store');

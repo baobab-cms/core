@@ -64,6 +64,21 @@ final class IntegerField extends FieldType
         return 'Int';
     }
 
+    public function openApiSchema(array $options): array
+    {
+        $schema = ['type' => 'integer'];
+
+        if (isset($options['min'])) {
+            $schema['minimum'] = (int) $options['min'];
+        }
+
+        if (isset($options['max'])) {
+            $schema['maximum'] = (int) $options['max'];
+        }
+
+        return $schema;
+    }
+
     public function optionsRules(): array
     {
         return [

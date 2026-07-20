@@ -47,4 +47,9 @@ final class TimeField extends FieldType
     {
         return 'Time';
     }
+
+    public function openApiSchema(array $options): array
+    {
+        return ['type' => 'string', 'pattern' => '^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$', 'example' => '14:30:00'];
+    }
 }

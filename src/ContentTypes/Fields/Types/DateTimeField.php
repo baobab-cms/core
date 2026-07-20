@@ -47,4 +47,9 @@ final class DateTimeField extends FieldType
     {
         return 'DateTime';
     }
+
+    public function openApiSchema(array $options): array
+    {
+        return ['type' => 'string', 'format' => 'date-time'];
+    }
 }

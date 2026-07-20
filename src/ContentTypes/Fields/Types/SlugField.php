@@ -47,4 +47,10 @@ final class SlugField extends FieldType
     {
         return 'String';
     }
+
+    public function openApiSchema(array $options): array
+    {
+        // Patron `alpha_dash` (rules()) : lettres/chiffres/tirets/underscores.
+        return ['type' => 'string', 'pattern' => '^[A-Za-z0-9_-]+$'];
+    }
 }

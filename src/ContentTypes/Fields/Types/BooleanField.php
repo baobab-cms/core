@@ -47,4 +47,9 @@ final class BooleanField extends FieldType
     {
         return 'Boolean';
     }
+
+    public function openApiSchema(array $options): array
+    {
+        return ['type' => 'boolean'];
+    }
 }

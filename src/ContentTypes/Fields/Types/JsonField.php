@@ -47,4 +47,11 @@ final class JsonField extends FieldType
     {
         return 'JSON';
     }
+
+    public function openApiSchema(array $options): array
+    {
+        // Aucune contrainte de type : structure JSON arbitraire, un schéma
+        // vide (ni object ni array imposé) est la représentation honnête.
+        return ['description' => 'Structure JSON arbitraire.'];
+    }
 }

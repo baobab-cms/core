@@ -50,6 +50,11 @@ final class TextField extends FieldType
         return 'String';
     }
 
+    public function openApiSchema(array $options): array
+    {
+        return ['type' => 'string', 'maxLength' => (int) ($options['max_length'] ?? 255)];
+    }
+
     public function optionsRules(): array
     {
         return [

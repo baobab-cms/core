@@ -51,6 +51,11 @@ final class SelectField extends FieldType
         return 'String';
     }
 
+    public function openApiSchema(array $options): array
+    {
+        return ['type' => 'string', 'enum' => $options['choices'] ?? []];
+    }
+
     public function optionsRules(): array
     {
         return [

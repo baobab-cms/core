@@ -1,0 +1,118 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Baobab CMS API",
+        "version": "1.0.0",
+        "description": "REST v1 — registre des Content Types (spec 08 §2). Généré depuis les blueprints actifs, jamais édité à la main."
+    },
+    "paths": {},
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "description": "Jeton personnel Sanctum (spec 08 §4.1, admin/account/api-tokens)."
+            },
+            "sessionCookie": {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": "baobab_session",
+                "description": "Session du guard baobab (utilisée par l'admin)."
+            }
+        },
+        "schemas": {
+            "ProblemDetails": {
+                "type": "object",
+                "description": "Erreur RFC 9457 (spec 08 §2.2, Baobab\\Api\\Support\\ProblemDetailsRenderer).",
+                "required": [
+                    "type",
+                    "title",
+                    "status"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "responses": {
+            "Unauthenticated": {
+                "description": "Authentification requise.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ProblemDetails"
+                        }
+                    }
+                }
+            },
+            "Forbidden": {
+                "description": "Permission manquante.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ProblemDetails"
+                        }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Type ou entrée introuvable.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ProblemDetails"
+                        }
+                    }
+                }
+            },
+            "Conflict": {
+                "description": "Conflit avec l'état actuel de la ressource.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ProblemDetails"
+                        }
+                    }
+                }
+            },
+            "ValidationError": {
+                "description": "Données invalides — `errors` porte le détail par champ.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ProblemDetails"
+                        }
+                    }
+                }
+            },
+            "RateLimited": {
+                "description": "Trop de requêtes (spec 08 §4.3).",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ProblemDetails"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

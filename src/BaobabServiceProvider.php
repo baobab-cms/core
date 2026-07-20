@@ -40,6 +40,7 @@ use Baobab\Console\Commands\ModuleUninstallCommand;
 use Baobab\Console\Commands\NotFoundPurgeCommand;
 use Baobab\Console\Commands\NotificationsPurgeCommand;
 use Baobab\Console\Commands\NotifyTestCommand;
+use Baobab\Console\Commands\OpenApiCompileCommand;
 use Baobab\Console\Commands\SeoSitemapCommand;
 use Baobab\Console\Commands\SuperAdminCommand;
 use Baobab\Console\Commands\ThemeActivateCommand;
@@ -303,6 +304,7 @@ class BaobabServiceProvider extends ServiceProvider
                 NotFoundPurgeCommand::class,
                 SeoSitemapCommand::class,
                 GraphqlCompileCommand::class,
+                OpenApiCompileCommand::class,
             ]);
         }
 

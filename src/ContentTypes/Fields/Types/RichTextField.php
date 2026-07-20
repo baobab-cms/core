@@ -54,4 +54,9 @@ final class RichTextField extends FieldType
     {
         return 'String';
     }
+
+    public function openApiSchema(array $options): array
+    {
+        return ['type' => 'string', 'description' => 'HTML nettoyé (whitelist).'];
+    }
 }

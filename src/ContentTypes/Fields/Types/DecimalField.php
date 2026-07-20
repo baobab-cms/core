@@ -61,6 +61,21 @@ final class DecimalField extends FieldType
         return 'Float';
     }
 
+    public function openApiSchema(array $options): array
+    {
+        $schema = ['type' => 'number', 'format' => 'float'];
+
+        if (isset($options['min'])) {
+            $schema['minimum'] = (float) $options['min'];
+        }
+
+        if (isset($options['max'])) {
+            $schema['maximum'] = (float) $options['max'];
+        }
+
+        return $schema;
+    }
+
     public function optionsRules(): array
     {
         return [

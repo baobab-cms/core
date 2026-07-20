@@ -61,6 +61,26 @@ final class GalleryField extends FieldType
         return '[Media]';
     }
 
+    /**
+     * Décrit la forme voulue (patron `graphqlType()`, `[Media]`) — `toApi()`
+     * renvoie aujourd'hui systématiquement `[]` (limitation REST préexistante,
+     * hors périmètre de cette passe, à traiter séparément), documenter le
+     * contraire serait plus trompeur que documenter l'intention du champ.
+     */
+    public function openApiSchema(array $options): array
+    {
+        return [
+            'type' => 'array',
+            'items' => [
+                'type' => 'object',
+                'properties' => [
+                    'id' => ['type' => 'integer'],
+                    'url' => ['type' => 'string'],
+                ],
+            ],
+        ];
+    }
+
     public function optionsRules(): array
     {
         return [

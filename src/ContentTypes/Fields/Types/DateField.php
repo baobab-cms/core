@@ -47,4 +47,9 @@ final class DateField extends FieldType
     {
         return 'Date';
     }
+
+    public function openApiSchema(array $options): array
+    {
+        return ['type' => 'string', 'format' => 'date'];
+    }
 }

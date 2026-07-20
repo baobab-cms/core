@@ -103,6 +103,18 @@ final class ImageField extends FieldType
         return 'Media';
     }
 
+    public function openApiSchema(array $options): array
+    {
+        return [
+            'type' => 'object',
+            'properties' => [
+                'id' => ['type' => 'integer'],
+                'url' => ['type' => 'string'],
+                'alt' => ['type' => 'string', 'nullable' => true],
+            ],
+        ];
+    }
+
     public function optionsRules(): array
     {
         return [

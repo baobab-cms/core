@@ -51,6 +51,18 @@ abstract class FieldType
     abstract public function graphqlType(array $options): string;
 
     /**
+     * Fragment de *Schema Object* OpenAPI 3.1 (M7 point 4b, spec 08 §7)
+     * décrivant la forme réellement renvoyée par `toApi()` — construit
+     * directement depuis `$options` (même argument que `rules()`), jamais
+     * déduit des règles Laravel elles-mêmes (les closures de validation de
+     * `FileField`/`ImageField` ne sont pas traduisibles mécaniquement).
+     *
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    abstract public function openApiSchema(array $options): array;
+
+    /**
      * Règles Laravel validant les `options` de ce champ tel que déclaré dans
      * le blueprint (pas les données du contenu — voir rules()). Par défaut,
      * aucune contrainte.
