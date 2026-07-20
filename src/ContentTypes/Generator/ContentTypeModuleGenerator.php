@@ -128,6 +128,7 @@ final class ContentTypeModuleGenerator
     private function writeModel(ContentType $contentType, string $moduleDir): void
     {
         $key = $contentType->key;
+        $isSearchable = $contentType->searchableFields() !== [];
 
         $this->checksums->write($moduleDir, "src/Models/{$key}.php", $this->renderer->render(StubRenderer::stubPath('model'), [
             'namespace' => "Modules\\{$key}",
@@ -138,8 +139,27 @@ final class ContentTypeModuleGenerator
                 ? "            'unpublish_at' => 'datetime',"
                 : '',
             'casts' => $this->castsList($contentType),
+            'scout_use' => $isSearchable ? 'use Laravel\\Scout\\Searchable;' : '',
+            'scout_trait' => $isSearchable ? 'SoftDeletes, Searchable' : 'SoftDeletes',
+            'searchable_array' => $isSearchable ? $this->searchableArrayMethod($contentType) : '',
             'relations' => $this->relationMethods($contentType),
         ]));
+    }
+
+    /**
+     * Génère `toSearchableArray()` (contrat `Laravel\Scout\Searchable`, spec
+     * 11 §3.1) — jamais écrit à la main par le développeur, patron
+     * `castsList()`. Seuls les champs `searchable` du blueprint y figurent ;
+     * `id`/`status` structurels toujours inclus (utiles à toute source de
+     * recherche pour résoudre l'entrée réelle et son état éditorial).
+     */
+    private function searchableArrayMethod(ContentType $contentType): string
+    {
+        $lines = collect($contentType->searchableFields())
+            ->map(fn (array $field): string => "            '{$field['key']}' => \$this->{$field['key']},")
+            ->implode("\n");
+
+        return "\n    /**\n     * @return array<string, mixed>\n     */\n    public function toSearchableArray(): array\n    {\n        return [\n            'id' => \$this->id,\n            'status' => \$this->status,\n{$lines}\n        ];\n    }\n";
     }
 
     private function moduleJson(ContentType $contentType, string $moduleName, string $namespace, string $permissionPrefix, string $dirSlug): string

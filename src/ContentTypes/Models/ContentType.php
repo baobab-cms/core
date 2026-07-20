@@ -196,4 +196,27 @@ class ContentType extends Model
     {
         return (bool) ($this->blueprint['api_enabled'] ?? true);
     }
+
+    /**
+     * Sous-ensemble des champs du blueprint marqués `searchable` (spec 11
+     * §3.1) — **opt-in**, contrairement à `exposed_in_api` (opt-out) : patron
+     * exact `ContentTypeBlueprint::searchableFields()`.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function searchableFields(): array
+    {
+        return array_values(array_filter(
+            (array) ($this->blueprint['fields'] ?? []),
+            static fn (array $field): bool => $field['searchable'] ?? false,
+        ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $field
+     */
+    public function fieldWeight(array $field): int
+    {
+        return (int) ($field['weight'] ?? 1);
+    }
 }

@@ -357,6 +357,35 @@ final readonly class ContentTypeBlueprint
     }
 
     /**
+     * Sous-ensemble de `fields()` marqué `searchable` (spec 11 §3.1) — **opt-in**,
+     * contrairement à `exposed_in_api` (opt-out) : un champ n'entre dans
+     * l'index de recherche que déclaré explicitement, la recherche n'étant
+     * pas un besoin universel de chaque champ comme l'est l'exposition API.
+     *
+     * @return list<array{key: string, type: string}>
+     */
+    public function searchableFields(): array
+    {
+        return array_values(array_filter(
+            $this->fields(),
+            static fn (array $field): bool => (bool) Arr::get($field, 'searchable', false),
+        ));
+    }
+
+    /**
+     * Pondération déclarative d'un champ cherchable (spec 11 §3.1, §11
+     * décision 1) — fait partie du contrat quel que soit le driver Scout,
+     * mais son honorabilité en dépend : pleinement appliquée par Meilisearch,
+     * approximative ou ignorée par le driver `database` par défaut.
+     *
+     * @param  array<string, mixed>  $field
+     */
+    public function fieldWeight(array $field): int
+    {
+        return (int) Arr::get($field, 'weight', 1);
+    }
+
+    /**
      * @return list<array{key: string, type: string}>
      */
     public function relations(): array

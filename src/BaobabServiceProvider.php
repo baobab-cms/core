@@ -41,6 +41,8 @@ use Baobab\Console\Commands\NotFoundPurgeCommand;
 use Baobab\Console\Commands\NotificationsPurgeCommand;
 use Baobab\Console\Commands\NotifyTestCommand;
 use Baobab\Console\Commands\OpenApiCompileCommand;
+use Baobab\Console\Commands\SearchReindexCommand;
+use Baobab\Console\Commands\SearchStatusCommand;
 use Baobab\Console\Commands\SeoSitemapCommand;
 use Baobab\Console\Commands\SuperAdminCommand;
 use Baobab\Console\Commands\ThemeActivateCommand;
@@ -76,6 +78,10 @@ use Baobab\Modules\ModuleDiscovery;
 use Baobab\Notify\Notifier;
 use Baobab\Rendering\PublicRouteRegistrar;
 use Baobab\Scheduler\SchedulerRegistrar;
+use Baobab\Search\SearchRegistry;
+use Baobab\Search\Sources\ContentsSearchSource;
+use Baobab\Search\Sources\MediaSearchSource;
+use Baobab\Search\Sources\UsersSearchSource;
 use Baobab\Seo\Actions\CreateRedirect;
 use Baobab\Seo\Actions\DeleteRedirect;
 use Baobab\Seo\Actions\InvalidateSitemapCache;
@@ -120,6 +126,7 @@ use Intervention\Image\ImageManager;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Laravel\Sanctum\Sanctum;
 use Laravel\Sanctum\SanctumServiceProvider;
+use Laravel\Scout\ScoutServiceProvider;
 use Mews\Purifier\PurifierServiceProvider;
 use Nuwave\Lighthouse\Async\AsyncServiceProvider;
 use Nuwave\Lighthouse\Auth\AuthServiceProvider as LighthouseAuthServiceProvider;
@@ -155,6 +162,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->register(SanctumServiceProvider::class);
         $this->registerLighthouseProviders();
         $this->configureGraphqlRoute();
+        $this->app->register(ScoutServiceProvider::class);
 
         $this->configurePurifier();
 
@@ -177,6 +185,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->singleton(WidgetRegistry::class);
 
         $this->app->singleton(PresetRegistry::class);
+
+        $this->app->singleton(SearchRegistry::class);
 
         $this->app->singleton(SeoContext::class);
 
@@ -210,6 +220,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->loadApiRoutes();
         $this->registerApiExceptionRendering();
         $this->registerApiDocsRoutes();
+        $this->configureScout();
         $this->registerThemePreviewRoutes();
         $this->registerPublicRoutes();
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'baobab');
@@ -273,6 +284,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerCorePresets();
 
+        $this->registerCoreSearchSources();
+
         $this->bootstrapActiveModules();
 
         Hook::action('baobab.booted');
@@ -306,6 +319,8 @@ class BaobabServiceProvider extends ServiceProvider
                 SeoSitemapCommand::class,
                 GraphqlCompileCommand::class,
                 OpenApiCompileCommand::class,
+                SearchReindexCommand::class,
+                SearchStatusCommand::class,
             ]);
         }
 
@@ -562,6 +577,28 @@ class BaobabServiceProvider extends ServiceProvider
             'throttle:baobab-api',
             AcceptJson::class,
             AttemptAuthentication::class,
+        ]);
+    }
+
+    /**
+     * Configuration Scout (spec 11 §2, M7 point 5 Pass A) — driver `database`
+     * par défaut (zéro dépendance externe), indexation en queue sur
+     * `baobab-low` (patron webhooks/mail). Contrairement à
+     * `configureGraphqlRoute()`, aucune contrainte d'ordre entre `register()`
+     * et `boot()` : `EngineManager`/`Searchable::syncWithSearchUsing()` lisent
+     * `config('scout.*')` paresseusement, au moment d'une recherche/synchronisation
+     * réelle, jamais au moment de la résolution du conteneur — un `config()`
+     * posé n'importe où avant la première requête suffit. `scout.queue` doit
+     * être un tableau (`connection`/`queue`), pas le booléen `true` du stub
+     * vendor par défaut : `Searchable::syncWithSearchUsing()` lit
+     * `scout.queue.connection` par dot-notation, qui ne résout à rien sur un
+     * simple booléen (repli silencieux sur `queue.default`).
+     */
+    private function configureScout(): void
+    {
+        config([
+            'scout.driver' => 'database',
+            'scout.queue' => ['connection' => 'baobab-low', 'queue' => 'baobab-low'],
         ]);
     }
 
@@ -1357,6 +1394,25 @@ class BaobabServiceProvider extends ServiceProvider
         $registry->register('thumb', ['width' => 300, 'fit' => 'contain']);
         $registry->register('medium', ['width' => 768, 'fit' => 'contain']);
         $registry->register('large', ['width' => 1600, 'fit' => 'contain']);
+    }
+
+    /**
+     * Trois sources Core (spec 11 §3.2), contexte `admin` uniquement pour
+     * cette passe (moteur + indexation, M7 point 5 Pass A) — l'omnibox qui
+     * les consomme réellement est Pass B.
+     */
+    private function registerCoreSearchSources(): void
+    {
+        /** @var SearchRegistry $registry */
+        $registry = $this->app->make(SearchRegistry::class);
+
+        foreach ([
+            ContentsSearchSource::class,
+            UsersSearchSource::class,
+            MediaSearchSource::class,
+        ] as $source) {
+            $registry->register($source);
+        }
     }
 
     /**

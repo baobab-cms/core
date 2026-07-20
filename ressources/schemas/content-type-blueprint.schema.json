@@ -132,6 +132,17 @@
                         "description": "Whether this field is serialized in REST/GraphQL responses and eligible as a ?filter[]/?sort= target (spec 02 §3, spec 08 §2.1). On by default — a field opts out explicitly rather than needing every existing blueprint updated to opt in.",
                         "default": true
                     },
+                    "searchable": {
+                        "type": "boolean",
+                        "description": "Whether this field is included in the Scout search index (spec 11 §3.1). Off by default — opt-in, unlike exposed_in_api: search is not a universal need of every field the way API exposure is.",
+                        "default": false
+                    },
+                    "weight": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Declarative relevance weight for a searchable field (spec 11 §3.1, §11 decision 1) — part of the contract regardless of driver, but honored fully only by Meilisearch; approximate or ignored by the default `database` driver.",
+                        "default": 1
+                    },
                     "options": {
                         "type": "object",
                         "description": "Type-specific options (e.g. max_length for text, choices for select) — see each FieldType::optionsRules()."
