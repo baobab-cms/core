@@ -40,6 +40,13 @@
                 />
                 <p class="-mt-3 mb-4 text-xs text-muted">{{ __('baobab::admin.api.graphql_introspection_help') }}</p>
 
+                <x-baobab::field.checkbox
+                    name="docs_enabled"
+                    label="{{ __('baobab::admin.api.docs_enabled_label') }}"
+                    :checked="$setting->docs_enabled"
+                />
+                <p class="-mt-3 mb-4 text-xs text-muted">{{ __('baobab::admin.api.docs_enabled_help') }}</p>
+
                 <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.api.save_action') }}</x-baobab::button>
             </x-baobab::form>
         </x-baobab::card>

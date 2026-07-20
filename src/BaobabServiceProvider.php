@@ -209,6 +209,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerApiRateLimiter();
         $this->loadApiRoutes();
         $this->registerApiExceptionRendering();
+        $this->registerApiDocsRoutes();
         $this->registerThemePreviewRoutes();
         $this->registerPublicRoutes();
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'baobab');
@@ -632,6 +633,16 @@ class BaobabServiceProvider extends ServiceProvider
     private function registerThemePreviewRoutes(): void
     {
         Route::middleware('web')->group(__DIR__.'/../routes/theme-preview.php');
+    }
+
+    /**
+     * `/api/docs` (spec 08 §7, M7 point 4b Pass B) — groupe `web` requis :
+     * `EnsureApiDocsEnabled` résout l'acteur via `Auth::guard('baobab')`,
+     * qui s'appuie sur la session.
+     */
+    private function registerApiDocsRoutes(): void
+    {
+        Route::middleware('web')->group(__DIR__.'/../routes/api-docs.php');
     }
 
     /**

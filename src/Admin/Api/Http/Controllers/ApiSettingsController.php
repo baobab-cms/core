@@ -32,11 +32,13 @@ final class ApiSettingsController
             'allowed_origins' => ['nullable', 'string'],
             'graphql_enabled' => ['nullable', 'boolean'],
             'graphql_introspection_enabled' => ['nullable', 'boolean'],
+            'docs_enabled' => ['nullable', 'boolean'],
         ]);
 
         $validated['rest_enabled'] = $request->boolean('rest_enabled');
         $validated['graphql_enabled'] = $request->boolean('graphql_enabled');
         $validated['graphql_introspection_enabled'] = $request->boolean('graphql_introspection_enabled');
+        $validated['docs_enabled'] = $request->boolean('docs_enabled');
 
         app(UpdateApiSettings::class)($validated);
 
