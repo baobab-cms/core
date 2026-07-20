@@ -86,6 +86,7 @@ use Baobab\Seo\Models\SeoSetting;
 use Baobab\Seo\SeoContext;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
+use Baobab\Webhooks\Actions\DispatchWebhookEvent;
 use Baobab\Widgets\Core\CustomHtmlWidget;
 use Baobab\Widgets\Core\MenuWidget;
 use Baobab\Widgets\Core\RecentContentsWidget;
@@ -259,6 +260,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerWorkflowNotificationListeners();
 
         $this->registerSecurityNotificationListeners();
+
+        $this->registerWebhookDispatchListeners();
 
         $this->registerCoreSidebarItems();
 
@@ -807,6 +810,27 @@ class BaobabServiceProvider extends ServiceProvider
     }
 
     /**
+     * Webhooks sortants (spec 08 §5, M7 point 4 Pass A) : câble le catalogue
+     * Core (`config('baobab.webhooks.hooks')`) sur `DispatchWebhookEvent`,
+     * indépendamment de l'état de la base — cette Action porte elle-même la
+     * garde `Schema::hasTable()`, pas ce câblage. Les événements déclarés par
+     * les modules actifs (`manifest['hooks']['emits']`) sont câblés depuis
+     * `bootstrapActiveModules()`, qui a déjà la liste sous la main.
+     */
+    private function registerWebhookDispatchListeners(): void
+    {
+        /** @var HookRegistry $registry */
+        $registry = $this->app->make(HookRegistry::class);
+
+        /** @var list<string> $coreHooks */
+        $coreHooks = $this->app->make('config')->get('baobab.webhooks.hooks', []);
+
+        foreach ($coreHooks as $hook) {
+            $registry->listen($hook, fn (mixed ...$args) => $this->app->make(DispatchWebhookEvent::class)($hook, array_values($args)));
+        }
+    }
+
+    /**
      * @param  array<string, mixed>  $extra
      * @return array<string, mixed>
      */
@@ -1239,6 +1263,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            if ($user->can('baobab.system.webhooks.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -14,
+                    label: __('baobab::admin.sidebar.webhooks'),
+                    icon: null,
+                    url: route('admin.webhooks.index'),
+                    order: -11,
+                );
+            }
+
             return $items->concat($coreItems);
         });
     }
@@ -1406,6 +1440,9 @@ class BaobabServiceProvider extends ServiceProvider
      * For every active module (single DB query):
      *   1. Register its ServiceProvider if the class is autoloadable.
      *   2. Wire its manifest hooks.listens into the HookRegistry.
+     *   3. Wire its manifest hooks.emits onto the webhook dispatch listener
+     *      (spec 08 §5, M7 point 4 Pass A) — reuses this query rather than
+     *      a second `Module::where('status', 'active')` pass.
      *
      * Skipped silently when the DB is unavailable or not yet migrated.
      * Any unexpected error is logged as a warning so it stays visible.
@@ -1437,6 +1474,10 @@ class BaobabServiceProvider extends ServiceProvider
 
                 foreach ($module->manifest['hooks']['listens'] ?? [] as $hook => $listener) {
                     $registry->listen($hook, $listener);
+                }
+
+                foreach ($module->manifest['hooks']['emits'] ?? [] as $hook) {
+                    $registry->listen($hook, fn (mixed ...$args) => $this->app->make(DispatchWebhookEvent::class)($hook, array_values($args)));
                 }
 
                 foreach ($module->manifest['media_presets'] ?? [] as $name => $definition) {

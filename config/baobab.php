@@ -302,6 +302,12 @@ return [
                 'mail_template' => 'core.security.impersonation_started',
                 'configurable' => false,
             ],
+            [
+                'key' => 'core.webhook.subscription_disabled',
+                'description' => 'Un abonnement webhook a été désactivé après trop d\'échecs consécutifs.',
+                'channels' => ['database'],
+                'configurable' => false,
+            ],
         ],
     ],
 
@@ -360,6 +366,34 @@ return [
     'redirects' => [
         'trailing_slash' => env('BAOBAB_REDIRECTS_TRAILING_SLASH', 'strip'),
         'not_found_retention_days' => (int) env('BAOBAB_NOT_FOUND_RETENTION_DAYS', 90),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Webhooks sortants (spec 08 §5, M7 point 4 Pass A)
+    |--------------------------------------------------------------------------
+    |
+    | hooks : catalogue Core des événements abonnables
+    | (Baobab\Webhooks\Support\WebhookEventCatalog), patron
+    | notifications.declarations — HookRegistry ne peut pas fournir cette
+    | liste elle-même (elle ne connaît que les hooks ayant déjà un listener).
+    | Volontairement non exhaustif pour cette passe : cycle de vie contenu +
+    | module, extensible sans redesign. Les modules ajoutent les leurs via
+    | manifest['hooks']['emits'].
+    | max_consecutive_failures : désactivation automatique d'un abonnement
+    | après ce nombre d'échecs consécutifs (Baobab\Webhooks\Jobs\DeliverWebhook).
+    |
+    */
+    'webhooks' => [
+        'hooks' => [
+            'baobab.content.saved',
+            'baobab.content.transitioned',
+            'baobab.module.installed',
+            'baobab.module.activated',
+            'baobab.module.deactivated',
+            'baobab.module.uninstalled',
+        ],
+        'max_consecutive_failures' => (int) env('BAOBAB_WEBHOOKS_MAX_CONSECUTIVE_FAILURES', 10),
     ],
 
 ];

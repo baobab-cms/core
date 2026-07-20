@@ -33,14 +33,43 @@
                         placeholder="{{ __('baobab::admin.account.api_tokens.name_placeholder') }}"
                     />
 
-                    <div class="mb-4">
-                        <span class="mb-1 block text-sm font-medium text-foreground">
-                            {{ __('baobab::admin.account.api_tokens.abilities_label') }}
-                        </span>
+                    <div class="mb-4" x-data="{ abilityQuery: '' }">
+                        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-sm font-medium text-foreground">
+                                {{ __('baobab::admin.account.api_tokens.abilities_label') }}
+                            </span>
+
+                            <div class="flex items-center gap-2">
+                                <input
+                                    type="search"
+                                    x-model="abilityQuery"
+                                    placeholder="{{ __('baobab::admin.account.api_tokens.abilities_search_placeholder') }}"
+                                    class="rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-foreground"
+                                >
+                                <x-baobab::button
+                                    type="button"
+                                    variant="ghost"
+                                    x-on:click="$el.closest('[x-data]').querySelectorAll('label[data-search]').forEach((label) => { if (abilityQuery === '' || label.dataset.search.includes(abilityQuery.toLowerCase())) label.querySelector('input').checked = true })"
+                                >
+                                    {{ __('baobab::admin.account.api_tokens.select_all_action') }}
+                                </x-baobab::button>
+                                <x-baobab::button
+                                    type="button"
+                                    variant="ghost"
+                                    x-on:click="$el.closest('[x-data]').querySelectorAll('label[data-search]').forEach((label) => { if (abilityQuery === '' || label.dataset.search.includes(abilityQuery.toLowerCase())) label.querySelector('input').checked = false })"
+                                >
+                                    {{ __('baobab::admin.account.api_tokens.deselect_all_action') }}
+                                </x-baobab::button>
+                            </div>
+                        </div>
 
                         <div class="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
                             @foreach ($availablePermissions as $permission)
-                                <label class="flex items-center gap-2 text-sm text-foreground">
+                                <label
+                                    class="flex items-center gap-2 text-sm text-foreground"
+                                    data-search="{{ $permission['search'] }}"
+                                    x-show="abilityQuery === '' || $el.dataset.search.includes(abilityQuery.toLowerCase())"
+                                >
                                     <input
                                         type="checkbox"
                                         name="abilities[]"

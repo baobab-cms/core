@@ -22,6 +22,8 @@ use Baobab\Admin\Seo\Http\Controllers\SeoSettingsController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
+use Baobab\Admin\Webhooks\Http\Controllers\WebhookDeliveriesController;
+use Baobab\Admin\Webhooks\Http\Controllers\WebhookSubscriptionsController;
 use Baobab\Admin\Widgets\Http\Controllers\WidgetsController;
 use Baobab\Audit\Http\Controllers\AuditLogController;
 use Illuminate\Support\Facades\Route;
@@ -123,6 +125,20 @@ Route::middleware('can:baobab.system.redirects.manage')
         Route::get('/{redirect}', [RedirectsController::class, 'edit'])->name('edit');
         Route::put('/{redirect}', [RedirectsController::class, 'update'])->name('update');
         Route::delete('/{redirect}', [RedirectsController::class, 'destroy'])->name('destroy');
+    });
+
+Route::middleware('can:baobab.system.webhooks.manage')
+    ->prefix('webhooks')
+    ->name('webhooks.')
+    ->group(function (): void {
+        Route::get('/', [WebhookSubscriptionsController::class, 'index'])->name('index');
+        Route::get('/create', [WebhookSubscriptionsController::class, 'create'])->name('create');
+        Route::post('/', [WebhookSubscriptionsController::class, 'store'])->name('store');
+        Route::get('/{subscription}', [WebhookSubscriptionsController::class, 'edit'])->name('edit');
+        Route::put('/{subscription}', [WebhookSubscriptionsController::class, 'update'])->name('update');
+        Route::delete('/{subscription}', [WebhookSubscriptionsController::class, 'destroy'])->name('destroy');
+        Route::get('/{subscription}/deliveries', [WebhookDeliveriesController::class, 'index'])->name('deliveries.index');
+        Route::post('/deliveries/{delivery}/redeliver', [WebhookDeliveriesController::class, 'redeliver'])->name('deliveries.redeliver');
     });
 
 Route::middleware('can:baobab.system.themes.manage')
