@@ -65,6 +65,7 @@ return [
         'api' => 'API',
         'webhooks' => 'Webhooks',
         'search' => 'Recherche',
+        'toggle_collapse' => 'Réduire/étendre la barre latérale',
     ],
 
     'audit' => [

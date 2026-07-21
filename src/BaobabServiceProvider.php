@@ -100,6 +100,8 @@ use Baobab\Widgets\Core\RecentContentsWidget;
 use Baobab\Widgets\Core\RichTextWidget;
 use Baobab\Widgets\Models\WidgetInstance;
 use Baobab\Widgets\WidgetRegistry;
+use BladeUI\Icons\BladeIconsServiceProvider;
+use Davidhsianturi\BladeBootstrapIcons\BladeBootstrapIconsServiceProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Config\Repository;
@@ -141,6 +143,7 @@ use Nuwave\Lighthouse\Pagination\PaginationServiceProvider;
 use Nuwave\Lighthouse\SoftDeletes\SoftDeletesServiceProvider;
 use Nuwave\Lighthouse\Testing\TestingServiceProvider as LighthouseTestingServiceProvider;
 use Nuwave\Lighthouse\Validation\ValidationServiceProvider as LighthouseValidationServiceProvider;
+use OwenVoke\BladeFontAwesome\BladeFontAwesomeServiceProvider;
 use PragmaRX\Google2FA\Google2FA;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -163,6 +166,9 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerLighthouseProviders();
         $this->configureGraphqlRoute();
         $this->app->register(ScoutServiceProvider::class);
+        $this->app->register(BladeIconsServiceProvider::class);
+        $this->app->register(BladeBootstrapIconsServiceProvider::class);
+        $this->app->register(BladeFontAwesomeServiceProvider::class);
 
         $this->configurePurifier();
 
@@ -1187,7 +1193,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -1,
                     label: __('baobab::admin.sidebar.access'),
-                    icon: null,
+                    icon: 'bi-shield-lock',
                     url: route('admin.access.index'),
                     order: -20,
                 );
@@ -1197,7 +1203,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -2,
                     label: __('baobab::admin.sidebar.audit'),
-                    icon: null,
+                    icon: 'bi-journal-text',
                     url: route('admin.audit.index'),
                     order: -10,
                 );
@@ -1207,7 +1213,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -3,
                     label: __('baobab::admin.sidebar.users'),
-                    icon: null,
+                    icon: 'bi-people',
                     url: route('admin.users.index'),
                     order: -30,
                 );
@@ -1217,7 +1223,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -4,
                     label: __('baobab::admin.sidebar.media'),
-                    icon: null,
+                    icon: 'bi-images',
                     url: route('admin.media.index'),
                     order: -40,
                 );
@@ -1227,7 +1233,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -5,
                     label: __('baobab::admin.sidebar.review'),
-                    icon: null,
+                    icon: 'bi-check2-square',
                     url: route('admin.review.index'),
                     order: -25,
                 );
@@ -1237,7 +1243,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -6,
                     label: __('baobab::admin.sidebar.branding'),
-                    icon: null,
+                    icon: 'bi-palette',
                     url: route('admin.branding.index'),
                     order: -15,
                 );
@@ -1247,7 +1253,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -7,
                     label: __('baobab::admin.sidebar.themes'),
-                    icon: null,
+                    icon: 'bi-brush',
                     url: route('admin.themes.index'),
                     order: -16,
                 );
@@ -1257,7 +1263,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -8,
                     label: __('baobab::admin.sidebar.menus'),
-                    icon: null,
+                    icon: 'bi-list-nested',
                     url: route('admin.menus.index'),
                     order: -17,
                 );
@@ -1267,7 +1273,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -9,
                     label: __('baobab::admin.sidebar.widgets'),
-                    icon: null,
+                    icon: 'bi-grid',
                     url: route('admin.widgets.index'),
                     order: -18,
                 );
@@ -1277,7 +1283,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -10,
                     label: __('baobab::admin.sidebar.reading'),
-                    icon: null,
+                    icon: 'bi-book',
                     url: route('admin.reading.index'),
                     order: -19,
                 );
@@ -1287,7 +1293,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -11,
                     label: __('baobab::admin.sidebar.seo'),
-                    icon: null,
+                    icon: 'bi-globe2',
                     url: route('admin.seo.index'),
                     order: -14,
                 );
@@ -1297,7 +1303,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -12,
                     label: __('baobab::admin.sidebar.redirects'),
-                    icon: null,
+                    icon: 'bi-signpost-split',
                     url: route('admin.redirects.index'),
                     order: -13,
                 );
@@ -1307,7 +1313,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -13,
                     label: __('baobab::admin.sidebar.api'),
-                    icon: null,
+                    icon: 'bi-plug',
                     url: route('admin.api.index'),
                     order: -12,
                 );
@@ -1317,7 +1323,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -14,
                     label: __('baobab::admin.sidebar.webhooks'),
-                    icon: null,
+                    icon: 'bi-broadcast',
                     url: route('admin.webhooks.index'),
                     order: -11,
                 );
@@ -1327,7 +1333,7 @@ class BaobabServiceProvider extends ServiceProvider
                 $coreItems[] = new SidebarItem(
                     id: -15,
                     label: __('baobab::admin.sidebar.search'),
-                    icon: null,
+                    icon: 'bi-search',
                     url: route('admin.search.index'),
                     order: -10,
                 );

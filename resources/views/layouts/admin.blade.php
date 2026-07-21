@@ -17,7 +17,7 @@
 
     @stack('admin.head')
 </head>
-<body class="flex h-full flex-col bg-surface text-foreground antialiased" x-data="{ sidebarOpen: false }">
+<body class="flex h-full flex-col bg-surface text-foreground antialiased" x-data="{ sidebarOpen: false, sidebarCollapsed: (localStorage.getItem('baobab.sidebar.collapsed') ?? 'false') === 'true' }">
     @include('baobab::layouts.partials.impersonation-banner')
 
     @include('baobab::layouts.partials.staging-noindex-banner')

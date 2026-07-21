@@ -118,6 +118,57 @@ it('shows a Core-provided sidebar item once the user holds its permission', func
     expect($sidebar->pluck('label'))->toContain(__('baobab::admin.sidebar.access'));
 });
 
+it('threads a module menu item\'s icon through to the resulting SidebarItem', function () {
+    $module = makeActiveModule();
+    ModuleMenuItem::create([
+        'module_id' => $module->id,
+        'label' => 'Voitures',
+        'icon' => 'bi-car-front',
+        'route' => 'admin.content.index',
+        'route_params' => ['contentType' => 'cars'],
+        'permission' => null,
+        'order' => 10,
+    ]);
+
+    $user = User::create(['name' => 'Viewer', 'email' => 'viewer5@example.com', 'password' => 'secret']);
+
+    $sidebar = app(SidebarBuilder::class)->build($user);
+
+    expect($sidebar->first()->icon)->toBe('bi-car-front');
+});
+
+it('assigns a non-null, allow-listed icon to every Core sidebar item', function () {
+    $user = User::create(['name' => 'Super', 'email' => 'super-icons@example.com', 'password' => 'secret']);
+
+    foreach ([
+        'baobab.access.manage',
+        'baobab.audit.view',
+        'baobab.users.impersonate',
+        'baobab.media.view',
+        'baobab.system.branding.manage',
+        'baobab.system.themes.manage',
+        'baobab.menus.manage',
+        'baobab.widgets.manage',
+        'baobab.system.reading.manage',
+        'baobab.system.seo.manage',
+        'baobab.system.redirects.manage',
+        'baobab.system.api.manage',
+        'baobab.system.webhooks.manage',
+        'baobab.system.search.manage',
+    ] as $permission) {
+        app(GrantPermission::class)($user, $permission);
+    }
+
+    $sidebar = app(SidebarBuilder::class)->build($user->fresh());
+
+    expect($sidebar)->not->toBeEmpty();
+
+    foreach ($sidebar as $item) {
+        expect($item->icon)->not->toBeNull()
+            ->and($item->icon)->toMatch('/^(bi|fas|far|fab)-[a-z0-9-]+$/');
+    }
+});
+
 it('lets the baobab.admin.menu filter inject an extra sidebar item', function () {
     $user = User::create(['name' => 'Viewer', 'email' => 'viewer3@example.com', 'password' => 'secret']);
 

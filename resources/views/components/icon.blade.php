@@ -1,0 +1,3 @@
+@if ($svg)
+    {{ $svg }}
+@endif

@@ -4,9 +4,12 @@
             <button
                 type="button"
                 @click="open = !open; localStorage.setItem('baobab.sidebar.{{ $item->id }}', open)"
-                class="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm text-foreground hover:bg-surface"
+                class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-foreground hover:bg-surface"
+                title="{{ $item->label }}"
+                aria-label="{{ $item->label }}"
             >
-                <span>{{ $item->label }}</span>
+                <x-baobab::icon :name="$item->icon ?? 'bi-app-indicator'" class="h-5 w-5 shrink-0" />
+                <span class="lg:group-data-[collapsed]:hidden">{{ $item->label }}</span>
             </button>
 
             <ul x-show="open" x-cloak class="ml-3 space-y-1 border-l border-border pl-3">
@@ -15,9 +18,12 @@
         @else
             <a
                 href="{{ $item->url ?? '#' }}"
-                class="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-surface"
+                class="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-surface"
+                title="{{ $item->label }}"
+                aria-label="{{ $item->label }}"
             >
-                {{ $item->label }}
+                <x-baobab::icon :name="$item->icon ?? 'bi-app-indicator'" class="h-5 w-5 shrink-0" />
+                <span class="lg:group-data-[collapsed]:hidden">{{ $item->label }}</span>
             </a>
         @endif
     </li>
