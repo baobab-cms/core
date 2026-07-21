@@ -23,6 +23,8 @@ return new class extends Migration
             $table->foreignId('content_type_id')->unique()->constrained('content_types')->cascadeOnDelete();
             $table->string('title_template')->nullable();
             $table->timestamps();
+            // SEO Pass C (spec 07 §5) : exclusion d'un Content Type entier du sitemap.
+            $table->boolean('exclude_from_sitemap')->default(false);
         });
     }
 

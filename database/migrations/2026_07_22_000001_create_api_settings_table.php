@@ -23,6 +23,14 @@ return new class extends Migration
             $table->unsignedInteger('rate_limit_per_minute')->default(60);
             $table->text('allowed_origins')->nullable();
             $table->timestamps();
+            // Réglages GraphQL (spec 08 §3.3, M7 point 3 Pass B) : interrupteur
+            // dédié, distinct de rest_enabled (familles REST/GraphQL indépendantes).
+            // Le défaut env-dépendant réel est posé par ApiSetting::current().
+            $table->boolean('graphql_enabled')->default(true);
+            $table->boolean('graphql_introspection_enabled')->default(! app()->environment('production'));
+            // spec 08 §7, M7 point 4b Pass B — interrupteur dédié pour /api/docs,
+            // même patron : défaut colonne true, vrai défaut posé par ApiSetting::current().
+            $table->boolean('docs_enabled')->default(true);
         });
     }
 

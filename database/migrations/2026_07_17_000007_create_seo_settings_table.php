@@ -22,6 +22,16 @@ return new class extends Migration
             $table->foreignId('default_share_media_id')->nullable()->constrained('media')->nullOnDelete();
             $table->text('default_meta_description')->nullable();
             $table->timestamps();
+            // SEO Pass C (spec 07 §8) : robots_txt personnalisé — la protection
+            // staging le court-circuite entièrement quand elle est active, jamais
+            // combinée ; force_index_on_staging est une dérogation explicite.
+            $table->text('robots_txt')->nullable();
+            $table->boolean('force_index_on_staging')->default(false);
+            // SEO Pass D (spec 07 §7) : identité Organization/Person du bloc
+            // JSON-LD global. Le logo n'a pas de colonne dédiée : réutilise
+            // BrandingSetting::current()->logo.
+            $table->string('organization_type')->default('Organization');
+            $table->text('social_profiles')->nullable();
         });
     }
 

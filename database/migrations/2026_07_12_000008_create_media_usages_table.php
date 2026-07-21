@@ -23,6 +23,9 @@ return new class extends Migration
             $table->foreignId('media_id')->constrained()->cascadeOnDelete();
             $table->morphs('usable');
             $table->string('field_key')->nullable();
+            // Position dans un champ `gallery` (M4 point 4b-ii, spec 06 §6) — un
+            // usage produit par le scanner richtext reste à 0, sans ordre significatif.
+            $table->unsignedInteger('order')->default(0);
             $table->timestamps();
 
             $table->unique(['media_id', 'usable_type', 'usable_id', 'field_key'], 'media_usages_unique');
