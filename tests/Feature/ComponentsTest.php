@@ -55,7 +55,7 @@ it('renders x-baobab::button variants and href mode', function () {
 
 it('renders x-baobab::badge variants', function () {
     $html = Blade::render('<x-baobab::badge variant="success">Active</x-baobab::badge>');
-    expect($html)->toContain('text-success')->toContain('Active');
+    expect($html)->toContain('bg-leaf-50')->toContain('text-leaf-600')->toContain('Active');
 });
 
 it('renders x-baobab::empty-state with a default and a custom message', function () {
