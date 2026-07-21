@@ -3,11 +3,15 @@
 ])
 
 @php
+    // Palier 50/600-700 (spec 18 §13.4 règle 2), pas d'opacité — contraste
+    // WCAG AA visé (règle 3). `success` retombe sur `leaf`, défaut spec pour
+    // ce rôle (§2.2).
     $variants = [
-        'neutral' => 'bg-surface-subtle text-muted',
-        'success' => 'bg-success/10 text-success',
-        'warning' => 'bg-warning/10 text-warning',
-        'danger' => 'bg-danger/10 text-danger',
+        'neutral' => 'bg-sand-100 text-sand-600',
+        'success' => 'bg-leaf-50 text-leaf-600',
+        'warning' => 'bg-warning-50 text-warning-700',
+        'danger' => 'bg-danger-50 text-danger-700',
+        'info' => 'bg-info-50 text-info-700',
     ];
 @endphp
 
