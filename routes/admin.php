@@ -16,6 +16,8 @@ use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
 use Baobab\Admin\Menus\Http\Controllers\MenusController;
 use Baobab\Admin\Notifications\Http\Controllers\NotificationController;
 use Baobab\Admin\Rendering\Http\Controllers\ReadingSettingsController;
+use Baobab\Admin\Search\Http\Controllers\OmniboxController;
+use Baobab\Admin\Search\Http\Controllers\SearchSettingsController;
 use Baobab\Admin\Seo\Http\Controllers\NotFoundLogController;
 use Baobab\Admin\Seo\Http\Controllers\RedirectsController;
 use Baobab\Admin\Seo\Http\Controllers\SeoSettingsController;
@@ -110,6 +112,19 @@ Route::middleware('can:baobab.system.seo.manage')
     ->group(function (): void {
         Route::get('/', [SeoSettingsController::class, 'index'])->name('index');
         Route::post('/', [SeoSettingsController::class, 'update'])->name('update');
+    });
+
+// Omnibox (spec 11 §4.1) — nommée admin.omnibox.*, hors du préfixe
+// admin.search.* bloqué en impersonation : chercher reste permis, les
+// résultats étant bornés par les policies de l'acteur impersoné.
+Route::get('/omnibox/search', [OmniboxController::class, 'search'])->name('omnibox.search');
+
+Route::middleware('can:baobab.system.search.manage')
+    ->prefix('search')
+    ->name('search.')
+    ->group(function (): void {
+        Route::get('/', [SearchSettingsController::class, 'index'])->name('index');
+        Route::post('/reindex', [SearchSettingsController::class, 'reindex'])->name('reindex');
     });
 
 Route::middleware('can:baobab.system.redirects.manage')

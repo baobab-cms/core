@@ -64,6 +64,7 @@ return [
         'redirects' => 'Redirections',
         'api' => 'API',
         'webhooks' => 'Webhooks',
+        'search' => 'Recherche',
     ],
 
     'audit' => [
@@ -423,6 +424,32 @@ return [
         'updated' => 'Abonnement mis à jour.',
         'deleted' => 'Abonnement supprimé.',
         'redelivered' => 'Livraison relancée.',
+    ],
+
+    'omnibox' => [
+        'trigger_label' => 'Rechercher…',
+        'placeholder' => 'Rechercher un contenu, un média, un utilisateur…',
+        'empty' => 'Aucun résultat.',
+    ],
+
+    'search' => [
+        'title' => 'Recherche',
+        'driver_title' => 'Driver actif',
+        'database_driver_note' => 'Driver database : aucun index séparé n\'est maintenu — la recherche interroge directement les tables (LIKE/FULLTEXT). La réindexation n\'a d\'effet qu\'avec un driver externe (Meilisearch).',
+        'sources_title' => 'Sources enregistrées',
+        'column_key' => 'Clé',
+        'column_label' => 'Libellé',
+        'column_contexts' => 'Contextes',
+        'index_title' => 'Index par Content Type',
+        'column_type' => 'Type',
+        'column_fields' => 'Champs cherchables',
+        'column_volume' => 'Volume',
+        'no_searchable_types' => 'Aucun Content Type ne déclare de champ cherchable (attribut « searchable » du blueprint).',
+        'reindex_action' => 'Réindexer',
+        'reindexed' => ':count Content Type(s) réindexé(s).',
+        'public_title' => 'Résultats pour « :query »',
+        'public_submit' => 'Rechercher',
+        'public_empty' => 'Aucun résultat.',
     ],
 
     'admin_bar' => [

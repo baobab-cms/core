@@ -45,6 +45,8 @@
 
     @include('baobab::layouts.partials.admin-footer')
 
+    @include('baobab::layouts.partials.admin-omnibox')
+
     <x-baobab::toasts />
 
     @stack('admin.scripts')

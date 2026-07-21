@@ -331,6 +331,7 @@ return [
             'sitemap.xml',
             'sitemaps',
             'robots.txt',
+            'search',
         ],
         'per_page' => (int) env('BAOBAB_RENDERING_PER_PAGE', 15),
     ],

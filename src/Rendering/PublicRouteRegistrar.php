@@ -8,6 +8,7 @@ use Baobab\Rendering\Actions\RenderContentArchive;
 use Baobab\Rendering\Actions\RenderContentEntry;
 use Baobab\Rendering\Actions\RenderHomepage;
 use Baobab\Rendering\Actions\RenderNotFound;
+use Baobab\Rendering\Actions\RenderSearchPage;
 use Baobab\Rendering\Actions\ResolveAddressableContentType;
 use Baobab\Seo\Actions\ComposeRobotsTxt;
 use Baobab\Seo\Actions\RenderContentTypeSitemap;
@@ -61,6 +62,11 @@ final class PublicRouteRegistrar
             $router->get('/robots.txt', function () {
                 return response(app(ComposeRobotsTxt::class)(), 200, ['Content-Type' => 'text/plain']);
             })->name('baobab.robots');
+
+            // Avant la route générique — sinon /search serait capturée comme
+            // prefix=search. Segment réservé côté blueprint (reserved_prefixes),
+            // même traitement que sitemap.xml/robots.txt.
+            $router->get('/search', RenderSearchPage::class)->name('baobab.search');
 
             $router->get('/{prefix}/{slug?}', function (string $prefix, ?string $slug = null) {
                 if ($prefix === (string) config('baobab.admin.path', 'admin')) {

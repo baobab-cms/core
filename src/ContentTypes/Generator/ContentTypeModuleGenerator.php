@@ -151,7 +151,11 @@ final class ContentTypeModuleGenerator
      * 11 §3.1) — jamais écrit à la main par le développeur, patron
      * `castsList()`. Seuls les champs `searchable` du blueprint y figurent ;
      * `id`/`status` structurels toujours inclus (utiles à toute source de
-     * recherche pour résoudre l'entrée réelle et son état éditorial).
+     * recherche pour résoudre l'entrée réelle et son état éditorial). Le
+     * document passe par le filtre `baobab.search.indexing` (spec 11 §4.4,
+     * Pass B) : un module peut modifier le document indexé d'un
+     * enregistrement — le modèle généré dépend déjà du Core (trait Scout
+     * configuré par lui), la façade `Hook` n'ajoute aucun couplage nouveau.
      */
     private function searchableArrayMethod(ContentType $contentType): string
     {
@@ -159,7 +163,7 @@ final class ContentTypeModuleGenerator
             ->map(fn (array $field): string => "            '{$field['key']}' => \$this->{$field['key']},")
             ->implode("\n");
 
-        return "\n    /**\n     * @return array<string, mixed>\n     */\n    public function toSearchableArray(): array\n    {\n        return [\n            'id' => \$this->id,\n            'status' => \$this->status,\n{$lines}\n        ];\n    }\n";
+        return "\n    /**\n     * @return array<string, mixed>\n     */\n    public function toSearchableArray(): array\n    {\n        return \\Baobab\\Facades\\Hook::filter('baobab.search.indexing', [\n            'id' => \$this->id,\n            'status' => \$this->status,\n{$lines}\n        ], \$this);\n    }\n";
     }
 
     private function moduleJson(ContentType $contentType, string $moduleName, string $namespace, string $permissionPrefix, string $dirSlug): string

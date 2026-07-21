@@ -25,6 +25,15 @@ use Illuminate\Support\Str;
  * filtrage s'applique à la requête, pas après coup ») : même discipline que
  * `ContentQueryBuilder::scopeListVisibility()`, injectée via `Builder::query()`
  * *avant* l'exécution — jamais un filtrage de la collection après `get()`.
+ * En contexte `front` (Pass B), l'acteur est ignoré délibérément (spec 11
+ * §4.2 : « les contenus publiés seulement ») : un admin connecté qui
+ * navigue le site public voit la même chose qu'un anonyme, et seuls les
+ * types adressables (qui ont une page publique) sont interrogés.
+ *
+ * Options comprises (`GET /api/v1/search`) : `type` (clé de Content Type,
+ * restreint la recherche à ce type) et `filters` (filtres par champ,
+ * délégués à `ContentQueryBuilder::applyFilters()` — mêmes clés autorisées
+ * que le REST v1, `ValidationException` sinon).
  */
 final class ContentsSearchSource implements SearchSource
 {
@@ -43,52 +52,77 @@ final class ContentsSearchSource implements SearchSource
      */
     public function contexts(): array
     {
-        return ['admin'];
+        return ['admin', 'front'];
     }
 
-    public function query(string $term, ?User $actor): SearchResults
+    public function query(string $term, ?User $actor, string $context = 'admin', array $options = []): SearchResults
     {
         $items = [];
 
-        foreach ($this->searchableContentTypes() as $contentType) {
-            $items = [...$items, ...$this->searchContentType($contentType, $term, $actor)];
+        foreach ($this->searchableContentTypes($context, $options) as $contentType) {
+            $items = [...$items, ...$this->searchContentType($contentType, $term, $actor, $context, $options)];
         }
 
         return new SearchResults($items);
     }
 
     /**
+     * @param  array<string, mixed>  $options
      * @return list<ContentType>
      */
-    private function searchableContentTypes(): array
+    private function searchableContentTypes(string $context, array $options): array
     {
         return array_values(ContentType::query()
             ->whereNotNull('module_id')
             ->whereHas('module', fn ($query) => $query->where('status', 'active'))
+            ->when(isset($options['type']), fn ($query) => $query->where('key', (string) $options['type']))
+            ->when($context === 'front', fn ($query) => $query->where('is_addressable', true))
             ->get()
             ->filter(fn (ContentType $contentType): bool => $contentType->searchableFields() !== [])
             ->all());
     }
 
     /**
+     * @param  array<string, mixed>  $options
      * @return list<SearchResultItem>
      */
-    private function searchContentType(ContentType $contentType, string $term, ?User $actor): array
+    private function searchContentType(ContentType $contentType, string $term, ?User $actor, string $context, array $options): array
     {
         $modelClass = $contentType->modelClass();
         $visibility = new ContentQueryBuilder($contentType);
-        $slug = Str::kebab(Str::plural($contentType->key));
+        $visibilityActor = $context === 'front' ? null : $actor;
+
+        /** @var array<string, mixed> $filters */
+        $filters = (array) ($options['filters'] ?? []);
 
         $entries = $modelClass::search($term)
-            ->query(function ($query) use ($visibility, $actor): void {
-                $visibility->scopeListVisibility($query, $actor);
+            ->query(function ($query) use ($visibility, $visibilityActor, $filters): void {
+                $visibility->scopeListVisibility($query, $visibilityActor);
+
+                if ($filters !== []) {
+                    $visibility->applyFilters($query, $filters);
+                }
             })
             ->get();
 
         return $entries->map(fn (Model $entry): SearchResultItem => new SearchResultItem(
             title: $this->titleFor($contentType, $entry),
-            url: route('admin.content.edit', ['contentType' => $slug, 'entry' => $entry->getKey()]),
+            url: $this->urlFor($contentType, $entry, $context),
+            excerpt: (string) ($contentType->blueprint['label']['singular'] ?? $contentType->key),
+            sourceKey: $this->key(),
+            sourceLabel: $this->label(),
         ))->all();
+    }
+
+    private function urlFor(ContentType $contentType, Model $entry, string $context): string
+    {
+        if ($context === 'front') {
+            return url('/'.$contentType->urlPrefix().'/'.$entry->getAttribute('slug'));
+        }
+
+        $slug = Str::kebab(Str::plural($contentType->key));
+
+        return route('admin.content.edit', ['contentType' => $slug, 'entry' => $entry->getKey()]);
     }
 
     private function titleFor(ContentType $contentType, Model $entry): string

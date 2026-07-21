@@ -25,6 +25,11 @@ final class ImpersonationGuard
     private const BLOCKED_ROUTE_PREFIXES = [
         'admin.access.',
         'admin.account.security.',
+        // Écran système Recherche (spec 11 §4.3) — l'omnibox admin.omnibox.*
+        // reste accessible, elle : chercher pendant une impersonation est
+        // permis (résultats bornés par les policies de l'acteur impersoné),
+        // administrer l'index ne l'est pas.
+        'admin.search.',
     ];
 
     public function handle(Request $request, Closure $next): Response

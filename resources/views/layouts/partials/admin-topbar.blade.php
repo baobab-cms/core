@@ -20,6 +20,18 @@
 
     <div class="flex-1"></div>
 
+    @auth('baobab')
+        <button
+            type="button"
+            class="mr-3 flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-muted hover:bg-surface-subtle"
+            x-on:click="window.dispatchEvent(new CustomEvent('open-omnibox'))"
+        >
+            <span aria-hidden="true">&#128269;</span>
+            <span class="hidden sm:inline">{{ __('baobab::admin.omnibox.trigger_label') }}</span>
+            <kbd class="hidden rounded border border-border px-1 text-xs sm:inline">Ctrl+K</kbd>
+        </button>
+    @endauth
+
     @stack('admin.topbar.before-user')
 
     @auth('baobab')

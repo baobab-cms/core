@@ -36,7 +36,7 @@ final class MediaSearchSource implements SearchSource
         return ['admin'];
     }
 
-    public function query(string $term, ?User $actor): SearchResults
+    public function query(string $term, ?User $actor, string $context = 'admin', array $options = []): SearchResults
     {
         if (! $actor?->can('viewAny', Media::class)) {
             return new SearchResults([]);
@@ -51,6 +51,8 @@ final class MediaSearchSource implements SearchSource
             title: $item->file_name,
             url: route('admin.media.show', ['media' => $item->id]),
             excerpt: $item->alt,
+            sourceKey: $this->key(),
+            sourceLabel: $this->label(),
         ))->all()));
     }
 }

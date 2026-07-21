@@ -38,7 +38,7 @@ final class UsersSearchSource implements SearchSource
         return ['admin'];
     }
 
-    public function query(string $term, ?User $actor): SearchResults
+    public function query(string $term, ?User $actor, string $context = 'admin', array $options = []): SearchResults
     {
         // Même permission que l'écran admin/users lui-même (routes/admin.php)
         // — aucune permission "voir la liste" séparée n'existe à ce jour,
@@ -56,6 +56,8 @@ final class UsersSearchSource implements SearchSource
             title: $user->name,
             url: route('admin.users.index'),
             excerpt: $user->email,
+            sourceKey: $this->key(),
+            sourceLabel: $this->label(),
         ))->all()));
     }
 }

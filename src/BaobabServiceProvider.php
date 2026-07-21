@@ -1323,6 +1323,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            if ($user->can('baobab.system.search.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -15,
+                    label: __('baobab::admin.sidebar.search'),
+                    icon: null,
+                    url: route('admin.search.index'),
+                    order: -10,
+                );
+            }
+
             return $items->concat($coreItems);
         });
     }
