@@ -176,6 +176,18 @@ final readonly class ModuleManifest
     }
 
     /**
+     * Design tokens surchargés par ce module/thème (spec 18 §6.1, niveau 2 de
+     * la cascade). Accesseur brut, patron `theme()`/`mails()` — vocabulaire
+     * fermé et validé par le schéma JSON, jamais un tableau libre.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public function tokens(): array
+    {
+        return $this->data['tokens'] ?? [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

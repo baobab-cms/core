@@ -4,6 +4,13 @@ use Baobab\Access\Actions\GrantPermission;
 use Baobab\Audit\Models\AuditEntry;
 use Baobab\Branding\Models\BrandingSetting;
 use Baobab\Users\Models\User;
+use Illuminate\Support\Facades\File;
+
+afterEach(function () {
+    foreach (glob(public_path('baobab/tokens-*.css')) ?: [] as $file) {
+        File::delete($file);
+    }
+});
 
 /**
  * @param  list<string>  $permissions
@@ -62,4 +69,56 @@ it('rejects an invalid color', function () {
     $this->actingAs($actor, 'baobab')
         ->post(route('admin.branding.update'), ['primary_color' => 'not-a-color'])
         ->assertSessionHasErrors('primary_color');
+});
+
+it('writes primary_color into tokens.colors.primary as the single write point', function () {
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.update'), ['primary_color' => '#112233'])
+        ->assertRedirect(route('admin.branding.index'));
+
+    $setting = BrandingSetting::current();
+
+    expect($setting->primary_color)->toBe('#112233')
+        ->and($setting->tokens['colors']['primary'])->toBe('#112233');
+});
+
+it('rejects an unknown tokens group', function () {
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.update'), ['tokens' => ['icons' => ['star' => 'bi-star']]])
+        ->assertSessionHasErrors('tokens');
+});
+
+it('rejects an unknown key inside a known tokens group', function () {
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.update'), ['tokens' => ['colors' => ['unknown_key' => '#000000']]])
+        ->assertSessionHasErrors('tokens');
+});
+
+it('rejects the reserved dark tokens group', function () {
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.update'), ['tokens' => ['dark' => []]])
+        ->assertSessionHasErrors('tokens');
+});
+
+it('triggers a design tokens recompilation on save', function () {
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $before = glob(public_path('baobab/tokens-*.css')) ?: [];
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.update'), ['primary_color' => '#334455'])
+        ->assertRedirect(route('admin.branding.index'));
+
+    $after = glob(public_path('baobab/tokens-*.css')) ?: [];
+
+    expect($after)->not->toBe($before)
+        ->and(File::get($after[0]))->toContain('#334455');
 });

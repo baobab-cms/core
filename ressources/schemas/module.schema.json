@@ -439,6 +439,101 @@
                     "type": "string"
                 }
             }
+        },
+        "tokens": {
+            "type": "object",
+            "description": "Design tokens overridden by this theme (spec 18 §3, level 2 of the cascade). Closed vocabulary — 'dark' is deliberately never listed (reserved, v1.1) so it is rejected explicitly rather than silently ignored.",
+            "additionalProperties": false,
+            "properties": {
+                "colors": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "primary": {"type": "string"},
+                        "secondary": {"type": "string"},
+                        "accent": {"type": "string"},
+                        "success": {"type": "string"},
+                        "warning": {"type": "string"},
+                        "danger": {"type": "string"},
+                        "info": {"type": "string"},
+                        "surface": {"type": "string"},
+                        "background": {"type": "string"},
+                        "text": {"type": "string"},
+                        "muted": {"type": "string"},
+                        "border": {"type": "string"}
+                    }
+                },
+                "fonts": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "body": {"type": "string"},
+                        "heading": {"type": "string"},
+                        "mono": {"type": "string"}
+                    }
+                },
+                "text": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "xs": {"type": "string"},
+                        "sm": {"type": "string"},
+                        "base": {"type": "string"},
+                        "lg": {"type": "string"},
+                        "xl": {"type": "string"},
+                        "2xl": {"type": "string"},
+                        "3xl": {"type": "string"}
+                    }
+                },
+                "leading": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "tight": {"type": "string"},
+                        "normal": {"type": "string"},
+                        "relaxed": {"type": "string"}
+                    }
+                },
+                "weight": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "normal": {"type": "string"},
+                        "medium": {"type": "string"},
+                        "bold": {"type": "string"}
+                    }
+                },
+                "radius": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "sm": {"type": "string"},
+                        "md": {"type": "string"},
+                        "lg": {"type": "string"},
+                        "full": {"type": "string"}
+                    }
+                },
+                "spacing": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "xs": {"type": "string"},
+                        "sm": {"type": "string"},
+                        "md": {"type": "string"},
+                        "lg": {"type": "string"},
+                        "xl": {"type": "string"}
+                    }
+                },
+                "shadow": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "sm": {"type": "string"},
+                        "md": {"type": "string"},
+                        "lg": {"type": "string"}
+                    }
+                }
+            }
         }
     },
     "allOf": [

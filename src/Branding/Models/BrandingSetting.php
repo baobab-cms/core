@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $logo_media_id
  * @property int|null $favicon_media_id
  * @property string|null $primary_color
+ * @property array<string, array<string, string>>|null $tokens
+ * @property string|null $brand_profile
  */
 class BrandingSetting extends Model
 {
@@ -27,6 +29,15 @@ class BrandingSetting extends Model
         'logo_media_id',
         'favicon_media_id',
         'primary_color',
+        'tokens',
+        'brand_profile',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'tokens' => 'array',
     ];
 
     public static function current(): self

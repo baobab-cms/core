@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title')</title>
 
+    <x-baobab::design-tokens />
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="flex h-full items-center justify-center bg-surface-subtle">

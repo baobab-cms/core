@@ -5,14 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', __('baobab::admin.layout.default_title'))</title>
 
+    <x-baobab::design-tokens />
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @if ($branding->favicon)
         <link rel="icon" href="{{ $branding->favicon->url() }}">
-    @endif
-
-    @if ($branding->primary_color)
-        <style>:root { --color-primary: {{ $branding->primary_color }}; }</style>
     @endif
 
     @stack('admin.head')

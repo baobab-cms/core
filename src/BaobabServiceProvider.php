@@ -20,12 +20,14 @@ use Baobab\Api\Support\ProblemDetailsRenderer;
 use Baobab\Audit\AuditLogger;
 use Baobab\Auth\Models\PersonalAccessToken;
 use Baobab\Auth\TwoFactorManager;
+use Baobab\Branding\Actions\CompileDesignTokens;
 use Baobab\Branding\Models\BrandingSetting;
 use Baobab\Console\Commands\ContentPublishDueCommand;
 use Baobab\Console\Commands\ContentPurgeTrashCommand;
 use Baobab\Console\Commands\ContentTypeBuildCommand;
 use Baobab\Console\Commands\ContentTypeMakeCommand;
 use Baobab\Console\Commands\ContentUnpublishDueCommand;
+use Baobab\Console\Commands\DesignTokensCompileCommand;
 use Baobab\Console\Commands\GraphqlCompileCommand;
 use Baobab\Console\Commands\HookListCommand;
 use Baobab\Console\Commands\MailTemplatesCommand;
@@ -275,6 +277,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerSitemapCacheInvalidationListener();
 
         $this->registerGraphqlSchemaCompilationListener();
+        $this->registerDesignTokenCompilationListener();
 
         $this->registerWorkflowNotificationListeners();
 
@@ -324,6 +327,7 @@ class BaobabServiceProvider extends ServiceProvider
                 NotFoundPurgeCommand::class,
                 SeoSitemapCommand::class,
                 GraphqlCompileCommand::class,
+                DesignTokensCompileCommand::class,
                 OpenApiCompileCommand::class,
                 SearchReindexCommand::class,
                 SearchStatusCommand::class,
@@ -1172,6 +1176,25 @@ class BaobabServiceProvider extends ServiceProvider
         Hook::listen('baobab.content_type.evolved', fn (ContentType $contentType, array $diff = []) => $compile());
         Hook::listen('baobab.module.activated', fn (Module $module) => $compile());
         Hook::listen('baobab.module.deactivated', fn (Module $module) => $compile());
+    }
+
+    /**
+     * Recompile l'artefact de design tokens (spec 18 §4.2) à chaque
+     * déclencheur : activation d'un thème (`theme.json` change de niveau 2
+     * de la cascade) et sauvegarde du branding (niveau 4). Redondant avec
+     * l'appel direct déjà fait par `UpdateBrandingSettings` pour ce dernier
+     * cas — le hook reste le point d'extension pour tout futur écrivain de
+     * `branding_settings.tokens` (profils de marque, Pass B) sans dépendre
+     * de cette Action précise.
+     */
+    private function registerDesignTokenCompilationListener(): void
+    {
+        $compile = function (): void {
+            app(CompileDesignTokens::class)();
+        };
+
+        Hook::listen('baobab.theme.activated', fn (?Module $previous, Module $activated) => $compile());
+        Hook::listen('baobab.branding.tokens.saved', fn (BrandingSetting $setting) => $compile());
     }
 
     /**
