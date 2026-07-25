@@ -8,6 +8,7 @@ use Baobab\Modules\ModuleAutoloader;
 use Baobab\Tests\TestCase;
 use Baobab\Users\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Testing\TestResponse;
@@ -50,6 +51,45 @@ function removeThemeLink(string $slug): void
     } else {
         unlink($path);
     }
+}
+
+/**
+ * Supprime la jonction publiée par `Baobab\Branding\Support\PublishFontAssets`
+ * (`public/baobab/fonts`) et le stockage central du registre de polices
+ * (`storage/app/baobab/fonts`) — même rationale que `removeThemeLink()`
+ * (jonction unique cette fois, pas une par thème). Utilisé par les tests du
+ * registre de polices pour repartir d'un état propre entre les cas.
+ */
+function resetFontsRegistryStorage(): void
+{
+    $link = public_path('baobab/fonts');
+
+    if (file_exists($link)) {
+        if (windows_os()) {
+            rmdir($link);
+        } else {
+            unlink($link);
+        }
+    }
+
+    $storage = storage_path('app/baobab/fonts');
+
+    if (is_dir($storage)) {
+        (new Filesystem)->deleteDirectory($storage);
+    }
+}
+
+/**
+ * Écrit un faux fichier woff2 (signature binaire correcte, contenu factice
+ * au-delà) — suffisant pour `UploadFont`, qui ne valide que les 4 premiers
+ * octets (`wOF2`), jamais la structure interne réelle du format.
+ */
+function createTestWoff2(int $extraBytes = 32): string
+{
+    $path = sys_get_temp_dir().'/baobab-test-'.bin2hex(random_bytes(6)).'.woff2';
+    file_put_contents($path, 'wOF2'.random_bytes($extraBytes));
+
+    return $path;
 }
 
 function makeActiveModule(string $name = 'acme/manual'): Module

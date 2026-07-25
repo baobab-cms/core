@@ -8,7 +8,7 @@
 <x-baobab::modal :name="$name" :open="$open">
     <div x-data="{ typed: '' }">
         @if ($title)
-            <h2 class="text-base font-semibold text-foreground">{{ $title }}</h2>
+            <h2 class="font-display text-base font-semibold text-foreground">{{ $title }}</h2>
         @endif
 
         @isset($description)

@@ -32,7 +32,7 @@
                     :value="$setting->default_meta_description"
                 />
 
-                <h3 class="mb-2 mt-6 text-sm font-medium text-foreground">{{ __('baobab::admin.seo.robots_section_title') }}</h3>
+                <h3 class="mb-2 mt-6 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.seo.robots_section_title') }}</h3>
 
                 <x-baobab::field.textarea
                     name="robots_txt"
@@ -49,7 +49,7 @@
                 />
                 <p class="-mt-3 mb-4 text-xs text-muted">{{ __('baobab::admin.seo.force_index_on_staging_hint') }}</p>
 
-                <h3 class="mb-2 mt-6 text-sm font-medium text-foreground">{{ __('baobab::admin.seo.jsonld_section_title') }}</h3>
+                <h3 class="mb-2 mt-6 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.seo.jsonld_section_title') }}</h3>
                 <p class="mb-4 text-xs text-muted">{{ __('baobab::admin.seo.jsonld_logo_hint') }}</p>
 
                 <x-baobab::field.select
@@ -69,7 +69,7 @@
                 <p class="-mt-3 mb-4 text-xs text-muted">{{ __('baobab::admin.seo.social_profiles_hint') }}</p>
 
                 @if ($contentTypes->isNotEmpty())
-                    <h3 class="mb-2 mt-6 text-sm font-medium text-foreground">{{ __('baobab::admin.seo.title_templates_title') }}</h3>
+                    <h3 class="mb-2 mt-6 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.seo.title_templates_title') }}</h3>
                     <p class="mb-4 text-xs text-muted">{{ __('baobab::admin.seo.title_templates_hint') }}</p>
 
                     @foreach ($contentTypes as $contentType)

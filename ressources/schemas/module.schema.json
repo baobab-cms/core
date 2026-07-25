@@ -534,6 +534,32 @@
                     }
                 }
             }
+        },
+        "fonts": {
+            "type": "array",
+            "description": "Fonts embedded by this theme (spec 18 §5.3, §6.1, level 2 of the font registry). Distinct from tokens.fonts (family names) — this declares the actual files for a family, registered by SyncThemeFonts at activation.",
+            "items": {
+                "type": "object",
+                "required": ["family", "files"],
+                "additionalProperties": false,
+                "properties": {
+                    "family": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "files": {
+                        "type": "object",
+                        "description": "Key → relative path from the theme root. 'variable' for a single variable-font file, or a weight (optionally '-italic') for static files.",
+                        "minProperties": 1,
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "license": {
+                        "type": "string"
+                    }
+                }
+            }
         }
     },
     "allOf": [

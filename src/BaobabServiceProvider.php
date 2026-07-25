@@ -21,6 +21,7 @@ use Baobab\Audit\AuditLogger;
 use Baobab\Auth\Models\PersonalAccessToken;
 use Baobab\Auth\TwoFactorManager;
 use Baobab\Branding\Actions\CompileDesignTokens;
+use Baobab\Branding\Actions\SyncThemeFonts;
 use Baobab\Branding\Models\BrandingSetting;
 use Baobab\Console\Commands\ContentPublishDueCommand;
 use Baobab\Console\Commands\ContentPurgeTrashCommand;
@@ -28,6 +29,7 @@ use Baobab\Console\Commands\ContentTypeBuildCommand;
 use Baobab\Console\Commands\ContentTypeMakeCommand;
 use Baobab\Console\Commands\ContentUnpublishDueCommand;
 use Baobab\Console\Commands\DesignTokensCompileCommand;
+use Baobab\Console\Commands\FontsListCommand;
 use Baobab\Console\Commands\GraphqlCompileCommand;
 use Baobab\Console\Commands\HookListCommand;
 use Baobab\Console\Commands\MailTemplatesCommand;
@@ -328,6 +330,7 @@ class BaobabServiceProvider extends ServiceProvider
                 SeoSitemapCommand::class,
                 GraphqlCompileCommand::class,
                 DesignTokensCompileCommand::class,
+                FontsListCommand::class,
                 OpenApiCompileCommand::class,
                 SearchReindexCommand::class,
                 SearchStatusCommand::class,
@@ -1186,6 +1189,11 @@ class BaobabServiceProvider extends ServiceProvider
      * cas — le hook reste le point d'extension pour tout futur écrivain de
      * `branding_settings.tokens` (profils de marque, Pass B) sans dépendre
      * de cette Action précise.
+     *
+     * `SyncThemeFonts` s'exécute avant la compilation à l'activation d'un
+     * thème (spec 18 §5.3, Pass B) — jamais en injection directe dans
+     * `ActivateTheme` (Themes), pour ne pas coupler ce module à Branding :
+     * même choix que ce hook lui-même plutôt qu'une dépendance directe.
      */
     private function registerDesignTokenCompilationListener(): void
     {
@@ -1193,7 +1201,10 @@ class BaobabServiceProvider extends ServiceProvider
             app(CompileDesignTokens::class)();
         };
 
-        Hook::listen('baobab.theme.activated', fn (?Module $previous, Module $activated) => $compile());
+        Hook::listen('baobab.theme.activated', function (?Module $previous, Module $activated) use ($compile): void {
+            app(SyncThemeFonts::class)($activated);
+            $compile();
+        });
         Hook::listen('baobab.branding.tokens.saved', fn (BrandingSetting $setting) => $compile());
     }
 

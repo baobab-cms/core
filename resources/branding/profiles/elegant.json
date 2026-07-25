@@ -1,0 +1,19 @@
+{
+    "colors": {
+        "primary": "#5B2333",
+        "secondary": "#8C6239",
+        "accent": "#C9A227",
+        "success": "#3F6B4E",
+        "warning": "#B8860B",
+        "danger": "#7A2E2E",
+        "info": "#4B5D6B",
+        "surface": "#FFFFFF",
+        "background": "#FAF7F2",
+        "text": "#2B2320",
+        "muted": "#6E645C",
+        "border": "#E4DCD0"
+    },
+    "fonts": {
+        "heading": "Georgia, 'Times New Roman', serif"
+    }
+}

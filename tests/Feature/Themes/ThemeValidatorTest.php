@@ -251,3 +251,53 @@ it('warns, without blocking, when the layout omits <x-baobab::seo-head />', func
     expect(hasViolation($violations, 'seo-head', blocking: false))->toBeTrue()
         ->and(collect($violations)->contains(fn ($v) => $v->blocking))->toBeFalse();
 });
+
+// ── Polices (spec 18 §6.2) ─────────────────────────────────────────────────────
+
+it('warns, without blocking, about a font CDN referenced from a Blade view', function () {
+    writeValidThemeSkeleton(themeFixturePath());
+    File::put(
+        themeFixturePath().'/resources/views/templates/single.blade.php',
+        '<link href="https://fonts.googleapis.com/css2?family=Roboto" rel="stylesheet">',
+    );
+
+    $violations = validateThemeFixture();
+
+    expect(hasViolation($violations, 'CDN de polices', blocking: false))->toBeTrue()
+        ->and(collect($violations)->contains(fn ($v) => $v->blocking))->toBeFalse();
+});
+
+it('warns, without blocking, about a font CDN referenced from the theme source CSS', function () {
+    writeValidThemeSkeleton(themeFixturePath());
+    File::ensureDirectoryExists(themeFixturePath().'/resources/css');
+    File::put(themeFixturePath().'/resources/css/app.css', "@import url('https://fonts.googleapis.com/css2?family=Roboto');");
+
+    $violations = validateThemeFixture();
+
+    expect(hasViolation($violations, 'CDN de polices', blocking: false))->toBeTrue()
+        ->and(collect($violations)->contains(fn ($v) => $v->blocking))->toBeFalse();
+});
+
+it('warns, without blocking, about a literal font-family in the theme source CSS', function () {
+    writeValidThemeSkeleton(themeFixturePath());
+    File::ensureDirectoryExists(themeFixturePath().'/resources/css');
+    File::put(themeFixturePath().'/resources/css/app.css', 'body { font-family: "Comic Sans MS", sans-serif; }');
+
+    $violations = validateThemeFixture();
+
+    expect(hasViolation($violations, 'Police littérale', blocking: false))->toBeTrue()
+        ->and(collect($violations)->contains(fn ($v) => $v->blocking))->toBeFalse();
+});
+
+it('does not warn about a font-family that only uses --bb-font-* variables and generic keywords', function () {
+    writeValidThemeSkeleton(themeFixturePath());
+    File::ensureDirectoryExists(themeFixturePath().'/resources/css');
+    File::put(
+        themeFixturePath().'/resources/css/app.css',
+        '@theme { --font-sans: var(--bb-font-body); } body { font-family: var(--bb-font-body), system-ui, sans-serif; }',
+    );
+
+    $violations = validateThemeFixture();
+
+    expect(hasViolation($violations, 'Police littérale', blocking: false))->toBeFalse();
+});

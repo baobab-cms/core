@@ -1,0 +1,21 @@
+{
+    "colors": {
+        "primary": "#111111",
+        "secondary": "#444444",
+        "accent": "#777777",
+        "success": "#2F6B45",
+        "warning": "#A8720C",
+        "danger": "#8A2E22",
+        "info": "#3D5A70",
+        "surface": "#FFFFFF",
+        "background": "#FAFAFA",
+        "text": "#111111",
+        "muted": "#6E6E6E",
+        "border": "#E2E2E2"
+    },
+    "radius": {
+        "sm": "2px",
+        "md": "4px",
+        "lg": "8px"
+    }
+}

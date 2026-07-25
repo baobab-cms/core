@@ -188,6 +188,20 @@ final readonly class ModuleManifest
     }
 
     /**
+     * Polices embarquées par ce thème (spec 18 §5.3, §6.1, `theme.json` bloc
+     * `fonts`), enregistrées au registre à l'activation (`SyncThemeFonts`).
+     * Distinct de `tokens()['fonts']` (les clés `body`/`heading`/`mono` du
+     * vocabulaire, qui référencent un nom de famille) — ceci déclare les
+     * fichiers réels de cette famille.
+     *
+     * @return list<array{family: string, files: array<string, string>, license?: string}>
+     */
+    public function fonts(): array
+    {
+        return $this->data['fonts'] ?? [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

@@ -38,6 +38,7 @@ final class ThemeValidator
             ...$this->checkForbiddenConstructs($manifest, $path),
             ...$this->checkBladeWarnings($path),
             ...$this->checkSeoHeadPresence($manifest, $path),
+            ...$this->checkFontWarnings($path),
         ];
     }
 
@@ -273,6 +274,96 @@ final class ThemeValidator
         }
 
         return [new ThemeViolation($relative, null, 'Composant <x-baobab::seo-head /> absent du layout — le thème ne fournira aucune balise SEO (spec 07 §6).', blocking: false)];
+    }
+
+    /**
+     * Avertissements non bloquants sur les polices (spec 18 §6.2) : CDN de
+     * polices connu (`<link>`/`@import`/`url()` dans les vues Blade ET le CSS
+     * source du thème) et `font-family` littérale dans le CSS source plutôt
+     * qu'une variable `--bb-font-*`. Non bloquants car indétectables de
+     * façon fiable dans un CSS compilé/minifié (§6.2 dernière phrase) — la
+     * règle dure reste que le Core, lui, n'émet jamais un octet vers un CDN
+     * de polices.
+     *
+     * @return list<ThemeViolation>
+     */
+    private function checkFontWarnings(string $path): array
+    {
+        $violations = [];
+        $cdnPattern = '#(fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit\.net|fonts\.bunny\.net)#i';
+
+        foreach ([...$this->bladeFiles($path), ...$this->cssFiles($path)] as $relative => $contents) {
+            if (preg_match($cdnPattern, $contents) === 1) {
+                $violations[] = new ThemeViolation(
+                    $relative,
+                    null,
+                    "CDN de polices détecté — l'auto-hébergement est requis pour la conformité RGPD (spec 18 §1, §9), jamais un CDN tiers.",
+                    blocking: false,
+                );
+            }
+        }
+
+        foreach ($this->cssFiles($path) as $relative => $contents) {
+            if (preg_match_all('/font-family\s*:\s*([^;]+);/i', $contents, $matches) === 0) {
+                continue;
+            }
+
+            foreach ($matches[1] as $declaration) {
+                if ($this->isGenericOrTokenFontFamily($declaration)) {
+                    continue;
+                }
+
+                $violations[] = new ThemeViolation(
+                    $relative,
+                    null,
+                    'Police littérale dans le CSS source — utiliser une variable --bb-font-* (spec 18 §2.1, §6.2) plutôt qu\'un nom de famille en dur.',
+                    blocking: false,
+                );
+
+                break;
+            }
+        }
+
+        return $violations;
+    }
+
+    private function isGenericOrTokenFontFamily(string $declaration): bool
+    {
+        if (str_contains($declaration, 'var(--bb-font')) {
+            return true;
+        }
+
+        $generic = ['system-ui', 'ui-sans-serif', 'ui-serif', 'ui-monospace', 'sans-serif', 'serif', 'monospace', 'inherit'];
+
+        foreach (explode(',', $declaration) as $part) {
+            $part = trim($part, " \t\n\r\0\x0B'\"");
+
+            if ($part !== '' && ! in_array(strtolower($part), $generic, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @return array<string, string> Chemin relatif → contenu.
+     */
+    private function cssFiles(string $path): array
+    {
+        if (! is_dir("{$path}/resources/css")) {
+            return [];
+        }
+
+        $files = [];
+
+        foreach (File::allFiles("{$path}/resources/css") as $file) {
+            if ($file->getExtension() === 'css') {
+                $files[$this->relative($path, $file->getPathname())] = (string) file_get_contents($file->getPathname());
+            }
+        }
+
+        return $files;
     }
 
     /**

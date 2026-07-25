@@ -193,3 +193,49 @@ it('rejects a reserved dark tokens group with a message naming it explicitly', f
         ],
     ], JSON_THROW_ON_ERROR)))->toThrow(InvalidManifestException::class, 'dark');
 });
+
+// ── Embedded fonts (spec 18 §5.3, §6.1, M8 point 8 Pass B) ────────────────
+
+it('parses a valid fonts block', function () {
+    $manifest = ModuleManifest::fromJson(json_encode([
+        'name' => 'acme/theme',
+        'title' => 'Theme',
+        'version' => '1.0.0',
+        'type' => 'theme',
+        'provider' => 'Acme\\Theme\\Providers\\ThemeServiceProvider',
+        'theme' => ['screenshot' => 'screenshot.png'],
+        'fonts' => [
+            ['family' => 'Fraunces', 'files' => ['variable' => 'assets/fonts/fraunces-var.woff2'], 'license' => 'OFL-1.1'],
+        ],
+    ], JSON_THROW_ON_ERROR));
+
+    expect($manifest->fonts())->toBe([
+        ['family' => 'Fraunces', 'files' => ['variable' => 'assets/fonts/fraunces-var.woff2'], 'license' => 'OFL-1.1'],
+    ]);
+});
+
+it('defaults fonts to an empty array when undeclared', function () {
+    $manifest = ModuleManifest::fromJson(json_encode([
+        'name' => 'acme/blog',
+        'title' => 'Blog',
+        'version' => '1.0.0',
+        'type' => 'module',
+        'provider' => 'Acme\\Blog\\Providers\\BlogServiceProvider',
+    ], JSON_THROW_ON_ERROR));
+
+    expect($manifest->fonts())->toBe([]);
+});
+
+it('rejects a font declaration missing its required family or files', function () {
+    ModuleManifest::fromJson(json_encode([
+        'name' => 'acme/theme',
+        'title' => 'Theme',
+        'version' => '1.0.0',
+        'type' => 'theme',
+        'provider' => 'Acme\\Theme\\Providers\\ThemeServiceProvider',
+        'theme' => ['screenshot' => 'screenshot.png'],
+        'fonts' => [
+            ['family' => 'Fraunces'],
+        ],
+    ], JSON_THROW_ON_ERROR));
+})->throws(InvalidManifestException::class);

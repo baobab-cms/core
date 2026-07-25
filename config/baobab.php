@@ -194,6 +194,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Registre de polices (spec 18 §5, M8 point 8 Pass B)
+    |--------------------------------------------------------------------------
+    |
+    | max_upload_size : taille max d'un fichier .woff2 uploadé (2 Mo, §5.4 —
+    | les variable fonts rendent ce budget facile à tenir). allowed_mime_types
+    | est informatif seulement : la vraie garde est le contrôle des magic
+    | bytes réels du fichier (`UploadFont`), jamais le seul type déclaré.
+    |
+    */
+    'fonts' => [
+        'max_upload_size' => (int) env('BAOBAB_FONTS_MAX_UPLOAD_SIZE', 2_097_152),
+        'allowed_mime_types' => [
+            'font/woff2',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | E-mails (spec 13 §2-3, M5 point 6)
     |--------------------------------------------------------------------------
     |

@@ -11,6 +11,8 @@ afterEach(function () {
     foreach (glob(public_path('baobab/tokens-*.css')) ?: [] as $file) {
         File::delete($file);
     }
+
+    resetFontsRegistryStorage();
 });
 
 it('writes a CSS artifact containing every group and key of the vocabulary', function () {
@@ -70,6 +72,17 @@ it('renders a stylesheet link when the artifact already exists', function () {
 
     expect($html)->toContain('<link rel="stylesheet"')
         ->and($html)->toContain('/baobab/tokens-');
+});
+
+it('includes @font-face rules for the 3 bundled identity fonts by default', function () {
+    $path = app(CompileDesignTokens::class)();
+    $css = File::get($path);
+
+    expect($css)->toContain("font-family: 'Bricolage Grotesque Variable'")
+        ->and($css)->toContain("font-family: 'Figtree Variable'")
+        ->and($css)->toContain("font-family: 'JetBrains Mono'")
+        ->and($css)->toContain('font-display: swap')
+        ->and(is_file(public_path('baobab/fonts/bricolage-grotesque/bricolage-grotesque-variable.woff2')))->toBeTrue();
 });
 
 it('falls back to an inline style and regenerates the artifact when it is missing', function () {

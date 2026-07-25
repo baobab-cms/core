@@ -261,7 +261,7 @@
             <template x-if="duplicate">
                 <div class="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 px-4">
                     <div class="w-full max-w-sm rounded-lg border border-border bg-surface p-6 shadow-lg">
-                        <h2 class="text-base font-semibold text-foreground">{{ __('baobab::admin.media.duplicate_found_title') }}</h2>
+                        <h2 class="font-display text-base font-semibold text-foreground">{{ __('baobab::admin.media.duplicate_found_title') }}</h2>
                         <p class="mt-2 text-sm text-muted">{{ __('baobab::admin.media.duplicate_found_description') }}</p>
                         <div class="mt-4 flex justify-end gap-2">
                             <x-baobab::button type="button" variant="secondary" x-on:click="resolveDuplicate('reuse')">

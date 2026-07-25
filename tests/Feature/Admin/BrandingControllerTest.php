@@ -10,6 +10,8 @@ afterEach(function () {
     foreach (glob(public_path('baobab/tokens-*.css')) ?: [] as $file) {
         File::delete($file);
     }
+
+    resetFontsRegistryStorage();
 });
 
 /**
@@ -121,4 +123,53 @@ it('triggers a design tokens recompilation on save', function () {
 
     expect($after)->not->toBe($before)
         ->and(File::get($after[0]))->toContain('#334455');
+});
+
+it('applies a brand profile and reflects it in the primary color', function () {
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.profile'), ['profile' => 'corporate'])
+        ->assertRedirect(route('admin.branding.index'))
+        ->assertSessionHas('toast');
+
+    $setting = BrandingSetting::current();
+
+    expect($setting->brand_profile)->toBe('corporate')
+        ->and($setting->primary_color)->toBe('#1E3A5F');
+});
+
+it('flashes an error toast for an unknown profile slug rather than failing', function () {
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.profile'), ['profile' => 'does-not-exist'])
+        ->assertRedirect(route('admin.branding.index'))
+        ->assertSessionHas('toast');
+});
+
+it('hides the fonts section from an actor without baobab.system.fonts.manage', function () {
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $this->actingAs($actor, 'baobab')
+        ->get(route('admin.branding.index'))
+        ->assertOk()
+        ->assertDontSee(__('baobab::admin.branding.fonts.upload_title'));
+});
+
+it('shows the fonts section to an actor with baobab.system.fonts.manage', function () {
+    $actor = brandingActor(['baobab.system.branding.manage', 'baobab.system.fonts.manage']);
+
+    $this->actingAs($actor, 'baobab')
+        ->get(route('admin.branding.index'))
+        ->assertOk()
+        ->assertSee(__('baobab::admin.branding.fonts.upload_title'));
+});
+
+it('denies font upload/deletion routes without baobab.system.fonts.manage', function () {
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.fonts.store'), [])
+        ->assertForbidden();
 });

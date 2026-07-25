@@ -8,6 +8,7 @@ use Baobab\Admin\Account\Http\Controllers\NotificationPreferencesController;
 use Baobab\Admin\Account\Http\Controllers\SecurityController;
 use Baobab\Admin\Api\Http\Controllers\ApiSettingsController;
 use Baobab\Admin\Branding\Http\Controllers\BrandingController;
+use Baobab\Admin\Branding\Http\Controllers\FontsController;
 use Baobab\Admin\Content\Http\Controllers\ContentController;
 use Baobab\Admin\Content\Http\Controllers\TrashController;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
@@ -88,6 +89,15 @@ Route::middleware('can:baobab.system.branding.manage')
     ->group(function (): void {
         Route::get('/', [BrandingController::class, 'index'])->name('index');
         Route::post('/', [BrandingController::class, 'update'])->name('update');
+        Route::post('/profile', [BrandingController::class, 'applyProfile'])->name('profile');
+    });
+
+Route::middleware('can:baobab.system.fonts.manage')
+    ->prefix('branding/fonts')
+    ->name('branding.fonts.')
+    ->group(function (): void {
+        Route::post('/', [FontsController::class, 'store'])->name('store');
+        Route::delete('/{font}', [FontsController::class, 'destroy'])->name('destroy');
     });
 
 Route::middleware('can:baobab.system.reading.manage')

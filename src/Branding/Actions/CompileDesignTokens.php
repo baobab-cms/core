@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Baobab\Branding\Actions;
 
 use Baobab\Branding\Support\DesignTokenSchema;
+use Baobab\Branding\Support\FontFaceGenerator;
+use Baobab\Branding\Support\PublishFontAssets;
 use Baobab\Branding\Support\ResolveDesignTokens;
 use Baobab\Facades\Hook;
 use Illuminate\Support\Facades\File;
@@ -16,13 +18,20 @@ use Illuminate\Support\Facades\File;
  * écriture protégée (sans effet si le hash n'a pas changé, patron
  * `CompileGraphqlSchema`), ancien artefact supprimé. Rejouée à l'activation
  * d'un thème et à la sauvegarde du branding — voir
- * `BaobabServiceProvider::registerDesignTokenCompilationListener()`.
+ * `BaobabServiceProvider::registerDesignTokenCompilationListener()`. Depuis
+ * Pass B (spec 18 §5), l'artefact porte aussi les `@font-face` des familles
+ * réellement référencées (`FontFaceGenerator`) — `PublishFontAssets` est
+ * invoquée en tête de `buildCss()` pour s'auto-réparer avant émission.
  */
 final class CompileDesignTokens
 {
     private const string DIRECTORY = 'baobab';
 
-    public function __construct(private readonly ResolveDesignTokens $resolve) {}
+    public function __construct(
+        private readonly ResolveDesignTokens $resolve,
+        private readonly PublishFontAssets $publishFonts,
+        private readonly FontFaceGenerator $fontFaces,
+    ) {}
 
     public function __invoke(): string
     {
@@ -56,6 +65,8 @@ final class CompileDesignTokens
      */
     public function buildCss(array $tokens): string
     {
+        ($this->publishFonts)();
+
         $lines = [];
 
         foreach (DesignTokenSchema::GROUPS as $group => $keys) {
@@ -64,7 +75,13 @@ final class CompileDesignTokens
             }
         }
 
-        return ":root {\n".implode("\n", $lines)."\n}\n";
+        $root = ":root {\n".implode("\n", $lines)."\n}\n";
+
+        /** @var array<string, string> $fonts */
+        $fonts = $tokens['fonts'] ?? [];
+        $fontFaces = $this->fontFaces->generate($fonts);
+
+        return $fontFaces === '' ? $root : "{$fontFaces}\n\n{$root}";
     }
 
     private function currentHash(string $directory, string $newHash): ?string
