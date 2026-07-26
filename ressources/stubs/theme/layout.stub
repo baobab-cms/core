@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="{{ app()->getLocale() }}" class="h-full scroll-smooth">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@yield('title', config('app.name', '{{ site_name }}'))</title>
+
+    <x-baobab::seo-head />
+    <x-baobab::design-tokens />
+    <x-baobab::vite entry="app" />
+
+    @stack('styles')
+</head>
+<body class="flex min-h-full flex-col bg-surface text-foreground antialiased">
+    <a href="#content" class="sr-only focus:not-sr-only">Aller au contenu</a>
+
+    <x-baobab::admin-bar />
+
+    @include('theme::partials.header')
+
+    <main id="content" class="flex-1">
+        @yield('content')
+    </main>
+
+    @include('theme::partials.footer')
+
+    @stack('scripts')
+</body>
+</html>

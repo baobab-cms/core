@@ -194,6 +194,17 @@ function generatedModulesPath(): string
 }
 
 /**
+ * Répertoire temporaire cible du générateur de thèmes dans les tests
+ * (passé directement à `ThemeGenerator::__invoke()`, qui ne lit jamais
+ * `base_path()` lui-même — seul `ThemeMakeCommand` le fait). Utilisé par
+ * ThemeGeneratorTest.php.
+ */
+function generatedThemePath(): string
+{
+    return sys_get_temp_dir().'/baobab-test-theme-gen';
+}
+
+/**
  * Écrit un JPEG minimal (via GD) sur disque et retourne son chemin absolu.
  * Utilisé par UploadMediaTest.php.
  */

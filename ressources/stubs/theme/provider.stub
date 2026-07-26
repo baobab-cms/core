@@ -1,0 +1,16 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }}\Providers;
+
+use Illuminate\Support\ServiceProvider;
+
+/**
+ * Généré par baobab:make:theme (spec 17) — aucun réglage propre en v1
+ * (`settings_schema` différé, spec 03 §2.1), donc rien à enregistrer : les
+ * vues/templates sont résolus par le contrat de thème générique (M6 point 2).
+ * Ce provider existe uniquement parce que le cycle de vie des modules (M1)
+ * exige une classe `provider` valide dans `module.json`.
+ */
+final class {{ class_name }} extends ServiceProvider {}

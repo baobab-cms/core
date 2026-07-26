@@ -1,0 +1,27 @@
+@extends('theme::layouts.app')
+
+@section('title', $title)
+
+@section('content')
+    <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+        <h1 class="font-display text-3xl font-semibold tracking-tight text-foreground">{{ $title }}</h1>
+
+        @if ($entries->isEmpty())
+            <p class="mt-6 text-muted">Aucun contenu publié pour le moment.</p>
+        @else
+            <ul class="mt-8 divide-y divide-border">
+                @foreach ($entries as $entry)
+                    <li class="py-4">
+                        <a href="{{ rtrim(request()->url(), '/') }}/{{ $entry->getAttribute('slug') }}" class="text-lg font-medium text-foreground hover:text-muted">
+                            {{ $entry->getAttribute('slug') }}
+                        </a>
+                    </li>
+                @endforeach
+            </ul>
+
+            <div class="mt-8">
+                {{ $entries->links() }}
+            </div>
+        @endif
+    </div>
+@endsection

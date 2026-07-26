@@ -1,0 +1,201 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://baobabcms.com/schemas/theme-blueprint.schema.json",
+    "title": "Baobab CMS theme blueprint",
+    "description": "Schema for a theme.json blueprint (spec 17 §2) — the input consumed by the theme generator (baobab:make:theme), independent from module.json which describes an already-generated/installed theme (module.schema.json). Spec reference: docs/specs/specification-17-generateur-themes.md.",
+    "type": "object",
+    "required": [
+        "name",
+        "slug"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "Human-readable theme title.",
+            "minLength": 1
+        },
+        "slug": {
+            "type": "string",
+            "description": "Kebab-case directory slug.",
+            "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "version": {
+            "type": "string",
+            "description": "Semantic version (MAJOR.MINOR.PATCH). Defaults to 1.0.0 if omitted.",
+            "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?$"
+        },
+        "screenshot": {
+            "type": "string",
+            "description": "Relative path to the theme screenshot. Defaults to screenshot.png."
+        },
+        "menus": {
+            "type": "object",
+            "description": "Menu locations: key → human label (spec 03 §2.1).",
+            "propertyNames": {
+                "pattern": "^[a-z][a-z0-9_-]*$"
+            },
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "widget_zones": {
+            "type": "object",
+            "description": "Widget zones: key → human label.",
+            "propertyNames": {
+                "pattern": "^[a-z][a-z0-9_-]*$"
+            },
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "supports": {
+            "type": "array",
+            "description": "Opt-in capabilities (spec 17 §5). Reserved vocabulary — dark-mode is deferred post-v1 (spec 17 §9 decision 4) and not yet consumed by the generator.",
+            "items": {
+                "type": "string",
+                "enum": ["search", "forms", "cookie-banner", "maintenance", "dark-mode"]
+            }
+        },
+        "tokens": {
+            "type": "object",
+            "description": "Design tokens overridden by this theme (spec 18 §3, level 2 of the cascade) — same closed vocabulary as module.schema.json's tokens property.",
+            "additionalProperties": false,
+            "properties": {
+                "colors": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "primary": {"type": "string"},
+                        "secondary": {"type": "string"},
+                        "accent": {"type": "string"},
+                        "success": {"type": "string"},
+                        "warning": {"type": "string"},
+                        "danger": {"type": "string"},
+                        "info": {"type": "string"},
+                        "surface": {"type": "string"},
+                        "background": {"type": "string"},
+                        "text": {"type": "string"},
+                        "muted": {"type": "string"},
+                        "border": {"type": "string"}
+                    }
+                },
+                "fonts": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "body": {"type": "string"},
+                        "heading": {"type": "string"},
+                        "mono": {"type": "string"}
+                    }
+                },
+                "text": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "xs": {"type": "string"},
+                        "sm": {"type": "string"},
+                        "base": {"type": "string"},
+                        "lg": {"type": "string"},
+                        "xl": {"type": "string"},
+                        "2xl": {"type": "string"},
+                        "3xl": {"type": "string"}
+                    }
+                },
+                "leading": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "tight": {"type": "string"},
+                        "normal": {"type": "string"},
+                        "relaxed": {"type": "string"}
+                    }
+                },
+                "weight": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "normal": {"type": "string"},
+                        "medium": {"type": "string"},
+                        "bold": {"type": "string"}
+                    }
+                },
+                "radius": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "sm": {"type": "string"},
+                        "md": {"type": "string"},
+                        "lg": {"type": "string"},
+                        "full": {"type": "string"}
+                    }
+                },
+                "spacing": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "xs": {"type": "string"},
+                        "sm": {"type": "string"},
+                        "md": {"type": "string"},
+                        "lg": {"type": "string"},
+                        "xl": {"type": "string"}
+                    }
+                },
+                "shadow": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "sm": {"type": "string"},
+                        "md": {"type": "string"},
+                        "lg": {"type": "string"}
+                    }
+                }
+            }
+        },
+        "fonts": {
+            "type": "array",
+            "description": "Fonts embedded by this theme (spec 18 §5.3, §6.1) — same shape as module.schema.json's fonts property.",
+            "items": {
+                "type": "object",
+                "required": ["family", "files"],
+                "additionalProperties": false,
+                "properties": {
+                    "family": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "files": {
+                        "type": "object",
+                        "minProperties": 1,
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "license": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "content_types": {
+            "type": "object",
+            "description": "Generation map (spec 17 §4): Content Type key → templates to produce.",
+            "propertyNames": {
+                "pattern": "^[A-Z][A-Za-z0-9]*$"
+            },
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "templates": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": ["show", "index"]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

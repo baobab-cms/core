@@ -1,0 +1,9 @@
+<header class="border-b border-border">
+    <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
+        <a href="{{ url('/') }}" class="font-display text-lg font-semibold tracking-tight text-foreground">
+            {{ config('app.name', '{{ site_name }}') }}
+        </a>
+
+{{ primary_menu }}
+    </div>
+</header>

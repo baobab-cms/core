@@ -1,0 +1,20 @@
+import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
+
+// Build isolé du thème (spec 03 §8) : pas de laravel-vite-plugin (son
+// mécanisme @vite()/hot-file suppose une seule app hôte) — le manifest est
+// lu directement par Baobab\View\Components\Vite, donc build Vite « nu »
+// avec manifest activé. Exécuté depuis la racine du monorepo :
+//   npx vite build --config themes/{{ dir_slug }}/vite.config.js
+export default defineConfig({
+    root: 'themes/{{ dir_slug }}',
+    base: '/themes/{{ dir_slug }}/build/',
+    plugins: [tailwindcss()],
+    build: {
+        manifest: true,
+        outDir: 'public/build',
+        rollupOptions: {
+            input: ['resources/assets/css/app.css'],
+        },
+    },
+});
