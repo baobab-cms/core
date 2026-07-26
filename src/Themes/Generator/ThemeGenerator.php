@@ -50,6 +50,31 @@ final class ThemeGenerator
                 $this->generateIndexTemplate($contentType, $themeDir);
             }
         }
+
+        $this->generateSupports($blueprint, $themeDir);
+    }
+
+    /**
+     * Surcharges système opt-in (spec 17 §5). Seul `search` a du code Core à
+     * surcharger à ce jour (spec 11, `RenderSearchPage`) — `forms`,
+     * `cookie-banner` et `maintenance` sont déclarés au schéma mais pas
+     * encore consommés (leurs mécanismes Core respectifs ne sont pas encore
+     * construits, spec 14/16/12), `dark-mode` est différé après la v1
+     * (spec 17 §9 décision 4).
+     *
+     * @param  array<string, mixed>  $blueprint
+     */
+    private function generateSupports(array $blueprint, string $themeDir): void
+    {
+        /** @var list<string> $supports */
+        $supports = $blueprint['supports'] ?? [];
+
+        if (in_array('search', $supports, true)) {
+            $this->checksums->write($themeDir, 'resources/views/templates/search.blade.php', $this->renderer->render(
+                self::stubPath('template-search'),
+                [],
+            ));
+        }
     }
 
     public static function stubPath(string $name): string
@@ -129,6 +154,7 @@ final class ThemeGenerator
             // un objet) — un tableau PHP vide s'encoderait en `[]`, rejeté.
             'menus' => (object) ($blueprint['menus'] ?? []),
             'widget_zones' => (object) ($blueprint['widget_zones'] ?? []),
+            'supports' => $blueprint['supports'] ?? [],
         ];
 
         $manifest = [

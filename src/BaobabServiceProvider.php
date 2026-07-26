@@ -50,7 +50,9 @@ use Baobab\Console\Commands\SearchStatusCommand;
 use Baobab\Console\Commands\SeoSitemapCommand;
 use Baobab\Console\Commands\SuperAdminCommand;
 use Baobab\Console\Commands\ThemeActivateCommand;
+use Baobab\Console\Commands\ThemeLintCommand;
 use Baobab\Console\Commands\ThemeMakeCommand;
+use Baobab\Console\Commands\ThemePackageCommand;
 use Baobab\Console\Commands\ThemePreviewCommand;
 use Baobab\Console\Commands\ThemeValidateCommand;
 use Baobab\ContentTypes\Fields\FieldRegistry;
@@ -327,6 +329,8 @@ class BaobabServiceProvider extends ServiceProvider
                 ThemeActivateCommand::class,
                 ThemePreviewCommand::class,
                 ThemeValidateCommand::class,
+                ThemeLintCommand::class,
+                ThemePackageCommand::class,
                 ThemeMakeCommand::class,
                 NotFoundPurgeCommand::class,
                 SeoSitemapCommand::class,

@@ -4,6 +4,12 @@
 
 @section('content')
     <x-baobab::page :title="__('baobab::admin.themes.title')">
+        <x-slot:actions>
+            <x-baobab::button href="{{ route('admin.themes.studio.index') }}" variant="secondary">
+                {{ __('baobab::admin.themes.studio.link') }}
+            </x-baobab::button>
+        </x-slot:actions>
+
         @if ($themes->isEmpty())
             <x-baobab::empty-state :message="__('baobab::admin.themes.empty')" />
         @else

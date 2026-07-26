@@ -22,6 +22,7 @@ use Baobab\Admin\Search\Http\Controllers\SearchSettingsController;
 use Baobab\Admin\Seo\Http\Controllers\NotFoundLogController;
 use Baobab\Admin\Seo\Http\Controllers\RedirectsController;
 use Baobab\Admin\Seo\Http\Controllers\SeoSettingsController;
+use Baobab\Admin\Themes\Http\Controllers\ThemeBlueprintController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
@@ -171,6 +172,17 @@ Route::middleware('can:baobab.system.themes.manage')
     ->name('themes.')
     ->group(function (): void {
         Route::get('/', [ThemesController::class, 'index'])->name('index');
+
+        Route::prefix('studio')
+            ->name('studio.')
+            ->group(function (): void {
+                Route::get('/', [ThemeBlueprintController::class, 'index'])->name('index');
+                Route::get('/create', [ThemeBlueprintController::class, 'create'])->name('create');
+                Route::post('/', [ThemeBlueprintController::class, 'store'])->name('store');
+                Route::get('/{slug}', [ThemeBlueprintController::class, 'edit'])->name('edit');
+                Route::post('/{slug}', [ThemeBlueprintController::class, 'update'])->name('update');
+            });
+
         Route::post('/{theme}/activate', [ThemesController::class, 'activate'])->name('activate');
         Route::get('/{theme}/preview', [ThemesController::class, 'preview'])->name('preview');
     });

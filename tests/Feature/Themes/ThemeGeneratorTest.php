@@ -150,6 +150,35 @@ it('generates a single template with a field block per declared field, driven by
         ->and(File::isFile(generatedThemePath().'/resources/views/templates/archive-article.blade.php'))->toBeFalse();
 });
 
+it('generates a search template and persists supports when "search" is declared', function () {
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), [
+        'name' => 'Sample Theme',
+        'slug' => 'sample-theme',
+        'supports' => ['search'],
+    ]);
+
+    expect(File::isFile(generatedThemePath().'/resources/views/templates/search.blade.php'))->toBeTrue();
+
+    /** @var array<string, mixed> $manifest */
+    $manifest = json_decode((string) File::get(generatedThemePath().'/module.json'), associative: true);
+
+    expect($manifest['theme']['supports'])->toBe(['search']);
+});
+
+it('does not generate a search template when "search" is not declared', function () {
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), [
+        'name' => 'Sample Theme',
+        'slug' => 'sample-theme',
+    ]);
+
+    expect(File::isFile(generatedThemePath().'/resources/views/templates/search.blade.php'))->toBeFalse();
+
+    /** @var array<string, mixed> $manifest */
+    $manifest = json_decode((string) File::get(generatedThemePath().'/module.json'), associative: true);
+
+    expect($manifest['theme']['supports'])->toBe([]);
+});
+
 it('generates an archive template with image/excerpt markup, driven by content_types', function () {
     $contentType = app(BuildContentType::class)(carBlueprintJson([
         'key' => 'Article',

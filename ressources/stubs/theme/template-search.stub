@@ -1,0 +1,30 @@
+@extends('theme::layouts.app')
+
+@section('content')
+    <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+        <h1 class="font-display text-3xl font-semibold tracking-tight text-foreground">Recherche</h1>
+
+        <form method="GET" action="{{ url()->current() }}" class="mt-6 flex gap-3">
+            <input type="search" name="q" value="{{ $query }}" class="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-foreground" />
+            <button type="submit" class="rounded-md bg-primary px-4 py-2 font-medium text-white">Rechercher</button>
+        </form>
+
+        @forelse ($results as $group)
+            <section class="mt-8">
+                <h2 class="font-display text-lg font-medium text-foreground">{{ $group['label'] }}</h2>
+
+                <ul class="mt-3 divide-y divide-border">
+                    @foreach ($group['results']->items as $item)
+                        <li class="py-3">
+                            <a href="{{ $item->url }}" class="text-foreground hover:text-muted">{{ $item->title }}</a>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+        @empty
+            @if ($query !== '')
+                <p class="mt-8 text-muted">Aucun résultat pour cette recherche.</p>
+            @endif
+        @endforelse
+    </div>
+@endsection

@@ -301,3 +301,22 @@ it('does not warn about a font-family that only uses --bb-font-* variables and g
 
     expect(hasViolation($violations, 'Police littérale', blocking: false))->toBeFalse();
 });
+
+// ── Cohérence blueprint ↔ fichiers (spec 17 §6.1) ──────────────────────────────
+
+it('flags "search" declared in supports without its template as blocking', function () {
+    writeValidThemeSkeleton(themeFixturePath());
+
+    $violations = validateThemeFixture(['theme' => ['supports' => ['search']]]);
+
+    expect(hasViolation($violations, 'Support "search" déclaré mais'))->toBeTrue();
+});
+
+it('does not flag "search" declared in supports when its template exists', function () {
+    writeValidThemeSkeleton(themeFixturePath());
+    File::put(themeFixturePath().'/resources/views/templates/search.blade.php', '<p>search</p>');
+
+    $violations = validateThemeFixture(['theme' => ['supports' => ['search']]]);
+
+    expect(hasViolation($violations, 'templates/search.blade.php absent'))->toBeFalse();
+});

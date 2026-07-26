@@ -33,6 +33,7 @@ final class ThemeValidator
         return [
             ...$this->checkRequiredFiles($manifest, $path),
             ...$this->checkParentTheme($manifest),
+            ...$this->checkBlueprintCoherence($manifest, $path),
             ...$this->checkNoPhpInPublicOrAssets($path),
             ...$this->checkBladePhpTags($path),
             ...$this->checkForbiddenConstructs($manifest, $path),
@@ -116,6 +117,46 @@ final class ThemeValidator
         }
 
         return [];
+    }
+
+    /**
+     * Cohérence blueprint ↔ fichiers (spec 17 §6.1), volet `supports` : un
+     * support consommé par le générateur (seul `search` à ce jour —
+     * `forms`/`cookie-banner`/`maintenance` ne sont pas encore consommés,
+     * rien à vérifier pour eux) doit avoir son template, avec le même repli
+     * parent que les autres fichiers requis. **Narrowing assumé** : la
+     * cohérence menus/widget_zones déclarés ↔ réellement rendus (également
+     * couverte par la lettre de spec 17 §6.1) n'est pas vérifiée ici — les
+     * fixtures de test existantes (`acme-theme` et consorts, M6) déclarent
+     * des emplacements qu'elles ne rendent pas toutes, une vérification
+     * bloquante casserait cette base partagée par une dizaine de tests sans
+     * rapport avec ce point ; à reprendre si besoin (suivi n° 88).
+     *
+     * @return list<ThemeViolation>
+     */
+    private function checkBlueprintCoherence(ModuleManifest $manifest, string $path): array
+    {
+        /** @var list<string> $supports */
+        $supports = $manifest->theme()['supports'] ?? [];
+
+        if (! in_array('search', $supports, true)) {
+            return [];
+        }
+
+        $relative = 'resources/views/templates/search.blade.php';
+        $parentPath = $this->parentPath($manifest);
+        $inherited = $parentPath !== null && is_file("{$parentPath}/{$relative}");
+
+        if (is_file("{$path}/{$relative}") || $inherited) {
+            return [];
+        }
+
+        return [new ThemeViolation(
+            $relative,
+            null,
+            'Support "search" déclaré mais templates/search.blade.php absent (spec 17 §5-6.1).',
+            blocking: true,
+        )];
     }
 
     private function parentPath(ModuleManifest $manifest): ?string
