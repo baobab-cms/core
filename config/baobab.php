@@ -110,6 +110,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Wizard Studio (spec-modules §5, M8 point 1)
+    |--------------------------------------------------------------------------
+    |
+    | modules_path : racine où le moteur de génération du Studio écrira les
+    | modules générés (Pass B). Séparé de content_types.modules_path pour
+    | rester surchargeable indépendamment, même si les deux pointent vers le
+    | même répertoire /modules par défaut.
+    |
+    */
+    'studio' => [
+        'modules_path' => env('BAOBAB_STUDIO_MODULES_PATH', base_path('modules')),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Cycle éditorial (spec 09, M5 point 2)
     |--------------------------------------------------------------------------
     |

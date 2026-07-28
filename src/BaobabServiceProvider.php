@@ -98,6 +98,7 @@ use Baobab\Seo\Models\Redirect;
 use Baobab\Seo\Models\SeoMeta;
 use Baobab\Seo\Models\SeoSetting;
 use Baobab\Seo\SeoContext;
+use Baobab\Studio\Blueprint\BlueprintMigrations;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
 use Baobab\Webhooks\Actions\DispatchWebhookEvent;
@@ -194,6 +195,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->singleton(SupportLogger::class);
 
         $this->app->singleton(FieldRegistry::class);
+
+        $this->app->singleton(BlueprintMigrations::class);
 
         $this->app->singleton(WidgetRegistry::class);
 

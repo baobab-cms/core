@@ -194,6 +194,28 @@ function generatedModulesPath(): string
 }
 
 /**
+ * Un blueprint de module Wizard Studio minimal valide (JSON), une seule
+ * entité "Car" par défaut. Utilisé par les tests Studio (M8 point 1, Pass A).
+ *
+ * @param  array<string, mixed>  $overrides
+ */
+function moduleBlueprintJson(array $overrides = []): string
+{
+    return (string) json_encode(array_replace([
+        'blueprint_version' => 1,
+        'identity' => [
+            'name' => 'garage/fleet',
+            'title' => 'Fleet',
+            'version' => '1.0.0',
+            'type' => 'module',
+        ],
+        'entities' => [
+            ['key' => 'Car', 'table' => 'cars'],
+        ],
+    ], $overrides));
+}
+
+/**
  * Répertoire temporaire cible du générateur de thèmes dans les tests
  * (passé directement à `ThemeGenerator::__invoke()`, qui ne lit jamais
  * `base_path()` lui-même — seul `ThemeMakeCommand` le fait). Utilisé par

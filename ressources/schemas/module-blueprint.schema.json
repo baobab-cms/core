@@ -1,0 +1,248 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://baobabcms.com/schemas/module-blueprint.schema.json",
+    "title": "Baobab CMS Wizard Studio module blueprint",
+    "description": "Schema for a Wizard Studio module blueprint (spec 17-modules §5.4). Describes a module's identity and its entities (fields/relations) independently of the generated package — spec reference: docs/specs/specification-modules.md §5. Extended incrementally as later passes add routes/policies/menus/widgets/hooks sections (M8 point 1, Pass B onward) — no additionalProperties:false at the root so this stays a non-breaking addition.",
+    "type": "object",
+    "required": [
+        "blueprint_version",
+        "identity",
+        "entities"
+    ],
+    "properties": {
+        "blueprint_version": {
+            "type": "integer",
+            "description": "Blueprint format version (spec 01 §7.1 decision 5) — read by ModuleBlueprint::blueprintVersion(), migrated by the (currently empty) BlueprintMigrations registry before validation.",
+            "const": 1
+        },
+        "identity": {
+            "type": "object",
+            "description": "Wizard step 1 — identité.",
+            "required": [
+                "name",
+                "title",
+                "version",
+                "type"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Composer-style package name (vendor/slug), same contract as module.schema.json.",
+                    "pattern": "^[a-z0-9]([_.-]?[a-z0-9]+)*\\/[a-z0-9](([_.]|-{1,2})?[a-z0-9]+)*$"
+                },
+                "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "icon": {
+                    "type": "string",
+                    "pattern": "^(bi|fas|far|fab)-[a-z0-9-]+$"
+                },
+                "authors": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "email": {
+                                "type": "string",
+                                "format": "email"
+                            },
+                            "url": {
+                                "type": "string",
+                                "format": "uri"
+                            }
+                        }
+                    }
+                },
+                "version": {
+                    "type": "string",
+                    "description": "Initial semantic version (MAJOR.MINOR.PATCH).",
+                    "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?$"
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Wizard Studio only produces generic modules in v1 (spec 5.5 — no full theme generation here, that's spec 17; the Content Type builder, spec §6, is a distinct future entry point onto the same engine, not this field).",
+                    "const": "module"
+                }
+            }
+        },
+        "entities": {
+            "type": "array",
+            "description": "Wizard step 2 — modèles & tables. One or more entities, each with its own fields/relations.",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "required": [
+                    "key",
+                    "table"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Model name, PascalCase (e.g. Car).",
+                        "pattern": "^[A-Z][A-Za-z0-9]*$"
+                    },
+                    "table": {
+                        "type": "string",
+                        "description": "Proposed table name, editable — defaults to the snake_case plural of key.",
+                        "pattern": "^[a-z][a-z0-9_]*$"
+                    },
+                    "options": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "timestamps": {
+                                "type": "boolean",
+                                "default": true
+                            },
+                            "soft_deletes": {
+                                "type": "boolean",
+                                "default": false
+                            },
+                            "uuid": {
+                                "type": "boolean",
+                                "default": false
+                            }
+                        }
+                    },
+                    "fields": {
+                        "type": "array",
+                        "description": "Field catalogue, validated against Baobab\\ContentTypes\\Fields\\FieldRegistry at runtime (reused as-is — spec 02 §3.1 already documents it as extensible by modules) — same item shape as content-type-blueprint.schema.json#/properties/fields.",
+                        "default": [],
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "key",
+                                "type"
+                            ],
+                            "properties": {
+                                "key": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                },
+                                "type": {
+                                    "type": "string",
+                                    "description": "Field type key, checked against the FieldRegistry."
+                                },
+                                "required": {
+                                    "type": "boolean",
+                                    "default": false
+                                },
+                                "default": {
+                                    "description": "Default value, shape depends on the field type."
+                                },
+                                "unique": {
+                                    "type": "boolean",
+                                    "default": false
+                                },
+                                "indexed": {
+                                    "type": "boolean",
+                                    "default": false
+                                },
+                                "options": {
+                                    "type": "object",
+                                    "description": "Type-specific options — see each FieldType::optionsRules()."
+                                }
+                            }
+                        }
+                    },
+                    "relations": {
+                        "type": "array",
+                        "description": "Relation catalogue, resolved at runtime by Baobab\\Studio\\Relations\\StudioRelationTargetResolver.",
+                        "default": [],
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "key",
+                                "type",
+                                "target"
+                            ],
+                            "properties": {
+                                "key": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                },
+                                "type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "one_to_one",
+                                        "one_to_many",
+                                        "many_to_many",
+                                        "polymorphic"
+                                    ]
+                                },
+                                "target": {
+                                    "type": "string",
+                                    "description": "Discriminated target: entity:{key} (sibling entity in this same blueprint), content_type:{key} (existing Content Type) or core:{Model} (Core model) — resolved by StudioRelationTargetResolver.",
+                                    "pattern": "^(entity|content_type|core):[A-Za-z][A-Za-z0-9]*$"
+                                },
+                                "on_delete": {
+                                    "type": "string",
+                                    "enum": [
+                                        "restrict",
+                                        "cascade",
+                                        "set_null"
+                                    ],
+                                    "default": "restrict"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "permissions": {
+            "type": "object",
+            "description": "Wizard step 3 — permissions.",
+            "additionalProperties": false,
+            "properties": {
+                "auto_crud": {
+                    "type": "boolean",
+                    "description": "Generate the standard view/create/update/delete CRUD permissions for every entity.",
+                    "default": true
+                },
+                "custom": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "entity",
+                            "key",
+                            "label"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "entity": {
+                                "type": "string",
+                                "description": "Key of the entity this custom permission belongs to.",
+                                "pattern": "^[A-Z][A-Za-z0-9]*$"
+                            },
+                            "key": {
+                                "type": "string",
+                                "description": "Action segment appended to the entity's permission prefix (e.g. 'publish').",
+                                "pattern": "^[a-z][a-z0-9_]*$"
+                            },
+                            "label": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
