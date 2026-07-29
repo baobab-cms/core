@@ -1,0 +1,31 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }}\Models;
+
+use Illuminate\Database\Eloquent\Model;
+{{ trait_imports }}
+final class {{ key }} extends Model
+{
+{{ trait_use }}
+    protected $table = '{{ table_name }}';
+
+    /**
+     * @var list<string>
+     */
+    protected $fillable = [
+{{ fillable }}
+    ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+{{ casts }}
+        ];
+    }
+{{ relations }}
+}

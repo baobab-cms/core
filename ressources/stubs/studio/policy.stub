@@ -1,0 +1,44 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }}\Policies;
+
+use {{ namespace }}\Models\{{ key }};
+use Baobab\Users\Models\User;
+
+/**
+ * CRUD simple (spec-modules §5.2 étape 5, §5.2 étape 3) : pas de distinction
+ * own/any ici — contrairement aux Content Types (spec 05 §3.2), une entité de
+ * module Studio n'a pas de colonne `author_id` générée automatiquement.
+ * Éditable à la main sans risque : une régénération respecte l'anti-écrasement
+ * par checksum.
+ */
+final class {{ key }}Policy
+{
+    public function viewAny(User $user): bool
+    {
+        return $user->can('{{ permission_prefix }}.view');
+    }
+
+    public function view(User $user, {{ key }} ${{ var }}): bool
+    {
+        return $user->can('{{ permission_prefix }}.view');
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->can('{{ permission_prefix }}.create');
+    }
+
+    public function update(User $user, {{ key }} ${{ var }}): bool
+    {
+        return $user->can('{{ permission_prefix }}.update');
+    }
+
+    public function delete(User $user, {{ key }} ${{ var }}): bool
+    {
+        return $user->can('{{ permission_prefix }}.delete');
+    }
+{{ custom_methods }}
+}
