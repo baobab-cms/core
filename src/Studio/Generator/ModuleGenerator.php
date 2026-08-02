@@ -25,10 +25,11 @@ use Illuminate\Support\Str;
  * par entité (Pass A1, spec-modules §5.2 étapes 2/3/5) ; contrôleurs/vues/
  * routes admin (CRUD complet), front (`index`/`show`, opt-in) et API REST
  * (CRUD complet, opt-in) par entité, à la carte via `entity.routes.{admin,
- * front,api}` (Pass A2, étape 4). Ne génère pas encore menus/widgets/hooks
- * (étapes 6-8, Pass A3) — ces sections restent absentes de `module.json`
- * tant qu'elles ne sont pas construites (`module.schema.json` ne les rend
- * pas obligatoires).
+ * front,api}` (Pass A2, étape 4) ; hooks émis/écoutés au niveau module,
+ * écouteurs squelettes générés (Pass A3a, étape 8). Ne génère pas encore
+ * menus/widgets (étapes 6-7, Pass A3b/A3c) — ces sections restent absentes
+ * de `module.json` tant qu'elles ne sont pas construites (`module.schema.json`
+ * ne les rend pas obligatoires).
  */
 final class ModuleGenerator
 {
@@ -40,6 +41,7 @@ final class ModuleGenerator
         private readonly AdminCrudGenerator $adminCrud,
         private readonly FrontCrudGenerator $frontCrud,
         private readonly ApiCrudGenerator $apiCrud,
+        private readonly HookListenerGenerator $hookListeners,
     ) {}
 
     /**
@@ -103,6 +105,8 @@ final class ModuleGenerator
             $this->checksums->write($moduleDir, 'routes/api.php', $this->routesFile($apiRouteFragments));
         }
 
+        $this->writeHookListeners($blueprint, $moduleDir, $namespace);
+
         $providerClass = Str::studly($slug).'ServiceProvider';
 
         $this->checksums->write($moduleDir, 'module.json', $this->moduleJson($blueprint, $name, $namespace, $slug, $providerClass));
@@ -152,6 +156,24 @@ final class ModuleGenerator
 
         $this->checksums->write($moduleDir, "src/Http/Controllers/Api/{$key}Controller.php", $this->apiCrud->controller($entity, $namespace));
         $this->checksums->write($moduleDir, "src/Http/Resources/{$key}Resource.php", $this->apiCrud->resource($entity, $namespace));
+    }
+
+    /**
+     * Écouteurs squelettes de `hooks.listens` — concept de module, pas
+     * d'entité (contrairement aux CRUD admin/front/API), une seule passe
+     * indépendante de la boucle `foreach ($entities as $entity)`.
+     * `hooks.emits` n'a aucun fichier à générer (cf. docblock
+     * `HookListenerGenerator`).
+     */
+    private function writeHookListeners(ModuleBlueprint $blueprint, string $moduleDir, string $namespace): void
+    {
+        foreach ($blueprint->hooksListened() as $hook => $className) {
+            $this->checksums->write(
+                $moduleDir,
+                "src/Hooks/{$className}.php",
+                $this->hookListeners->listener($hook, $className, $namespace),
+            );
+        }
     }
 
     /**
@@ -301,9 +323,31 @@ final class ModuleGenerator
                 'psr-4' => ["{$namespace}\\" => 'src/'],
             ],
             'permissions' => $this->permissions($blueprint, $slug),
+            'hooks' => $this->hooksBlock($blueprint, $namespace),
         ], static fn (mixed $value): bool => $value !== null);
 
         return (string) json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * @return array{emits?: list<string>, listens?: array<string, string>}|null
+     */
+    private function hooksBlock(ModuleBlueprint $blueprint, string $namespace): ?array
+    {
+        $emits = $blueprint->hooksEmitted();
+        $listens = $blueprint->hooksListened();
+
+        if ($emits === [] && $listens === []) {
+            return null;
+        }
+
+        return array_filter([
+            'emits' => $emits === [] ? null : $emits,
+            'listens' => $listens === [] ? null : array_map(
+                fn (string $className): string => "{$namespace}\\Hooks\\{$className}",
+                $listens,
+            ),
+        ], static fn (mixed $value): bool => $value !== null);
     }
 
     /**

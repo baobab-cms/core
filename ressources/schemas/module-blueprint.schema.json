@@ -265,6 +265,34 @@
                     }
                 }
             }
+        },
+        "hooks": {
+            "type": "object",
+            "description": "Wizard step 8 — hooks émis/écoutés (Pass A3a, spec-modules §5.2 étape 8). Module-level, pas par entité.",
+            "additionalProperties": false,
+            "properties": {
+                "emits": {
+                    "type": "array",
+                    "description": "Hook names this module fires — documentation + registre uniquement, aucun fichier généré pour ces entrées.",
+                    "default": [],
+                    "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+                    }
+                },
+                "listens": {
+                    "type": "object",
+                    "description": "Câblage déclaratif : nom de hook → nom court de classe (PascalCase, sans namespace — le Studio génère la classe sous {Namespace}\\Hooks\\{ClassName} et écrit le FQCN complet dans le module.json produit).",
+                    "default": {},
+                    "propertyNames": {
+                        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+                    },
+                    "additionalProperties": {
+                        "type": "string",
+                        "pattern": "^[A-Z][A-Za-z0-9]*$"
+                    }
+                }
+            }
         }
     }
 }

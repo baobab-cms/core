@@ -233,6 +233,30 @@ final readonly class ModuleBlueprint
     }
 
     /**
+     * @return array{emits?: list<string>, listens?: array<string, string>}
+     */
+    public function hooks(): array
+    {
+        return $this->data['hooks'] ?? [];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function hooksEmitted(): array
+    {
+        return $this->hooks()['emits'] ?? [];
+    }
+
+    /**
+     * @return array<string, string> Nom du hook → nom court de classe (sans namespace).
+     */
+    public function hooksListened(): array
+    {
+        return $this->hooks()['listens'] ?? [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

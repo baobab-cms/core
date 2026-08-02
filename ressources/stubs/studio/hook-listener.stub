@@ -1,0 +1,18 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }}\Hooks;
+
+/**
+ * Écouteur de « {{ hook_name }} » (spec-modules §5.2 étape 8) — squelette
+ * vide, à compléter à la main : le Studio ne fait rien de magique
+ * (spec §5.1). Éditable sans risque, une régénération respecte
+ * l'anti-écrasement par checksum.
+ */
+final class {{ class_name }}
+{
+    public function __invoke(mixed ...$args): void
+    {
+    }
+}

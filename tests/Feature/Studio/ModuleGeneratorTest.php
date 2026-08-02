@@ -230,6 +230,42 @@ it('generates a pivot migration (without ct_ prefix) and belongsToMany for a man
     expect($modelContents)->toContain('public function options(): \Illuminate\Database\Eloquent\Relations\BelongsToMany');
 });
 
+it('omits the hooks block entirely from module.json when no hooks are declared', function () {
+    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson());
+
+    app(ModuleGenerator::class)($blueprint);
+
+    /** @var array<string, mixed> $manifest */
+    $manifest = json_decode((string) file_get_contents(generatedModulesPath().'/garage-fleet/module.json'), associative: true);
+
+    expect($manifest)->not->toHaveKey('hooks');
+});
+
+it('generates a hook listener skeleton and writes the hooks block to module.json', function () {
+    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson([
+        'hooks' => [
+            'emits' => ['garage.fleet.car.serviced'],
+            'listens' => ['baobab.content.saved' => 'NotifyFleetManager'],
+        ],
+    ]));
+
+    app(ModuleGenerator::class)($blueprint);
+
+    $listenerPath = generatedModulesPath().'/garage-fleet/src/Hooks/NotifyFleetManager.php';
+    expect(File::isFile($listenerPath))->toBeTrue();
+
+    $listenerContents = (string) file_get_contents($listenerPath);
+    expect($listenerContents)->toContain('namespace Garage\Fleet\Hooks;')
+        ->and($listenerContents)->toContain('final class NotifyFleetManager')
+        ->and($listenerContents)->toContain('public function __invoke(mixed ...$args): void');
+
+    /** @var array<string, mixed> $manifest */
+    $manifest = json_decode((string) file_get_contents(generatedModulesPath().'/garage-fleet/module.json'), associative: true);
+
+    expect($manifest['hooks']['emits'])->toBe(['garage.fleet.car.serviced'])
+        ->and($manifest['hooks']['listens'])->toBe(['baobab.content.saved' => 'Garage\\Fleet\\Hooks\\NotifyFleetManager']);
+});
+
 it('regenerates silently when nothing has changed since the last generation', function () {
     $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson());
 
