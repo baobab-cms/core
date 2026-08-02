@@ -1,0 +1,37 @@
+@extends('baobab::layouts.admin')
+
+@section('content')
+    <x-baobab::page title="{{ title }}">
+        <x-baobab::card>
+            <x-baobab::form method="{{ $method }}" action="{{ $action }}">
+                @foreach ($fields as $field)
+                    @if ($field['component'] === 'baobab::field.checkbox')
+                        <x-dynamic-component
+                            :component="$field['component']"
+                            :name="$field['key']"
+                            :label="$field['label']"
+                            :checked="$field['value']"
+                        />
+                    @elseif (isset($field['options']))
+                        <x-dynamic-component
+                            :component="$field['component']"
+                            :name="$field['key']"
+                            :label="$field['label']"
+                            :value="$field['value']"
+                            :options="$field['options']"
+                        />
+                    @else
+                        <x-dynamic-component
+                            :component="$field['component']"
+                            :name="$field['key']"
+                            :label="$field['label']"
+                            :value="$field['value']"
+                        />
+                    @endif
+                @endforeach
+
+                <x-baobab::button type="submit">{{ __('Enregistrer') }}</x-baobab::button>
+            </x-baobab::form>
+        </x-baobab::card>
+    </x-baobab::page>
+@endsection

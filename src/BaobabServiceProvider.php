@@ -1597,7 +1597,24 @@ class BaobabServiceProvider extends ServiceProvider
                 $autoloader->registerFor($module);
 
                 if (class_exists($module->provider)) {
-                    $this->app->register($module->provider);
+                    $provider = $this->app->register($module->provider);
+
+                    // `Application::register()` ne rappelle `boot()` que si
+                    // l'application est déjà entièrement démarrée
+                    // (`isBooted()`) — jamais le cas ici : on est encore au
+                    // milieu de la boucle de boot de `BaobabServiceProvider`
+                    // lui-même. Sans cet appel explicite, le `boot()` d'un
+                    // provider de module (ex. `loadModuleRoutes()`) ne
+                    // s'exécute JAMAIS, sur aucune requête — invisible tant
+                    // qu'aucun module n'avait de logique dans son `boot()`
+                    // (les providers de Content Type générés sont vides),
+                    // révélé par le premier vrai consommateur
+                    // (`Baobab\Modules\ModuleServiceProvider`, M8 point 1
+                    // Pass A2). Reproduit `Application::bootProvider()`
+                    // (`protected`, donc pas appelable directement).
+                    if (method_exists($provider, 'boot')) {
+                        $this->app->call([$provider, 'boot']);
+                    }
                 }
 
                 foreach ($module->manifest['hooks']['listens'] ?? [] as $hook => $listener) {

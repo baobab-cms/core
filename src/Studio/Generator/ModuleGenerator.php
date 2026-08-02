@@ -35,6 +35,7 @@ final class ModuleGenerator
         private readonly FieldRegistry $fields,
         private readonly StudioRelationTargetResolver $relationTargets,
         private readonly StudioRelationDefinitionGenerator $relationDefinitions,
+        private readonly AdminCrudGenerator $adminCrud,
     ) {}
 
     /**
@@ -54,10 +55,21 @@ final class ModuleGenerator
             $entities,
         );
 
+        $adminRouteFragments = [];
+
         foreach ($entities as $entity) {
             $this->writeMigration($entity, $moduleDir, $siblings);
             $this->writeModel($entity, $moduleDir, $namespace, $siblings);
             $this->writePolicy($entity, $moduleDir, $namespace, $slug, $blueprint);
+
+            if ($this->adminCrud->isEnabled($entity)) {
+                $this->writeAdminCrud($entity, $moduleDir, $namespace, $slug);
+                $adminRouteFragments[] = $this->adminCrud->routesFragment($entity, $namespace, $slug);
+            }
+        }
+
+        if ($adminRouteFragments !== []) {
+            $this->checksums->write($moduleDir, 'routes/admin.php', $this->adminRoutesFile($adminRouteFragments));
         }
 
         $providerClass = Str::studly($slug).'ServiceProvider';
@@ -67,9 +79,43 @@ final class ModuleGenerator
         $this->checksums->write($moduleDir, "src/Providers/{$providerClass}.php", (new StubRenderer)->render(StudioStubs::path('provider'), [
             'namespace' => $namespace,
             'key' => Str::studly($slug),
+            'view_namespace' => $slug,
         ]));
 
         return $name;
+    }
+
+    /**
+     * @param  array<string, mixed>  $entity
+     */
+    private function writeAdminCrud(array $entity, string $moduleDir, string $namespace, string $slug): void
+    {
+        $key = (string) $entity['key'];
+        $viewPrefix = Str::snake(Str::plural($key));
+
+        $this->checksums->write($moduleDir, "src/Http/Controllers/Admin/{$key}Controller.php", $this->adminCrud->controller($entity, $namespace, $slug));
+        $this->checksums->write($moduleDir, "src/Http/Requests/{$key}Request.php", $this->adminCrud->request($entity, $namespace));
+        $this->checksums->write($moduleDir, "resources/views/{$viewPrefix}/index.blade.php", $this->adminCrud->indexView($entity, $slug));
+        $this->checksums->write($moduleDir, "resources/views/{$viewPrefix}/form.blade.php", $this->adminCrud->formView($entity));
+    }
+
+    /**
+     * @param  list<string>  $fragments
+     */
+    private function adminRoutesFile(array $fragments): string
+    {
+        $body = implode("\n\n", $fragments);
+
+        return <<<PHP
+        <?php
+
+        declare(strict_types=1);
+
+        use Illuminate\Support\Facades\Route;
+
+        {$body}
+
+        PHP;
     }
 
     public function moduleDir(string $name): string

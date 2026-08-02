@@ -1,0 +1,94 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }}\Http\Controllers\Admin;
+
+use {{ namespace }}\Http\Requests\{{ key }}Request;
+use {{ namespace }}\Models\{{ key }};
+use Baobab\Users\Models\User;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth;
+
+final class {{ key }}Controller extends Controller
+{
+    public function index(): View
+    {
+        abort_unless($this->actor()->can('viewAny', {{ key }}::class), 403);
+
+        return view('{{ view_namespace }}::{{ view_prefix }}.index', [
+            'rows' => {{ key }}::query()->latest()->paginate(20),
+        ]);
+    }
+
+    public function create(): View
+    {
+        abort_unless($this->actor()->can('create', {{ key }}::class), 403);
+
+        return view('{{ view_namespace }}::{{ view_prefix }}.form', [
+            '{{ var }}' => new {{ key }},
+            'fields' => $this->fields(new {{ key }}),
+            'method' => 'post',
+            'action' => route('{{ route_name_prefix }}.store'),
+        ]);
+    }
+
+    public function store({{ key }}Request $request): RedirectResponse
+    {
+        abort_unless($this->actor()->can('create', {{ key }}::class), 403);
+
+        {{ key }}::create($request->validated());
+
+        return redirect()->route('{{ route_name_prefix }}.index');
+    }
+
+    public function edit({{ key }} ${{ var }}): View
+    {
+        abort_unless($this->actor()->can('update', ${{ var }}), 403);
+
+        return view('{{ view_namespace }}::{{ view_prefix }}.form', [
+            '{{ var }}' => ${{ var }},
+            'fields' => $this->fields(${{ var }}),
+            'method' => 'put',
+            'action' => route('{{ route_name_prefix }}.update', ${{ var }}),
+        ]);
+    }
+
+    public function update({{ key }}Request $request, {{ key }} ${{ var }}): RedirectResponse
+    {
+        abort_unless($this->actor()->can('update', ${{ var }}), 403);
+
+        ${{ var }}->update($request->validated());
+
+        return redirect()->route('{{ route_name_prefix }}.index');
+    }
+
+    public function destroy({{ key }} ${{ var }}): RedirectResponse
+    {
+        abort_unless($this->actor()->can('delete', ${{ var }}), 403);
+
+        ${{ var }}->delete();
+
+        return redirect()->route('{{ route_name_prefix }}.index');
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function fields({{ key }} ${{ var }}): array
+    {
+        return [
+{{ form_fields }}
+        ];
+    }
+
+    private function actor(): User
+    {
+        /** @var User $user */
+        $user = Auth::guard('baobab')->user();
+
+        return $user;
+    }
+}

@@ -159,6 +159,18 @@
                             }
                         }
                     },
+                    "routes": {
+                        "type": "object",
+                        "description": "Wizard step 4 — routes & contrôleurs (Pass A2). Cases à cocher par surface ; seul 'admin' est généré à ce stade (front/API suivront).",
+                        "additionalProperties": false,
+                        "properties": {
+                            "admin": {
+                                "type": "boolean",
+                                "description": "Génère un contrôleur CRUD admin complet, un Form Request, des vues et une entrée routes/admin.php.",
+                                "default": true
+                            }
+                        }
+                    },
                     "relations": {
                         "type": "array",
                         "description": "Relation catalogue, resolved at runtime by Baobab\\Studio\\Relations\\StudioRelationTargetResolver.",
