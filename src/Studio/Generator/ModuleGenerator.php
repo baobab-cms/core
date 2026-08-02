@@ -26,10 +26,13 @@ use Illuminate\Support\Str;
  * routes admin (CRUD complet), front (`index`/`show`, opt-in) et API REST
  * (CRUD complet, opt-in) par entité, à la carte via `entity.routes.{admin,
  * front,api}` (Pass A2, étape 4) ; hooks émis/écoutés au niveau module,
- * écouteurs squelettes générés (Pass A3a, étape 8). Ne génère pas encore
- * menus/widgets (étapes 6-7, Pass A3b/A3c) — ces sections restent absentes
- * de `module.json` tant qu'elles ne sont pas construites (`module.schema.json`
- * ne les rend pas obligatoires).
+ * écouteurs squelettes générés (Pass A3a, étape 8) ; entrées de menu admin,
+ * recopiées telles quelles (Pass A3b, étape 6 — déjà pleinement consommées
+ * côté Core, `InstallModule::persistMenuItems()`/`SidebarBuilder`, aucun
+ * câblage nouveau nécessaire pour cette sous-passe). Ne génère pas encore
+ * les widgets (étape 7, Pass A3c) — cette section reste absente de
+ * `module.json` tant qu'elle n'est pas construite (`module.schema.json` ne
+ * la rend pas obligatoire).
  */
 final class ModuleGenerator
 {
@@ -324,9 +327,26 @@ final class ModuleGenerator
             ],
             'permissions' => $this->permissions($blueprint, $slug),
             'hooks' => $this->hooksBlock($blueprint, $namespace),
+            'menus' => $this->menusBlock($blueprint),
         ], static fn (mixed $value): bool => $value !== null);
 
         return (string) json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Recopie directe, aucune transformation : contrairement aux hooks (nom
+     * court de classe → FQCN), une entrée de menu déclarée au blueprint a
+     * déjà la forme exacte attendue par `module.schema.json`/`ModuleManifest::adminMenuItems()`
+     * (route/permission/icône déjà des chaînes complètes saisies par
+     * l'utilisateur).
+     *
+     * @return array{admin: list<array<string, mixed>>}|null
+     */
+    private function menusBlock(ModuleBlueprint $blueprint): ?array
+    {
+        $admin = $blueprint->adminMenuItems();
+
+        return $admin === [] ? null : ['admin' => $admin];
     }
 
     /**

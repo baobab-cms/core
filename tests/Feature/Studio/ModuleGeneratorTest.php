@@ -266,6 +266,54 @@ it('generates a hook listener skeleton and writes the hooks block to module.json
         ->and($manifest['hooks']['listens'])->toBe(['baobab.content.saved' => 'Garage\\Fleet\\Hooks\\NotifyFleetManager']);
 });
 
+it('omits the menus block entirely from module.json when no menu item is declared', function () {
+    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson());
+
+    app(ModuleGenerator::class)($blueprint);
+
+    /** @var array<string, mixed> $manifest */
+    $manifest = json_decode((string) file_get_contents(generatedModulesPath().'/garage-fleet/module.json'), associative: true);
+
+    expect($manifest)->not->toHaveKey('menus');
+});
+
+it('writes declared admin menu items to module.json, unchanged (no transformation)', function () {
+    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson([
+        'menus' => [
+            'admin' => [
+                [
+                    'label' => 'Flotte',
+                    'icon' => 'bi-truck',
+                    'route' => 'admin.fleet.cars.index',
+                    'permission' => 'fleet.cars.view',
+                    'order' => 10,
+                    'children' => [
+                        ['label' => 'Voitures', 'route' => 'admin.fleet.cars.index'],
+                    ],
+                ],
+            ],
+        ],
+    ]));
+
+    app(ModuleGenerator::class)($blueprint);
+
+    /** @var array<string, mixed> $manifest */
+    $manifest = json_decode((string) file_get_contents(generatedModulesPath().'/garage-fleet/module.json'), associative: true);
+
+    expect($manifest['menus']['admin'])->toBe([
+        [
+            'label' => 'Flotte',
+            'icon' => 'bi-truck',
+            'route' => 'admin.fleet.cars.index',
+            'permission' => 'fleet.cars.view',
+            'order' => 10,
+            'children' => [
+                ['label' => 'Voitures', 'route' => 'admin.fleet.cars.index'],
+            ],
+        ],
+    ]);
+});
+
 it('regenerates silently when nothing has changed since the last generation', function () {
     $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson());
 

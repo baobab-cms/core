@@ -257,6 +257,14 @@ final readonly class ModuleBlueprint
     }
 
     /**
+     * @return list<array<string, mixed>>
+     */
+    public function adminMenuItems(): array
+    {
+        return $this->data['menus']['admin'] ?? [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

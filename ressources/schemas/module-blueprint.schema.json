@@ -293,6 +293,60 @@
                     }
                 }
             }
+        },
+        "menus": {
+            "type": "object",
+            "description": "Wizard step 6 — entrée(s) de menu admin (Pass A3b, spec-modules §5.2 étape 6). Même forme que module.schema.json#/properties/menus (recopiée telle quelle dans le module.json produit, aucune transformation — contrairement aux hooks, route/permission sont déjà des chaînes complètes que l'utilisateur saisit lui-même).",
+            "additionalProperties": false,
+            "properties": {
+                "admin": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "$ref": "#/$defs/adminMenuItem"
+                    }
+                }
+            }
+        }
+    },
+    "$defs": {
+        "adminMenuItem": {
+            "type": "object",
+            "required": [
+                "label"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string",
+                    "pattern": "^(bi|fas|far|fab)-[a-z0-9-]+$"
+                },
+                "route": {
+                    "type": "string",
+                    "description": "Nom de route déjà résolvable — typiquement une route admin générée par ce même blueprint (ex. admin.{slug}.{entités}.index)."
+                },
+                "route_params": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "permission": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/adminMenuItem"
+                    }
+                }
+            }
         }
     }
 }
