@@ -1,0 +1,67 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }}\Http\Controllers\Api;
+
+use {{ namespace }}\Http\Requests\{{ key }}Request;
+use {{ namespace }}\Http\Resources\{{ key }}Resource;
+use {{ namespace }}\Models\{{ key }};
+use Baobab\Api\Support\ApiActor;
+use Baobab\Users\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Routing\Controller;
+
+final class {{ key }}Controller extends Controller
+{
+    public function index(): AnonymousResourceCollection
+    {
+        abort_unless($this->actor()->can('viewAny', {{ key }}::class), 403);
+
+        return {{ key }}Resource::collection({{ key }}::query()->latest()->paginate(20));
+    }
+
+    public function show({{ key }} ${{ var }}): {{ key }}Resource
+    {
+        abort_unless($this->actor()->can('view', ${{ var }}), 403);
+
+        return new {{ key }}Resource(${{ var }});
+    }
+
+    public function store({{ key }}Request $request): JsonResponse
+    {
+        abort_unless($this->actor()->can('create', {{ key }}::class), 403);
+
+        ${{ var }} = {{ key }}::create($request->validated());
+
+        return (new {{ key }}Resource(${{ var }}))->response()->setStatusCode(201);
+    }
+
+    public function update({{ key }}Request $request, {{ key }} ${{ var }}): {{ key }}Resource
+    {
+        abort_unless($this->actor()->can('update', ${{ var }}), 403);
+
+        ${{ var }}->update($request->validated());
+
+        return new {{ key }}Resource(${{ var }});
+    }
+
+    public function destroy({{ key }} ${{ var }}): JsonResponse
+    {
+        abort_unless($this->actor()->can('delete', ${{ var }}), 403);
+
+        ${{ var }}->delete();
+
+        return response()->json(null, 204);
+    }
+
+    private function actor(): User
+    {
+        $actor = app(ApiActor::class)();
+
+        abort_unless($actor instanceof User, 401);
+
+        return $actor;
+    }
+}

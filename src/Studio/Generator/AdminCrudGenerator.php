@@ -6,6 +6,7 @@ namespace Baobab\Studio\Generator;
 
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Generator\StubRenderer;
+use Baobab\Studio\Generator\Support\EntityFields;
 use Illuminate\Support\Str;
 
 /**
@@ -29,8 +30,6 @@ use Illuminate\Support\Str;
  */
 final class AdminCrudGenerator
 {
-    private const array EXCLUDED_FIELD_TYPES = ['gallery', 'media', 'multiselect'];
-
     public function __construct(private readonly FieldRegistry $fields) {}
 
     /**
@@ -54,7 +53,7 @@ final class AdminCrudGenerator
             'key' => $key,
             'var' => $var,
             'view_namespace' => $slug,
-            'view_prefix' => $this->viewPrefix($entity),
+            'view_prefix' => EntityFields::viewPrefix($entity),
             'route_name_prefix' => $this->routeNamePrefix($entity, $slug),
             'form_fields' => $this->formFieldsLiteral($entity, $var),
         ]);
@@ -78,7 +77,7 @@ final class AdminCrudGenerator
     public function indexView(array $entity, string $slug): string
     {
         return (new StubRenderer)->render(StudioStubs::path('admin-index'), [
-            'title' => $this->title($entity),
+            'title' => EntityFields::title($entity),
             'route_name_prefix' => $this->routeNamePrefix($entity, $slug),
             'column_headers' => $this->columnHeaders($entity),
             'column_cells' => $this->columnCells($entity),
@@ -91,7 +90,7 @@ final class AdminCrudGenerator
     public function formView(array $entity): string
     {
         return (new StubRenderer)->render(StudioStubs::path('admin-form'), [
-            'title' => $this->title($entity),
+            'title' => EntityFields::title($entity),
         ]);
     }
 
@@ -106,7 +105,7 @@ final class AdminCrudGenerator
     {
         $key = (string) $entity['key'];
         $var = Str::camel($key);
-        $viewPrefix = $this->viewPrefix($entity);
+        $viewPrefix = EntityFields::viewPrefix($entity);
         $controller = "\\{$namespace}\\Http\\Controllers\\Admin\\{$key}Controller";
 
         return <<<PHP
@@ -123,22 +122,10 @@ final class AdminCrudGenerator
 
     /**
      * @param  array<string, mixed>  $entity
-     * @return list<array<string, mixed>>
-     */
-    private function includedFields(array $entity): array
-    {
-        return array_values(array_filter(
-            (array) ($entity['fields'] ?? []),
-            fn (array $field): bool => ! in_array($field['type'], self::EXCLUDED_FIELD_TYPES, true),
-        ));
-    }
-
-    /**
-     * @param  array<string, mixed>  $entity
      */
     private function formFieldsLiteral(array $entity, string $var): string
     {
-        return collect($this->includedFields($entity))
+        return collect(EntityFields::included($entity))
             ->map(function (array $field) use ($var): string {
                 $key = (string) $field['key'];
                 $component = $this->fields->resolve($field['type'])->formComponent();
@@ -161,18 +148,7 @@ final class AdminCrudGenerator
      */
     private function rulesLiteral(array $entity): string
     {
-        return collect($this->includedFields($entity))
-            ->map(function (array $field): string {
-                $fieldType = $this->fields->resolve($field['type']);
-                $typeRules = $fieldType->rules((string) $field['key'], $field['options'] ?? []);
-                $required = (bool) ($field['required'] ?? false);
-
-                $rules = array_merge($required ? ['required'] : ['nullable'], $typeRules);
-                $rulesLiteral = collect($rules)->map(fn (string $rule): string => "'{$rule}'")->implode(', ');
-
-                return "            '{$field['key']}' => [{$rulesLiteral}],";
-            })
-            ->implode("\n");
+        return EntityFields::validationRulesLiteral($entity, $this->fields);
     }
 
     /**
@@ -180,7 +156,7 @@ final class AdminCrudGenerator
      */
     private function columnHeaders(array $entity): string
     {
-        return collect($this->includedFields($entity))
+        return collect(EntityFields::included($entity))
             ->map(fn (array $field): string => '                            <th class="px-3 py-2 font-medium">'.Str::headline((string) $field['key']).'</th>')
             ->implode("\n");
     }
@@ -190,7 +166,7 @@ final class AdminCrudGenerator
      */
     private function columnCells(array $entity): string
     {
-        return collect($this->includedFields($entity))
+        return collect(EntityFields::included($entity))
             ->map(function (array $field): string {
                 $key = (string) $field['key'];
                 $value = $field['type'] === 'boolean'
@@ -205,24 +181,8 @@ final class AdminCrudGenerator
     /**
      * @param  array<string, mixed>  $entity
      */
-    private function title(array $entity): string
-    {
-        return Str::headline(Str::plural((string) $entity['key']));
-    }
-
-    /**
-     * @param  array<string, mixed>  $entity
-     */
-    private function viewPrefix(array $entity): string
-    {
-        return Str::snake(Str::plural((string) $entity['key']));
-    }
-
-    /**
-     * @param  array<string, mixed>  $entity
-     */
     private function routeNamePrefix(array $entity, string $slug): string
     {
-        return "admin.{$slug}.".$this->viewPrefix($entity);
+        return "admin.{$slug}.".EntityFields::viewPrefix($entity);
     }
 }

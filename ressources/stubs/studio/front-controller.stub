@@ -1,0 +1,26 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }}\Http\Controllers\Front;
+
+use {{ namespace }}\Models\{{ key }};
+use Illuminate\Contracts\View\View;
+use Illuminate\Routing\Controller;
+
+final class {{ key }}Controller extends Controller
+{
+    public function index(): View
+    {
+        return view('{{ view_namespace }}::{{ view_prefix }}.front-index', [
+            'rows' => {{ key }}::query()->latest()->paginate(20),
+        ]);
+    }
+
+    public function show({{ key }} ${{ var }}): View
+    {
+        return view('{{ view_namespace }}::{{ view_prefix }}.front-show', [
+            '{{ var }}' => ${{ var }},
+        ]);
+    }
+}

@@ -21,12 +21,14 @@ use Illuminate\Support\Str;
  * par module généré), donc le namespace racine vient de l'identité du module
  * (`vendor/slug` → `Vendor\Slug`) et non d'une clé d'entité.
  *
- * Périmètre de cette passe (Pass A1, spec-modules §5.2 étapes 2/3/5) :
- * migration + modèle + permissions + policy par entité, `module.json`,
- * Service Provider vide. Ne génère ni contrôleurs/routes/vues (étape 4,
- * Pass A2), ni menus/widgets/hooks (étapes 6-8, Pass A3) — ces sections
- * restent absentes de `module.json` tant qu'elles ne sont pas construites
- * (`module.schema.json` ne les rend pas obligatoires).
+ * Périmètre couvert à ce stade : migration + modèle + permissions + policy
+ * par entité (Pass A1, spec-modules §5.2 étapes 2/3/5) ; contrôleurs/vues/
+ * routes admin (CRUD complet), front (`index`/`show`, opt-in) et API REST
+ * (CRUD complet, opt-in) par entité, à la carte via `entity.routes.{admin,
+ * front,api}` (Pass A2, étape 4). Ne génère pas encore menus/widgets/hooks
+ * (étapes 6-8, Pass A3) — ces sections restent absentes de `module.json`
+ * tant qu'elles ne sont pas construites (`module.schema.json` ne les rend
+ * pas obligatoires).
  */
 final class ModuleGenerator
 {
@@ -36,6 +38,8 @@ final class ModuleGenerator
         private readonly StudioRelationTargetResolver $relationTargets,
         private readonly StudioRelationDefinitionGenerator $relationDefinitions,
         private readonly AdminCrudGenerator $adminCrud,
+        private readonly FrontCrudGenerator $frontCrud,
+        private readonly ApiCrudGenerator $apiCrud,
     ) {}
 
     /**
@@ -56,20 +60,47 @@ final class ModuleGenerator
         );
 
         $adminRouteFragments = [];
+        $webRouteFragments = [];
+        $apiRouteFragments = [];
 
         foreach ($entities as $entity) {
             $this->writeMigration($entity, $moduleDir, $siblings);
             $this->writeModel($entity, $moduleDir, $namespace, $siblings);
             $this->writePolicy($entity, $moduleDir, $namespace, $slug, $blueprint);
 
-            if ($this->adminCrud->isEnabled($entity)) {
+            $admin = $this->adminCrud->isEnabled($entity);
+            $api = $this->apiCrud->isEnabled($entity);
+
+            if ($admin || $api) {
+                $this->checksums->write($moduleDir, "src/Http/Requests/{$entity['key']}Request.php", $this->adminCrud->request($entity, $namespace));
+            }
+
+            if ($admin) {
                 $this->writeAdminCrud($entity, $moduleDir, $namespace, $slug);
                 $adminRouteFragments[] = $this->adminCrud->routesFragment($entity, $namespace, $slug);
+            }
+
+            if ($this->frontCrud->isEnabled($entity)) {
+                $this->writeFrontCrud($entity, $moduleDir, $namespace, $slug);
+                $webRouteFragments[] = $this->frontCrud->routesFragment($entity, $namespace, $slug);
+            }
+
+            if ($api) {
+                $this->writeApiCrud($entity, $moduleDir, $namespace, $slug);
+                $apiRouteFragments[] = $this->apiCrud->routesFragment($entity, $namespace, $slug);
             }
         }
 
         if ($adminRouteFragments !== []) {
-            $this->checksums->write($moduleDir, 'routes/admin.php', $this->adminRoutesFile($adminRouteFragments));
+            $this->checksums->write($moduleDir, 'routes/admin.php', $this->routesFile($adminRouteFragments));
+        }
+
+        if ($webRouteFragments !== []) {
+            $this->checksums->write($moduleDir, 'routes/web.php', $this->routesFile($webRouteFragments));
+        }
+
+        if ($apiRouteFragments !== []) {
+            $this->checksums->write($moduleDir, 'routes/api.php', $this->routesFile($apiRouteFragments));
         }
 
         $providerClass = Str::studly($slug).'ServiceProvider';
@@ -94,15 +125,39 @@ final class ModuleGenerator
         $viewPrefix = Str::snake(Str::plural($key));
 
         $this->checksums->write($moduleDir, "src/Http/Controllers/Admin/{$key}Controller.php", $this->adminCrud->controller($entity, $namespace, $slug));
-        $this->checksums->write($moduleDir, "src/Http/Requests/{$key}Request.php", $this->adminCrud->request($entity, $namespace));
         $this->checksums->write($moduleDir, "resources/views/{$viewPrefix}/index.blade.php", $this->adminCrud->indexView($entity, $slug));
         $this->checksums->write($moduleDir, "resources/views/{$viewPrefix}/form.blade.php", $this->adminCrud->formView($entity));
     }
 
     /**
+     * @param  array<string, mixed>  $entity
+     */
+    private function writeFrontCrud(array $entity, string $moduleDir, string $namespace, string $slug): void
+    {
+        $key = (string) $entity['key'];
+        $var = Str::camel($key);
+        $viewPrefix = Str::snake(Str::plural($key));
+
+        $this->checksums->write($moduleDir, "src/Http/Controllers/Front/{$key}Controller.php", $this->frontCrud->controller($entity, $namespace, $slug));
+        $this->checksums->write($moduleDir, "resources/views/{$viewPrefix}/front-index.blade.php", $this->frontCrud->indexView($entity, $slug));
+        $this->checksums->write($moduleDir, "resources/views/{$viewPrefix}/front-show.blade.php", $this->frontCrud->showView($entity, $slug, $var));
+    }
+
+    /**
+     * @param  array<string, mixed>  $entity
+     */
+    private function writeApiCrud(array $entity, string $moduleDir, string $namespace, string $slug): void
+    {
+        $key = (string) $entity['key'];
+
+        $this->checksums->write($moduleDir, "src/Http/Controllers/Api/{$key}Controller.php", $this->apiCrud->controller($entity, $namespace));
+        $this->checksums->write($moduleDir, "src/Http/Resources/{$key}Resource.php", $this->apiCrud->resource($entity, $namespace));
+    }
+
+    /**
      * @param  list<string>  $fragments
      */
-    private function adminRoutesFile(array $fragments): string
+    private function routesFile(array $fragments): string
     {
         $body = implode("\n\n", $fragments);
 

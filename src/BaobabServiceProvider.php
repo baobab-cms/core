@@ -238,6 +238,18 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerApiDocsRoutes();
         $this->configureScout();
         $this->registerThemePreviewRoutes();
+
+        // Doit précéder registerPublicRoutes() : Laravel matche les routes
+        // dans l'ordre d'enregistrement, et la route générique publique
+        // ci-dessous (`{prefix}/{slug?}`) intercepterait toute route front
+        // d'un module Studio (spec-modules §5.2 étape 4, M8 point 1 Pass A2)
+        // enregistrée après elle — même un préfixe qui ne correspond à
+        // aucun Content Type retourne un 404 générique avant même que la
+        // route du module ne soit essayée. `routes/admin.php`/`api.php` des
+        // modules n'ont pas ce problème (préfixes toujours disjoints de ce
+        // pattern à 1-2 segments) ; seules les routes front en dépendent.
+        $this->bootstrapActiveModules();
+
         $this->registerPublicRoutes();
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'baobab');
         $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'baobab');
@@ -302,8 +314,6 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerCorePresets();
 
         $this->registerCoreSearchSources();
-
-        $this->bootstrapActiveModules();
 
         Hook::action('baobab.booted');
 

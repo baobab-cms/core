@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="{{ app()->getLocale() }}">
+<head>
+    <meta charset="utf-8">
+    <title>{{ title }}</title>
+</head>
+<body>
+    <h1>{{ title }}</h1>
+
+    <ul>
+        @foreach ($rows as $row)
+            <li><a href="{{ route('{{ route_name_prefix }}.show', $row) }}">{{ row_summary }}</a></li>
+        @endforeach
+    </ul>
+
+    <div>{{ $rows->links() }}</div>
+</body>
+</html>

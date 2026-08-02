@@ -161,13 +161,23 @@
                     },
                     "routes": {
                         "type": "object",
-                        "description": "Wizard step 4 — routes & contrôleurs (Pass A2). Cases à cocher par surface ; seul 'admin' est généré à ce stade (front/API suivront).",
+                        "description": "Wizard step 4 — routes & contrôleurs (Pass A2). Cases à cocher par surface.",
                         "additionalProperties": false,
                         "properties": {
                             "admin": {
                                 "type": "boolean",
                                 "description": "Génère un contrôleur CRUD admin complet, un Form Request, des vues et une entrée routes/admin.php.",
                                 "default": true
+                            },
+                            "front": {
+                                "type": "boolean",
+                                "description": "Génère un contrôleur front (index/show), des vues et une entrée routes/web.php. Opt-in : contrairement à l'admin, une entité n'a pas forcément vocation à être publique.",
+                                "default": false
+                            },
+                            "api": {
+                                "type": "boolean",
+                                "description": "Génère un contrôleur API REST complet, une Resource de sérialisation (partage le Form Request de l'admin) et une entrée routes/api.php. Opt-in, même raison que front.",
+                                "default": false
                             }
                         }
                     },
