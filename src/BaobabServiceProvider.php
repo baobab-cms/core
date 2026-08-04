@@ -37,6 +37,7 @@ use Baobab\Console\Commands\MailTestCommand;
 use Baobab\Console\Commands\MediaPurgeTrashCommand;
 use Baobab\Console\Commands\MediaRegenerateCommand;
 use Baobab\Console\Commands\ModuleActivateCommand;
+use Baobab\Console\Commands\ModuleBuildCommand;
 use Baobab\Console\Commands\ModuleDeactivateCommand;
 use Baobab\Console\Commands\ModuleInstallCommand;
 use Baobab\Console\Commands\ModuleListCommand;
@@ -326,6 +327,7 @@ class BaobabServiceProvider extends ServiceProvider
                 ModuleActivateCommand::class,
                 ModuleDeactivateCommand::class,
                 ModuleUninstallCommand::class,
+                ModuleBuildCommand::class,
                 HookListCommand::class,
                 SuperAdminCommand::class,
                 ContentTypeBuildCommand::class,
