@@ -65,6 +65,7 @@ return [
         'api' => 'API',
         'webhooks' => 'Webhooks',
         'search' => 'Recherche',
+        'studio' => 'Studio',
         'toggle_collapse' => 'Réduire/étendre la barre latérale',
     ],
 
@@ -609,6 +610,52 @@ return [
         'rich_text_content_label' => 'Contenu',
         'custom_html_label' => 'HTML personnalisé',
         'custom_html_content_label' => 'Code HTML',
+    ],
+
+    'wizard' => [
+        'nav_label' => 'Étapes',
+    ],
+
+    'studio' => [
+        'title' => 'Studio',
+        'create_action' => 'Nouveau module',
+        'new_module' => 'Nouveau module',
+        'empty' => 'Aucun module en cours de création.',
+        'resume_action' => 'Reprendre',
+        'generated' => 'Généré',
+        'step_progress' => 'Étape :current / 9',
+        'draft_created' => 'Brouillon créé.',
+        'step_saved' => 'Étape enregistrée.',
+        'draft_deleted' => 'Brouillon supprimé.',
+        'back_to_list' => 'Retour à la liste',
+        'save' => 'Enregistrer',
+        'save_and_continue' => 'Enregistrer et continuer',
+        'delete_draft' => 'Supprimer ce brouillon',
+        'confirm_delete' => 'Supprimer ce brouillon ? Cette action est définitive.',
+        'more_steps_soon' => 'Les étapes 2 à 9 (modèles, permissions, routes, policies, menus, widgets, hooks, génération) arrivent dans de prochaines mises à jour.',
+
+        'steps' => [
+            'identity' => 'Identité',
+            'models' => 'Modèles & tables',
+            'permissions' => 'Permissions',
+            'routes' => 'Routes & contrôleurs',
+            'policies' => 'Policies',
+            'menus' => 'Menus',
+            'widgets' => 'Widgets',
+            'hooks' => 'Hooks',
+            'recap' => 'Récapitulatif & génération',
+        ],
+
+        'identity' => [
+            'name' => 'Nom (vendor/slug)',
+            'title' => 'Titre',
+            'description' => 'Description',
+            'icon' => 'Icône',
+            'version' => 'Version initiale',
+            'authors' => 'Auteurs',
+            'authors_hint' => 'Une ligne par auteur : « Nom <email> (url) », email et url optionnels.',
+            'type_locked' => 'Le Studio ne produit que des modules génériques en v1 — le générateur de thèmes (baobab:make:theme) et le Content Type builder restent des points d\'entrée distincts.',
+        ],
     ],
 
     'themes' => [

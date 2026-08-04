@@ -118,6 +118,18 @@ it('shows a Core-provided sidebar item once the user holds its permission', func
     expect($sidebar->pluck('label'))->toContain(__('baobab::admin.sidebar.access'));
 });
 
+it('shows the Studio sidebar item once the user holds baobab.system.studio.manage', function () {
+    $user = User::create(['name' => 'Studio viewer', 'email' => 'studio-viewer@example.com', 'password' => 'secret']);
+
+    expect(app(SidebarBuilder::class)->build($user)->pluck('label'))->not->toContain(__('baobab::admin.sidebar.studio'));
+
+    app(GrantPermission::class)($user, 'baobab.system.studio.manage');
+
+    $sidebar = app(SidebarBuilder::class)->build($user->fresh());
+
+    expect($sidebar->pluck('label'))->toContain(__('baobab::admin.sidebar.studio'));
+});
+
 it('threads a module menu item\'s icon through to the resulting SidebarItem', function () {
     $module = makeActiveModule();
     ModuleMenuItem::create([
@@ -155,6 +167,7 @@ it('assigns a non-null, allow-listed icon to every Core sidebar item', function 
         'baobab.system.api.manage',
         'baobab.system.webhooks.manage',
         'baobab.system.search.manage',
+        'baobab.system.studio.manage',
     ] as $permission) {
         app(GrantPermission::class)($user, $permission);
     }

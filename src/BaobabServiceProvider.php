@@ -100,6 +100,8 @@ use Baobab\Seo\Models\SeoMeta;
 use Baobab\Seo\Models\SeoSetting;
 use Baobab\Seo\SeoContext;
 use Baobab\Studio\Blueprint\BlueprintMigrations;
+use Baobab\Studio\Wizard\IdentityStepHandler;
+use Baobab\Studio\Wizard\StudioWizardSteps;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
 use Baobab\Webhooks\Actions\DispatchWebhookEvent;
@@ -198,6 +200,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->singleton(FieldRegistry::class);
 
         $this->app->singleton(BlueprintMigrations::class);
+
+        $this->app->singleton(StudioWizardSteps::class);
 
         $this->app->singleton(WidgetRegistry::class);
 
@@ -309,6 +313,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerCoreSidebarItems();
 
         $this->registerCoreFieldTypes();
+
+        $this->registerCoreStudioSteps();
 
         $this->registerCoreWidgets();
 
@@ -1394,6 +1400,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            if ($user->can('baobab.system.studio.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -16,
+                    label: __('baobab::admin.sidebar.studio'),
+                    icon: 'bi-magic',
+                    url: route('admin.studio.index'),
+                    order: -9,
+                );
+            }
+
             return $items->concat($coreItems);
         });
     }
@@ -1427,6 +1443,23 @@ class BaobabServiceProvider extends ServiceProvider
             GalleryField::class,
         ] as $fieldType) {
             $registry->register($fieldType);
+        }
+    }
+
+    /**
+     * Étapes du Wizard Studio implémentées à ce jour (spec-modules §5.2) —
+     * seule l'étape 1 (Identité) existe en Pass B1 ; B2/B3/B4 en ajoutent une
+     * ici à chaque passe, sans toucher au shell.
+     */
+    private function registerCoreStudioSteps(): void
+    {
+        /** @var StudioWizardSteps $steps */
+        $steps = $this->app->make(StudioWizardSteps::class);
+
+        foreach ([
+            IdentityStepHandler::class,
+        ] as $handler) {
+            $steps->register($handler);
         }
     }
 

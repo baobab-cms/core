@@ -22,6 +22,7 @@ use Baobab\Admin\Search\Http\Controllers\SearchSettingsController;
 use Baobab\Admin\Seo\Http\Controllers\NotFoundLogController;
 use Baobab\Admin\Seo\Http\Controllers\RedirectsController;
 use Baobab\Admin\Seo\Http\Controllers\SeoSettingsController;
+use Baobab\Admin\Studio\Http\Controllers\StudioController;
 use Baobab\Admin\Themes\Http\Controllers\ThemeBlueprintController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
@@ -212,6 +213,19 @@ Route::middleware('can:baobab.widgets.manage')
         Route::delete('/{instance}', [WidgetsController::class, 'destroy'])->name('destroy');
         Route::post('/{instance}/move-up', [WidgetsController::class, 'moveUp'])->name('move-up');
         Route::post('/{instance}/move-down', [WidgetsController::class, 'moveDown'])->name('move-down');
+    });
+
+Route::middleware('can:baobab.system.studio.manage')
+    ->prefix('studio')
+    ->name('studio.')
+    ->group(function (): void {
+        Route::get('/', [StudioController::class, 'index'])->name('index');
+        Route::get('/create', [StudioController::class, 'create'])->name('create');
+        Route::post('/', [StudioController::class, 'store'])->name('store');
+        Route::get('/{draft}', [StudioController::class, 'show'])->name('show');
+        Route::delete('/{draft}', [StudioController::class, 'destroy'])->name('destroy');
+        Route::get('/{draft}/step/{step}', [StudioController::class, 'stepShow'])->whereNumber('step')->name('step.show');
+        Route::post('/{draft}/step/{step}', [StudioController::class, 'stepUpdate'])->whereNumber('step')->name('step.update');
     });
 
 Route::middleware('can:baobab.users.impersonate')
