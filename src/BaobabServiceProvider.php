@@ -1429,10 +1429,9 @@ class BaobabServiceProvider extends ServiceProvider
     }
 
     /**
-     * Widgets Core, v1 (spec 10 §3.2) — l'enregistrement de widgets fournis
-     * par un module via son manifest n'est pas câblé : aucun mécanisme
-     * générique manifest → classes n'existe encore dans ce code base,
-     * indépendamment des widgets (suivi des différés).
+     * Widgets Core, v1 (spec 10 §3.2). Les widgets fournis par un module
+     * via son manifest sont enregistrés séparément, par
+     * `bootstrapActiveModules()` (Studio Pass A3c).
      */
     private function registerCoreWidgets(): void
     {
@@ -1581,6 +1580,10 @@ class BaobabServiceProvider extends ServiceProvider
      *   3. Wire its manifest hooks.emits onto the webhook dispatch listener
      *      (spec 08 §5, M7 point 4 Pass A) — reuses this query rather than
      *      a second `Module::where('status', 'active')` pass.
+     *   4. Register its manifest widgets into the WidgetRegistry (Studio
+     *      Pass A3c) — a widget whose module gets deactivated simply stops
+     *      being registered on the next boot, so `ResolveWidgetZone` already
+     *      omits it silently without any extra bookkeeping.
      *
      * Skipped silently when the DB is unavailable or not yet migrated.
      * Any unexpected error is logged as a warning so it stays visible.
@@ -1602,8 +1605,10 @@ class BaobabServiceProvider extends ServiceProvider
             $autoloader = $this->app->make(ModuleAutoloader::class);
             /** @var PresetRegistry $presets */
             $presets = $this->app->make(PresetRegistry::class);
+            /** @var WidgetRegistry $widgets */
+            $widgets = $this->app->make(WidgetRegistry::class);
 
-            Module::where('status', 'active')->each(function (Module $module) use ($registry, $autoloader, $presets): void {
+            Module::where('status', 'active')->each(function (Module $module) use ($registry, $autoloader, $presets, $widgets): void {
                 $autoloader->registerFor($module);
 
                 if (class_exists($module->provider)) {
@@ -1637,6 +1642,10 @@ class BaobabServiceProvider extends ServiceProvider
 
                 foreach ($module->manifest['media_presets'] ?? [] as $name => $definition) {
                     $presets->register($name, $definition);
+                }
+
+                foreach ($module->manifest['widgets'] ?? [] as $widget) {
+                    $widgets->register($widget['class']);
                 }
             });
         } catch (Throwable $e) {

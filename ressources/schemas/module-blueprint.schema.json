@@ -307,6 +307,83 @@
                     }
                 }
             }
+        },
+        "widgets": {
+            "type": "array",
+            "description": "Wizard step 7 — widgets (Pass A3c, spec-modules §5.2 étape 7). Module-level, pas par entité. Le Studio génère une classe Widget + une vue Blade par entrée, et écrit le FQCN résolu dans le module.json produit (patron hooks.listens, pas une recopie brute comme les menus).",
+            "default": [],
+            "items": {
+                "type": "object",
+                "required": [
+                    "key",
+                    "label",
+                    "class_name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Même contrat que module.schema.json#/properties/widgets/items/properties/key.",
+                        "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9-]*)+$"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "class_name": {
+                        "type": "string",
+                        "description": "Nom court PascalCase (sans namespace) — le Studio génère la classe sous {Namespace}\\Widgets\\{ClassName} et écrit le FQCN complet dans le module.json produit.",
+                        "pattern": "^[A-Z][A-Za-z0-9]*$"
+                    },
+                    "cache_ttl": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "default": null
+                    },
+                    "settings_fields": {
+                        "type": "array",
+                        "description": "Champs de réglages du widget, même forme que entities[].fields — passés tels quels à Widget::settingsSchema().",
+                        "default": [],
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "key",
+                                "type"
+                            ],
+                            "properties": {
+                                "key": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][a-z0-9_]*$"
+                                },
+                                "type": {
+                                    "type": "string",
+                                    "description": "Field type key, checked against the FieldRegistry."
+                                },
+                                "required": {
+                                    "type": "boolean",
+                                    "default": false
+                                },
+                                "default": {
+                                    "description": "Default value, shape depends on the field type."
+                                },
+                                "unique": {
+                                    "type": "boolean",
+                                    "default": false
+                                },
+                                "indexed": {
+                                    "type": "boolean",
+                                    "default": false
+                                },
+                                "options": {
+                                    "type": "object",
+                                    "description": "Type-specific options — see each FieldType::optionsRules()."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "$defs": {

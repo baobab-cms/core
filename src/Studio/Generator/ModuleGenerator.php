@@ -29,10 +29,12 @@ use Illuminate\Support\Str;
  * écouteurs squelettes générés (Pass A3a, étape 8) ; entrées de menu admin,
  * recopiées telles quelles (Pass A3b, étape 6 — déjà pleinement consommées
  * côté Core, `InstallModule::persistMenuItems()`/`SidebarBuilder`, aucun
- * câblage nouveau nécessaire pour cette sous-passe). Ne génère pas encore
- * les widgets (étape 7, Pass A3c) — cette section reste absente de
- * `module.json` tant qu'elle n'est pas construite (`module.schema.json` ne
- * la rend pas obligatoire).
+ * câblage nouveau nécessaire pour cette sous-passe) ; classe Widget + vue
+ * Blade par widget déclaré (Pass A3c, étape 7 — contrairement aux menus,
+ * ce bloc n'était consommé par aucun mécanisme Core existant :
+ * `bootstrapActiveModules()` a dû être complété pour enregistrer les
+ * widgets d'un module actif dans `WidgetRegistry`). Reste, pour clore
+ * Pass A : la CLI `baobab:module:build` qui assemble A1+A2+A3.
  */
 final class ModuleGenerator
 {
@@ -45,6 +47,7 @@ final class ModuleGenerator
         private readonly FrontCrudGenerator $frontCrud,
         private readonly ApiCrudGenerator $apiCrud,
         private readonly HookListenerGenerator $hookListeners,
+        private readonly WidgetGenerator $widgets,
     ) {}
 
     /**
@@ -109,6 +112,7 @@ final class ModuleGenerator
         }
 
         $this->writeHookListeners($blueprint, $moduleDir, $namespace);
+        $this->writeWidgets($blueprint, $moduleDir, $namespace, $slug);
 
         $providerClass = Str::studly($slug).'ServiceProvider';
 
@@ -175,6 +179,28 @@ final class ModuleGenerator
                 $moduleDir,
                 "src/Hooks/{$className}.php",
                 $this->hookListeners->listener($hook, $className, $namespace),
+            );
+        }
+    }
+
+    /**
+     * Classe Widget + vue Blade par widget déclaré — concept de module, pas
+     * d'entité, une seule passe indépendante de la boucle `foreach
+     * ($entities as $entity)` (patron `writeHookListeners`).
+     */
+    private function writeWidgets(ModuleBlueprint $blueprint, string $moduleDir, string $namespace, string $slug): void
+    {
+        foreach ($blueprint->widgets() as $widget) {
+            $this->checksums->write(
+                $moduleDir,
+                "src/Widgets/{$widget['class_name']}.php",
+                $this->widgets->widgetClass($widget, $namespace, $slug),
+            );
+
+            $this->checksums->write(
+                $moduleDir,
+                "resources/views/widgets/{$this->widgets->viewName($widget)}.blade.php",
+                $this->widgets->widgetView($widget),
             );
         }
     }
@@ -328,6 +354,7 @@ final class ModuleGenerator
             'permissions' => $this->permissions($blueprint, $slug),
             'hooks' => $this->hooksBlock($blueprint, $namespace),
             'menus' => $this->menusBlock($blueprint),
+            'widgets' => $this->widgetsBlock($blueprint, $namespace),
         ], static fn (mixed $value): bool => $value !== null);
 
         return (string) json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -347,6 +374,29 @@ final class ModuleGenerator
         $admin = $blueprint->adminMenuItems();
 
         return $admin === [] ? null : ['admin' => $admin];
+    }
+
+    /**
+     * FQCN résolu par widget, comme les hooks — pas une recopie brute comme
+     * les menus (le blueprint ne porte que le nom court de classe).
+     *
+     * @return list<array{key: string, class: string}>|null
+     */
+    private function widgetsBlock(ModuleBlueprint $blueprint, string $namespace): ?array
+    {
+        $widgets = $blueprint->widgets();
+
+        if ($widgets === []) {
+            return null;
+        }
+
+        return array_map(
+            fn (array $widget): array => [
+                'key' => (string) $widget['key'],
+                'class' => "{$namespace}\\Widgets\\{$widget['class_name']}",
+            ],
+            $widgets,
+        );
     }
 
     /**

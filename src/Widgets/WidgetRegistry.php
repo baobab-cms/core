@@ -9,10 +9,9 @@ use Baobab\Widgets\Exceptions\UnknownWidgetException;
 /**
  * Registre central des widgets (spec 10 §3.1), patron exact
  * `Baobab\ContentTypes\Fields\FieldRegistry`. Les widgets Core sont
- * enregistrés au boot ; l'enregistrement de widgets fournis par un module
- * via le manifest (`ModuleManifest::widgets()`) n'est pas câblé — aucun
- * mécanisme générique manifest → classes n'existe encore dans ce code
- * base, indépendamment des widgets (voir suivi des différés).
+ * enregistrés au boot (`registerCoreWidgets()`) ; les widgets déclarés au
+ * manifest d'un module actif (`ModuleManifest::widgets()`) le sont par
+ * `BaobabServiceProvider::bootstrapActiveModules()` (Studio Pass A3c).
  */
 final class WidgetRegistry
 {

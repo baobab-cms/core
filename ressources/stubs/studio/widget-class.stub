@@ -1,0 +1,48 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }}\Widgets;
+
+use Baobab\Widgets\Models\WidgetInstance;
+use Baobab\Widgets\Widget;
+
+/**
+ * « {{ label }} » — généré par le Wizard Studio (spec-modules §5.2 étape 7).
+ * `data()` renvoie les réglages tels quels ; à affiner à la main si un champ
+ * a besoin d'un traitement spécifique (nettoyage HTML, résolution d'une
+ * relation, etc. — mêmes limites qu'un widget « HTML personnalisé » écrit à
+ * la main).
+ */
+final class {{ class_name }} extends Widget
+{
+    public static function key(): string
+    {
+        return '{{ key }}';
+    }
+
+    public static function label(): string
+    {
+        return '{{ label }}';
+    }
+
+    public function settingsSchema(): array
+    {
+        return {{ settings_schema }};
+    }
+
+    public function data(WidgetInstance $instance): array
+    {
+        return $instance->settings ?? [];
+    }
+
+    public function view(): string
+    {
+        return '{{ view }}';
+    }
+
+    public function cacheTtl(): ?int
+    {
+        return {{ cache_ttl }};
+    }
+}

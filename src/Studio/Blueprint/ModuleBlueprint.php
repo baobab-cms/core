@@ -42,11 +42,10 @@ final readonly class ModuleBlueprint
         /** @var array<string, mixed> $data */
         $data = json_decode($json, associative: true);
 
-        self::validateEntities(
-            $data['entities'] ?? [],
-            $fieldRegistry ?? app(FieldRegistry::class),
-            $relationTargets ?? app(StudioRelationTargetResolver::class),
-        );
+        $registry = $fieldRegistry ?? app(FieldRegistry::class);
+
+        self::validateEntities($data['entities'] ?? [], $registry, $relationTargets ?? app(StudioRelationTargetResolver::class));
+        self::validateWidgets($data['widgets'] ?? [], $registry);
 
         return new self($data);
     }
@@ -68,11 +67,10 @@ final readonly class ModuleBlueprint
             throw InvalidModuleBlueprintException::malformedJson(json_last_error_msg());
         }
 
-        self::validateEntities(
-            $data['entities'] ?? [],
-            $fieldRegistry ?? app(FieldRegistry::class),
-            $relationTargets ?? app(StudioRelationTargetResolver::class),
-        );
+        $registry = $fieldRegistry ?? app(FieldRegistry::class);
+
+        self::validateEntities($data['entities'] ?? [], $registry, $relationTargets ?? app(StudioRelationTargetResolver::class));
+        self::validateWidgets($data['widgets'] ?? [], $registry);
 
         return new self($data);
     }
@@ -143,6 +141,23 @@ final readonly class ModuleBlueprint
                     (string) $result->errors()->first()
                 );
             }
+        }
+    }
+
+    /**
+     * Réutilise `validateFields()` telle quelle : `settings_fields` d'un
+     * widget a la même forme que `fields` d'une entité, donc le même
+     * contrôle de type/options s'applique sans duplication de logique.
+     *
+     * @param  list<array<string, mixed>>  $widgets
+     */
+    private static function validateWidgets(array $widgets, FieldRegistry $registry): void
+    {
+        foreach ($widgets as $widget) {
+            self::validateFields([
+                'key' => $widget['key'] ?? '?',
+                'fields' => $widget['settings_fields'] ?? [],
+            ], $registry);
         }
     }
 
@@ -262,6 +277,14 @@ final readonly class ModuleBlueprint
     public function adminMenuItems(): array
     {
         return $this->data['menus']['admin'] ?? [];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function widgets(): array
+    {
+        return $this->data['widgets'] ?? [];
     }
 
     /**

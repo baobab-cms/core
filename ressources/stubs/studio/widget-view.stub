@@ -1,0 +1,6 @@
+{{-- {{ label }} — vue de base générée par le Wizard Studio, à personnaliser --}}
+@foreach ($data as $settingKey => $settingValue)
+    <div>
+        <strong>{{ $settingKey }}</strong>: {{ $settingValue }}
+    </div>
+@endforeach
