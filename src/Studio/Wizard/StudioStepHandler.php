@@ -52,4 +52,31 @@ interface StudioStepHandler
      * @return array<string, mixed>
      */
     public function initialValues(array $blueprint): array;
+
+    /**
+     * Données de référence propres à l'étape, poussées telles quelles à la vue
+     * (listes de choix, catalogues…). Calculées côté serveur pour que la vue
+     * n'ait aucune logique — cf. « pas de `@php` dans les vues admin ».
+     * Vide par défaut pour une étape qui n'en a pas besoin.
+     *
+     * @return array<string, mixed>
+     */
+    public function viewData(): array;
+
+    /**
+     * Ré-hydrate les valeurs de la vue depuis l'entrée re-flashée par
+     * `back()->withInput()` quand la cross-validation du blueprint a échoué.
+     *
+     * Une étape dont la saisie tient dans des champs simples n'a rien à faire
+     * ici (`<x-baobab::field.*>` applique déjà `old()` lui-même) : elle
+     * retourne `$values` tel quel. Une étape dont la saisie voyage en une
+     * chaîne JSON doit la redécoder, sinon le formulaire se réinitialise
+     * depuis le blueprint **stocké** — celui d'avant la saisie refusée — et
+     * tout le travail en cours est perdu.
+     *
+     * @param  array<string, mixed>  $old  entrée brute de la requête refusée
+     * @param  array<string, mixed>  $values  valeurs issues d'`initialValues()`
+     * @return array<string, mixed>
+     */
+    public function valuesFromOldInput(array $old, array $values): array;
 }

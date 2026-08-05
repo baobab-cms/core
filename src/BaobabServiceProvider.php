@@ -100,6 +100,7 @@ use Baobab\Seo\Models\SeoMeta;
 use Baobab\Seo\Models\SeoSetting;
 use Baobab\Seo\SeoContext;
 use Baobab\Studio\Blueprint\BlueprintMigrations;
+use Baobab\Studio\Wizard\EntitiesStepHandler;
 use Baobab\Studio\Wizard\IdentityStepHandler;
 use Baobab\Studio\Wizard\StudioWizardSteps;
 use Baobab\Support\Logger as SupportLogger;
@@ -1458,6 +1459,7 @@ class BaobabServiceProvider extends ServiceProvider
 
         foreach ([
             IdentityStepHandler::class,
+            EntitiesStepHandler::class,
         ] as $handler) {
             $steps->register($handler);
         }

@@ -80,6 +80,21 @@ final class IdentityStepHandler implements StudioStepHandler
         ];
     }
 
+    public function viewData(): array
+    {
+        return [];
+    }
+
+    /**
+     * Champs simples uniquement : `<x-baobab::field.text>` /
+     * `<x-baobab::field.textarea>` appliquent déjà `old($name, $value)`,
+     * rien à réhydrater ici.
+     */
+    public function valuesFromOldInput(array $old, array $values): array
+    {
+        return $values;
+    }
+
     /**
      * Une ligne par auteur : « Nom <email> (url) », email/url optionnels.
      * Patron des listes répétables sans librairie de tri déjà établi pour les

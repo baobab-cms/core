@@ -142,7 +142,7 @@ it('pre-fills the identity step from an existing draft when resuming', function 
         ->assertSee('Ada Lovelace &lt;ada@example.com&gt;', false);
 });
 
-it('re-saving the identity step keeps current_step capped at the last implemented step', function () {
+it('re-saving the identity step advances to the next implemented step', function () {
     $actor = studioActor(['baobab.system.studio.manage']);
 
     $draft = ModuleBlueprintDraft::create([
@@ -157,16 +157,16 @@ it('re-saving the identity step keeps current_step capped at the last implemente
             'title' => 'Blog renamed',
             'version' => '1.1.0',
         ])
-        ->assertRedirect(route('admin.studio.step.show', [$draft, 1]));
+        ->assertRedirect(route('admin.studio.step.show', [$draft, 2]));
 
     $draft->refresh();
 
     expect($draft->title)->toBe('Blog renamed')
-        ->and($draft->current_step)->toBe(1)
+        ->and($draft->current_step)->toBe(2)
         ->and($draft->blueprint['identity']['version'])->toBe('1.1.0');
 });
 
-it('returns 404 for a step number beyond the last implemented step', function () {
+it('returns 404 for a step the draft has not reached yet', function () {
     $actor = studioActor(['baobab.system.studio.manage']);
 
     $draft = ModuleBlueprintDraft::create([
@@ -175,7 +175,24 @@ it('returns 404 for a step number beyond the last implemented step', function ()
         'blueprint' => ['identity' => ['name' => 'acme/blog', 'title' => 'Blog', 'version' => '1.0.0', 'type' => 'module']],
     ]);
 
+    // current_step vaut 1 : l'étape 2 existe désormais (Pass B2) mais reste
+    // hors d'atteinte tant qu'elle n'a pas été franchie.
     $this->actingAs($actor, 'baobab')
         ->get(route('admin.studio.step.show', [$draft, 2]))
+        ->assertNotFound();
+});
+
+it('returns 404 for a step number that no handler implements', function () {
+    $actor = studioActor(['baobab.system.studio.manage']);
+
+    $draft = ModuleBlueprintDraft::create([
+        'vendor_slug' => 'acme/blog',
+        'title' => 'Blog',
+        'current_step' => 9,
+        'blueprint' => ['identity' => ['name' => 'acme/blog', 'title' => 'Blog', 'version' => '1.0.0', 'type' => 'module']],
+    ]);
+
+    $this->actingAs($actor, 'baobab')
+        ->get(route('admin.studio.step.show', [$draft, 9]))
         ->assertNotFound();
 });

@@ -24,6 +24,18 @@ final class RelationTargetResolver
     ];
 
     /**
+     * Clés des modèles Core relationnables, pour les surfaces qui doivent en
+     * proposer la liste (sélecteur de cible du Wizard Studio, étape 2) plutôt
+     * que de la recopier — la liste reste fermée et définie ici seulement.
+     *
+     * @return list<string>
+     */
+    public static function coreModelKeys(): array
+    {
+        return array_keys(self::CORE_MODELS);
+    }
+
+    /**
      * @return array{class: string, table: string, key: string}
      */
     public function resolve(string $target): array

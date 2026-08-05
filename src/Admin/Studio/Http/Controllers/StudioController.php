@@ -8,6 +8,7 @@ use Baobab\Studio\Actions\CreateModuleBlueprintDraft;
 use Baobab\Studio\Actions\DeleteModuleBlueprintDraft;
 use Baobab\Studio\Actions\SaveStudioWizardStep;
 use Baobab\Studio\Exceptions\GeneratedDraftCannotBeDeletedException;
+use Baobab\Studio\Exceptions\InvalidModuleBlueprintException;
 use Baobab\Studio\Models\ModuleBlueprintDraft;
 use Baobab\Studio\Wizard\StudioStepHandler;
 use Baobab\Studio\Wizard\StudioWizardSteps;
@@ -79,7 +80,7 @@ final class StudioController
         return $this->renderStep($handler, [
             'draft' => $draft,
             'handler' => $handler,
-            'values' => $handler->initialValues($draft->blueprint),
+            'values' => $this->stepValues($handler, $draft),
             'steps' => $this->navSteps($draft, $step),
             'formAction' => route('admin.studio.step.update', [$draft, $step]),
             'isLastImplementedStep' => $step === $this->steps->lastImplemented(),
@@ -93,7 +94,17 @@ final class StudioController
 
         $validated = $request->validate($handler->rules($draft));
 
-        $draft = $action($draft, $handler, $validated);
+        try {
+            $draft = $action($draft, $handler, $validated);
+        } catch (InvalidModuleBlueprintException $e) {
+            // Le blueprint reconstruit ne passe pas la cross-validation du
+            // moteur (type de champ inconnu, cible de relation absente,
+            // `choices` manquant sur un select…). Patron `MenusController` :
+            // on renvoie le message tel quel, il porte déjà le chemin précis
+            // du champ fautif. `withInput()` est ce sur quoi s'appuie
+            // `stepValues()` au ré-affichage pour ne pas perdre la saisie.
+            return back()->withInput()->withErrors(['blueprint' => $e->getMessage()]);
+        }
 
         session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.studio.step_saved')]);
 
@@ -135,7 +146,29 @@ final class StudioController
 
         abort_unless($this->views->exists($viewName), 500, "Vue introuvable pour l'étape {$handler->number()}.");
 
-        return $this->views->make($viewName, $data);
+        return $this->views->make($viewName, [...$handler->viewData(), ...$data]);
+    }
+
+    /**
+     * Valeurs du formulaire : le blueprint enregistré, sauf au retour d'une
+     * soumission refusée par la cross-validation — l'entrée re-flashée par
+     * `stepUpdate()` prime alors, sinon l'utilisateur retrouverait l'écran
+     * d'avant sa saisie. Le handler décide seul de ce qu'il sait réhydrater.
+     *
+     * @return array<string, mixed>
+     */
+    private function stepValues(StudioStepHandler $handler, ModuleBlueprintDraft $draft): array
+    {
+        $values = $handler->initialValues($draft->blueprint);
+
+        if (! session()->hasOldInput()) {
+            return $values;
+        }
+
+        /** @var array<string, mixed> $old */
+        $old = session()->getOldInput();
+
+        return $handler->valuesFromOldInput($old, $values);
     }
 
     /**
