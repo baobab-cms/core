@@ -102,6 +102,9 @@ use Baobab\Seo\SeoContext;
 use Baobab\Studio\Blueprint\BlueprintMigrations;
 use Baobab\Studio\Wizard\EntitiesStepHandler;
 use Baobab\Studio\Wizard\IdentityStepHandler;
+use Baobab\Studio\Wizard\PermissionsStepHandler;
+use Baobab\Studio\Wizard\PoliciesStepHandler;
+use Baobab\Studio\Wizard\RoutesStepHandler;
 use Baobab\Studio\Wizard\StudioWizardSteps;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
@@ -1460,6 +1463,9 @@ class BaobabServiceProvider extends ServiceProvider
         foreach ([
             IdentityStepHandler::class,
             EntitiesStepHandler::class,
+            PermissionsStepHandler::class,
+            RoutesStepHandler::class,
+            PoliciesStepHandler::class,
         ] as $handler) {
             $steps->register($handler);
         }

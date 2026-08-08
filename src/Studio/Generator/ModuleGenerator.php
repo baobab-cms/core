@@ -10,6 +10,7 @@ use Baobab\ContentTypes\Generator\MigrationTimestamp;
 use Baobab\ContentTypes\Generator\StubRenderer;
 use Baobab\Studio\Blueprint\ModuleBlueprint;
 use Baobab\Studio\Relations\StudioRelationTargetResolver;
+use Baobab\Studio\Support\BlueprintPermissions;
 use Illuminate\Support\Str;
 
 /**
@@ -312,27 +313,27 @@ final class ModuleGenerator
             'key' => $key,
             'var' => $var,
             'permission_prefix' => $prefix,
-            'custom_methods' => $this->customPolicyMethods($key, $var, $prefix, $blueprint),
+            'custom_methods' => $this->customPolicyMethods($key, $var, $slug, $blueprint),
         ]));
     }
 
-    private function customPolicyMethods(string $key, string $var, string $prefix, ModuleBlueprint $blueprint): string
+    /**
+     * Méthodes de policy supplémentaires, une par permission personnalisée de
+     * l'entité. Le nom de méthode et la chaîne de permission viennent de
+     * `BlueprintPermissions` — la même source que l'aperçu de l'étape 5 du
+     * wizard, qui ne promet donc jamais autre chose que ce qui est écrit ici.
+     */
+    private function customPolicyMethods(string $key, string $var, string $slug, ModuleBlueprint $blueprint): string
     {
-        $methods = collect($blueprint->customPermissions())
-            ->filter(fn (array $permission): bool => $permission['entity'] === $key)
-            ->map(function (array $permission) use ($key, $var, $prefix): string {
-                $method = Str::camel((string) $permission['key']);
-
-                return "\n    public function {$method}(User \$user, {$key} \${$var}): bool\n    {\n        return \$user->can('{$prefix}.{$permission['key']}');\n    }\n";
-            })
+        return collect(BlueprintPermissions::policyMethods($slug, $key, $blueprint->customPermissions()))
+            ->filter(fn (array $method): bool => $method['custom'])
+            ->map(fn (array $method): string => "\n    public function {$method['method']}(User \$user, {$key} \${$var}): bool\n    {\n        return \$user->can('{$method['permission']}');\n    }\n")
             ->implode('');
-
-        return $methods;
     }
 
     private function permissionPrefix(string $slug, string $entityKey): string
     {
-        return $slug.'.'.Str::snake(Str::plural($entityKey));
+        return BlueprintPermissions::prefix($slug, $entityKey);
     }
 
     private function moduleJson(ModuleBlueprint $blueprint, string $name, string $namespace, string $slug, string $providerClass): string
@@ -429,13 +430,9 @@ final class ModuleGenerator
 
         if ($blueprint->autoCrudEnabled()) {
             foreach ($blueprint->entities() as $entity) {
-                $key = (string) $entity['key'];
-                $prefix = $this->permissionPrefix($slug, $key);
-
-                $permissions[] = ['key' => "{$prefix}.view", 'label' => "Voir : {$key}"];
-                $permissions[] = ['key' => "{$prefix}.create", 'label' => "Créer : {$key}"];
-                $permissions[] = ['key' => "{$prefix}.update", 'label' => "Modifier : {$key}"];
-                $permissions[] = ['key' => "{$prefix}.delete", 'label' => "Supprimer : {$key}"];
+                foreach (BlueprintPermissions::crudEntries($slug, (string) $entity['key']) as $entry) {
+                    $permissions[] = $entry;
+                }
             }
         }
 

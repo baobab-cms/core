@@ -55,13 +55,19 @@ interface StudioStepHandler
 
     /**
      * Données de référence propres à l'étape, poussées telles quelles à la vue
-     * (listes de choix, catalogues…). Calculées côté serveur pour que la vue
-     * n'ait aucune logique — cf. « pas de `@php` dans les vues admin ».
-     * Vide par défaut pour une étape qui n'en a pas besoin.
+     * (listes de choix, catalogues, aperçus dérivés…). Calculées côté serveur
+     * pour que la vue n'ait aucune logique — cf. « pas de `@php` dans les vues
+     * admin ». Vide pour une étape qui n'en a pas besoin.
      *
+     * Distinct d'`initialValues()` : ce que retourne `viewData()` n'est jamais
+     * une valeur de formulaire et ne se ré-hydrate donc pas depuis l'entrée
+     * refusée — c'est ce qui permet à une étape entièrement dérivée (étape 5,
+     * Policies) de n'avoir aucune valeur et rien que des données d'affichage.
+     *
+     * @param  array<string, mixed>  $blueprint  blueprint courant du brouillon (vide à la création)
      * @return array<string, mixed>
      */
-    public function viewData(): array;
+    public function viewData(array $blueprint): array;
 
     /**
      * Ré-hydrate les valeurs de la vue depuis l'entrée re-flashée par

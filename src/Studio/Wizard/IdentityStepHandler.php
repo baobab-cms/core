@@ -80,7 +80,7 @@ final class IdentityStepHandler implements StudioStepHandler
         ];
     }
 
-    public function viewData(): array
+    public function viewData(array $blueprint): array
     {
         return [];
     }

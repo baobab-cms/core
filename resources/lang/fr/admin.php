@@ -633,7 +633,7 @@ return [
         'save_and_continue' => 'Enregistrer et continuer',
         'delete_draft' => 'Supprimer ce brouillon',
         'confirm_delete' => 'Supprimer ce brouillon ? Cette action est définitive.',
-        'more_steps_soon' => 'Les étapes 2 à 9 (modèles, permissions, routes, policies, menus, widgets, hooks, génération) arrivent dans de prochaines mises à jour.',
+        'more_steps_soon' => 'Les étapes 6 à 9 (menus, widgets, hooks, génération) arrivent dans de prochaines mises à jour.',
 
         'steps' => [
             'identity' => 'Identité',
@@ -693,6 +693,48 @@ return [
             'authors' => 'Auteurs',
             'authors_hint' => 'Une ligne par auteur : « Nom <email> (url) », email et url optionnels.',
             'type_locked' => 'Le Studio ne produit que des modules génériques en v1 — le générateur de thèmes (baobab:make:theme) et le Content Type builder restent des points d\'entrée distincts.',
+        ],
+
+        'permissions' => [
+            'intro' => 'Les permissions déclarées ici sont écrites dans le manifeste du module et créées à son installation. Elles sont exactement les chaînes que vos policies et vos vues vérifieront.',
+            'no_entities' => 'Aucune entité déclarée : revenez à l\'étape 2 pour en ajouter une, les permissions en découlent.',
+            'auto_crud_title' => 'CRUD automatique',
+            'auto_crud_label' => 'Générer les permissions CRUD de chaque entité',
+            'auto_crud_hint' => 'Quatre permissions par entité : voir, créer, modifier, supprimer.',
+            'custom_title' => 'Permissions personnalisées',
+            'custom_intro' => 'Une action métier propre à votre module, au-delà du CRUD — publier, archiver, exporter. Chacune ajoute une méthode à la policy de son entité.',
+            'no_custom' => 'Aucune permission personnalisée.',
+            'custom_entity' => 'Entité',
+            'custom_key' => 'Action',
+            'custom_label' => 'Libellé',
+            'add_custom' => 'Ajouter une permission',
+            'remove_custom' => 'Retirer cette permission',
+        ],
+
+        'routes' => [
+            'intro' => 'Choisissez les surfaces exposées par chaque entité. Le Studio génère les contrôleurs, Form Requests, vues et fichiers de routes correspondants — rien d\'autre.',
+            'no_entities' => 'Aucune entité déclarée : revenez à l\'étape 2 pour en ajouter une.',
+            'surface_admin' => 'Administration',
+            'surface_admin_hint' => 'CRUD complet dans l\'admin, protégé par la policy de l\'entité.',
+            'surface_front' => 'Site public',
+            'surface_front_hint' => 'Liste et fiche publiques, rendues par le thème actif.',
+            'surface_api' => 'API REST',
+            'surface_api_hint' => 'CRUD complet sous api/v1, mêmes middlewares que l\'API du Core.',
+            'uris' => 'Routes',
+            'files' => 'Fichiers générés',
+        ],
+
+        'policies' => [
+            'intro' => 'Rien à saisir ici : les policies se déduisent des permissions de l\'étape 3. Cet écran montre les classes qui seront écrites et ce que chaque méthode exigera.',
+            'no_entities' => 'Aucune entité déclarée : revenez à l\'étape 2 pour en ajouter une, les policies en découlent.',
+            'entity_caption' => 'Policy de l\'entité :entity.',
+            'column_method' => 'Méthode',
+            'column_permission' => 'Permission exigée',
+            'column_origin' => 'Origine',
+            'origin_crud' => 'CRUD',
+            'origin_custom' => 'Personnalisée',
+            'auto_crud_disabled_warning' => 'Le CRUD automatique est désactivé à l\'étape 3, mais les policies générées vérifient quand même les permissions CRUD : ces chaînes n\'existeront dans aucun rôle et bloqueront tout le monde. Réactivez le CRUD automatique, ou éditez les policies générées après coup.',
+            'editable_hint' => 'Les fichiers générés sont protégés par checksum : vous pouvez les modifier à la main sans qu\'une régénération les écrase.',
         ],
     ],
 

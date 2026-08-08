@@ -45,6 +45,23 @@ it('accepts explicit permissions', function () {
         ->and($blueprint->customPermissions())->toBe([['entity' => 'Car', 'key' => 'publish', 'label' => 'Publier']]);
 });
 
+it('rejects a custom permission attached to an entity that does not exist', function () {
+    expect(fn () => ModuleBlueprint::fromJson(moduleBlueprintJson([
+        'permissions' => ['custom' => [['entity' => 'Ghost', 'key' => 'publish', 'label' => 'Publier']]],
+    ])))
+        ->toThrow(InvalidModuleBlueprintException::class, 'Ghost');
+});
+
+it('rejects the same custom permission declared twice on one entity', function () {
+    expect(fn () => ModuleBlueprint::fromJson(moduleBlueprintJson([
+        'permissions' => ['custom' => [
+            ['entity' => 'Car', 'key' => 'publish', 'label' => 'Publier'],
+            ['entity' => 'Car', 'key' => 'publish', 'label' => 'Publier encore'],
+        ]],
+    ])))
+        ->toThrow(InvalidModuleBlueprintException::class, 'plus d\'une fois');
+});
+
 it('rejects malformed JSON', function () {
     expect(fn () => ModuleBlueprint::fromJson('{not json'))
         ->toThrow(InvalidModuleBlueprintException::class);

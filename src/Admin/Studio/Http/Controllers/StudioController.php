@@ -146,7 +146,10 @@ final class StudioController
 
         abort_unless($this->views->exists($viewName), 500, "Vue introuvable pour l'étape {$handler->number()}.");
 
-        return $this->views->make($viewName, [...$handler->viewData(), ...$data]);
+        $draft = $data['draft'];
+        $blueprint = $draft instanceof ModuleBlueprintDraft ? $draft->blueprint : [];
+
+        return $this->views->make($viewName, [...$handler->viewData($blueprint), ...$data]);
     }
 
     /**

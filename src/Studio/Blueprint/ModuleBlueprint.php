@@ -46,6 +46,7 @@ final readonly class ModuleBlueprint
 
         self::validateEntities($data['entities'] ?? [], $registry, $relationTargets ?? app(StudioRelationTargetResolver::class));
         self::validateWidgets($data['widgets'] ?? [], $registry);
+        self::validatePermissions($data['permissions'] ?? [], $data['entities'] ?? []);
 
         return new self($data);
     }
@@ -71,6 +72,7 @@ final readonly class ModuleBlueprint
 
         self::validateEntities($data['entities'] ?? [], $registry, $relationTargets ?? app(StudioRelationTargetResolver::class));
         self::validateWidgets($data['widgets'] ?? [], $registry);
+        self::validatePermissions($data['permissions'] ?? [], $data['entities'] ?? []);
 
         return new self($data);
     }
@@ -178,6 +180,56 @@ final readonly class ModuleBlueprint
                     $e->getMessage()
                 );
             }
+        }
+    }
+
+    /**
+     * Une permission personnalisée est **portée par une entité** : son préfixe
+     * est dérivé de la clé d'entité (`BlueprintPermissions::prefix()`), donc
+     * une entité disparue laisserait une permission orpheline dans le
+     * manifeste et une méthode de policy sur un modèle inexistant. Le schéma
+     * JSON ne peut pas vérifier ce lien (il ne voit qu'un motif de chaîne) —
+     * c'est le rôle de cette cross-validation, au même titre que les cibles de
+     * relation.
+     *
+     * @param  array<string, mixed>  $permissions
+     * @param  list<array<string, mixed>>  $entities
+     */
+    private static function validatePermissions(array $permissions, array $entities): void
+    {
+        $entityKeys = array_map(static fn (array $entity): mixed => $entity['key'] ?? null, $entities);
+
+        $seen = [];
+
+        foreach ($permissions['custom'] ?? [] as $permission) {
+            $entity = (string) ($permission['entity'] ?? '');
+            $key = (string) ($permission['key'] ?? '');
+
+            if (! in_array($entity, $entityKeys, true)) {
+                throw InvalidModuleBlueprintException::forField(
+                    "permissions.custom.{$key}.entity",
+                    "La permission personnalisée « {$key} » cible l'entité « {$entity} », qui n'est pas déclarée dans ce blueprint."
+                );
+            }
+
+            // Une ligne entièrement vide est écartée en amont par l'étape 3 :
+            // ce qui arrive ici à moitié rempli est une vraie erreur de saisie,
+            // à signaler tout de suite plutôt qu'à la génération.
+            if ($key === '' || ($permission['label'] ?? '') === '') {
+                throw InvalidModuleBlueprintException::forField(
+                    "permissions.custom.{$entity}",
+                    "Une permission personnalisée de l'entité « {$entity} » est incomplète : action et libellé sont tous deux requis."
+                );
+            }
+
+            if (in_array("{$entity}.{$key}", $seen, true)) {
+                throw InvalidModuleBlueprintException::forField(
+                    "permissions.custom.{$key}",
+                    "La permission personnalisée « {$key} » est déclarée plus d'une fois sur l'entité « {$entity} »."
+                );
+            }
+
+            $seen[] = "{$entity}.{$key}";
         }
     }
 

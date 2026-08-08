@@ -99,7 +99,7 @@ final class EntitiesStepHandler implements StudioStepHandler
      * module peut en ajouter), `RelationTargetResolver::coreModelKeys()` pour
      * les modèles Core — jamais de liste recopiée à la main.
      */
-    public function viewData(): array
+    public function viewData(array $blueprint): array
     {
         return [
             'fieldTypes' => array_keys($this->fields->all()),
