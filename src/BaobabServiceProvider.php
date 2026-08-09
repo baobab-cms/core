@@ -101,11 +101,14 @@ use Baobab\Seo\Models\SeoSetting;
 use Baobab\Seo\SeoContext;
 use Baobab\Studio\Blueprint\BlueprintMigrations;
 use Baobab\Studio\Wizard\EntitiesStepHandler;
+use Baobab\Studio\Wizard\HooksStepHandler;
 use Baobab\Studio\Wizard\IdentityStepHandler;
+use Baobab\Studio\Wizard\MenusStepHandler;
 use Baobab\Studio\Wizard\PermissionsStepHandler;
 use Baobab\Studio\Wizard\PoliciesStepHandler;
 use Baobab\Studio\Wizard\RoutesStepHandler;
 use Baobab\Studio\Wizard\StudioWizardSteps;
+use Baobab\Studio\Wizard\WidgetsStepHandler;
 use Baobab\Support\Logger as SupportLogger;
 use Baobab\Users\Models\User;
 use Baobab\Webhooks\Actions\DispatchWebhookEvent;
@@ -1466,6 +1469,9 @@ class BaobabServiceProvider extends ServiceProvider
             PermissionsStepHandler::class,
             RoutesStepHandler::class,
             PoliciesStepHandler::class,
+            MenusStepHandler::class,
+            WidgetsStepHandler::class,
+            HooksStepHandler::class,
         ] as $handler) {
             $steps->register($handler);
         }

@@ -102,8 +102,9 @@ it('advances the wizard without touching the blueprint', function () {
         ->post(route('admin.studio.step.update', [$draft, 5]))
         ->assertRedirect();
 
+    // L'étape 6 existe depuis la Pass B4 : franchir l'étape 5 y mène désormais.
     expect($draft->fresh()->blueprint)->toBe($before)
-        ->and($draft->fresh()->current_step)->toBe(5);
+        ->and($draft->fresh()->current_step)->toBe(6);
 });
 
 it('denies the policies step without the studio permission', function () {

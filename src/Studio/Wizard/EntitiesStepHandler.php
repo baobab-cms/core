@@ -9,6 +9,7 @@ use Baobab\ContentTypes\Models\ContentType;
 use Baobab\ContentTypes\Relations\RelationTargetResolver;
 use Baobab\Studio\Exceptions\InvalidModuleBlueprintException;
 use Baobab\Studio\Models\ModuleBlueprintDraft;
+use Baobab\Studio\Support\BlueprintFields;
 use Illuminate\Support\Str;
 
 /**
@@ -32,9 +33,6 @@ final class EntitiesStepHandler implements StudioStepHandler
     private const RELATION_TYPES = ['one_to_one', 'one_to_many', 'many_to_many', 'polymorphic'];
 
     private const ON_DELETE = ['restrict', 'cascade', 'set_null'];
-
-    /** Types de champs dont `optionsRules()` exige `choices` — le formulaire doit les saisir. */
-    private const TYPES_NEEDING_CHOICES = ['select', 'multiselect', 'radio'];
 
     public function __construct(private readonly FieldRegistry $fields) {}
 
@@ -103,7 +101,7 @@ final class EntitiesStepHandler implements StudioStepHandler
     {
         return [
             'fieldTypes' => array_keys($this->fields->all()),
-            'typesNeedingChoices' => self::TYPES_NEEDING_CHOICES,
+            'typesNeedingChoices' => BlueprintFields::TYPES_NEEDING_CHOICES,
             'relationTypes' => self::RELATION_TYPES,
             'onDeleteOptions' => self::ON_DELETE,
             'contentTypeTargets' => ContentType::whereNotNull('module_id')->orderBy('key')->pluck('key')->all(),
@@ -156,7 +154,7 @@ final class EntitiesStepHandler implements StudioStepHandler
                 'soft_deletes' => (bool) ($entity['options']['soft_deletes'] ?? false),
                 'uuid' => (bool) ($entity['options']['uuid'] ?? false),
             ],
-            'fields' => $this->normalizeFields($entity['fields'] ?? []),
+            'fields' => BlueprintFields::normalize($entity['fields'] ?? []),
             'relations' => $this->normalizeRelations($entity['relations'] ?? []),
         ];
 
@@ -196,68 +194,6 @@ final class EntitiesStepHandler implements StudioStepHandler
         }
 
         return null;
-    }
-
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private function normalizeFields(mixed $fields): array
-    {
-        if (! is_array($fields)) {
-            return [];
-        }
-
-        $normalized = [];
-
-        foreach ($fields as $field) {
-            if (! is_array($field)) {
-                continue;
-            }
-
-            $entry = [
-                'key' => trim((string) ($field['key'] ?? '')),
-                'type' => trim((string) ($field['type'] ?? '')),
-                'required' => (bool) ($field['required'] ?? false),
-                'unique' => (bool) ($field['unique'] ?? false),
-                'indexed' => (bool) ($field['indexed'] ?? false),
-            ];
-
-            // Seul `choices` est exposé par le formulaire (obligatoire pour
-            // select/multiselect/radio) ; les autres options de type restent
-            // à leurs défauts, toutes `nullable`. Un bloc `options` vide n'est
-            // pas écrit, pour ne pas polluer le blueprint.
-            $choices = $this->normalizeChoices($field['options']['choices'] ?? null);
-
-            if ($choices !== []) {
-                $entry['options'] = ['choices' => $choices];
-            }
-
-            $normalized[] = $entry;
-        }
-
-        return $normalized;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function normalizeChoices(mixed $choices): array
-    {
-        if (! is_array($choices)) {
-            return [];
-        }
-
-        $normalized = [];
-
-        foreach ($choices as $choice) {
-            $value = trim((string) $choice);
-
-            if ($value !== '') {
-                $normalized[] = $value;
-            }
-        }
-
-        return $normalized;
     }
 
     /**
