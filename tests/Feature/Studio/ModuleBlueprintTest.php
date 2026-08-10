@@ -35,6 +35,10 @@ it('defaults auto_crud to true and custom permissions to an empty list', functio
 
 it('accepts explicit permissions', function () {
     $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson([
+        // Aucune surface autorisée : couper `auto_crud` tout en laissant
+        // l'admin actif (son défaut) est refusé à la génération, cf. le test
+        // dédié plus bas.
+        'entities' => [['key' => 'Car', 'table' => 'cars', 'routes' => ['admin' => false, 'front' => false, 'api' => false]]],
         'permissions' => [
             'auto_crud' => false,
             'custom' => [['entity' => 'Car', 'key' => 'publish', 'label' => 'Publier']],
@@ -43,6 +47,46 @@ it('accepts explicit permissions', function () {
 
     expect($blueprint->autoCrudEnabled())->toBeFalse()
         ->and($blueprint->customPermissions())->toBe([['entity' => 'Car', 'key' => 'publish', 'label' => 'Publier']]);
+});
+
+/**
+ * Décision du 9 août 2026 (suivi n° 103) : la combinaison est refusée à la
+ * génération et **seulement là**. Les contrôleurs admin/API générés autorisent
+ * contre la policy, qui mappe toujours les cinq méthodes CRUD : sans les
+ * permissions correspondantes, personne ne peut passer.
+ */
+it('rejects auto_crud disabled while an entity still exposes an authorized surface', function (string $surface) {
+    expect(fn () => ModuleBlueprint::fromJson(moduleBlueprintJson([
+        'entities' => [['key' => 'Car', 'table' => 'cars', 'routes' => ['admin' => false, 'front' => false, 'api' => false, $surface => true]]],
+        'permissions' => ['auto_crud' => false, 'custom' => []],
+    ])))
+        ->toThrow(InvalidModuleBlueprintException::class, $surface);
+})->with(['admin', 'api']);
+
+it('blocks the dead-on-arrival combination even when routes are left to their defaults', function () {
+    // `routes.admin` vaut `true` par défaut : une entité sans bloc `routes`
+    // expose bien une surface autorisée.
+    expect(fn () => ModuleBlueprint::fromJson(moduleBlueprintJson([
+        'permissions' => ['auto_crud' => false, 'custom' => []],
+    ])))
+        ->toThrow(InvalidModuleBlueprintException::class, 'admin');
+});
+
+it('leaves a front-only entity alone, since its generated controller authorizes nothing', function () {
+    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson([
+        'entities' => [['key' => 'Car', 'table' => 'cars', 'routes' => ['admin' => false, 'front' => true, 'api' => false]]],
+        'permissions' => ['auto_crud' => false, 'custom' => []],
+    ]));
+
+    expect($blueprint->autoCrudEnabled())->toBeFalse();
+});
+
+it('never blocks a draft, so the wizard stays explorable between steps 3 and 4', function () {
+    $blueprint = ModuleBlueprint::fromDraftJson(moduleBlueprintJson([
+        'permissions' => ['auto_crud' => false, 'custom' => []],
+    ]));
+
+    expect($blueprint->autoCrudEnabled())->toBeFalse();
 });
 
 it('rejects a custom permission attached to an entity that does not exist', function () {

@@ -633,7 +633,7 @@ return [
         'save_and_continue' => 'Enregistrer et continuer',
         'delete_draft' => 'Supprimer ce brouillon',
         'confirm_delete' => 'Supprimer ce brouillon ? Cette action est définitive.',
-        'more_steps_soon' => 'L\'étape 9 (récapitulatif et génération) arrive dans une prochaine mise à jour.',
+        'more_steps_soon' => 'Le wizard compte neuf étapes, de l\'identité du module jusqu\'à sa génération.',
 
         'steps' => [
             'identity' => 'Identité',
@@ -664,6 +664,7 @@ return [
             'add_field' => 'Ajouter un champ',
             'no_fields' => 'Aucun champ.',
             'field_key' => 'Clé',
+            'field_key_hint' => 'La clé d\'un champ devient un nom de colonne : minuscules et underscores uniquement (title, published_at) — pas un libellé.',
             'field_type' => 'Type',
             'field_required' => 'Requis',
             'field_unique' => 'Unique',
@@ -691,6 +692,7 @@ return [
             'icon' => 'Icône',
             'version' => 'Version initiale',
             'authors' => 'Auteurs',
+            'icon_hint' => 'Commencez à taper pour choisir parmi les icônes disponibles — « box », « people »…',
             'authors_hint' => 'Une ligne par auteur : « Nom <email> (url) », email et url optionnels.',
             'type_locked' => 'Le Studio ne produit que des modules génériques en v1 — le générateur de thèmes (baobab:make:theme) et le Content Type builder restent des points d\'entrée distincts.',
         ],
@@ -733,7 +735,7 @@ return [
             'column_origin' => 'Origine',
             'origin_crud' => 'CRUD',
             'origin_custom' => 'Personnalisée',
-            'auto_crud_disabled_warning' => 'Le CRUD automatique est désactivé à l\'étape 3, mais les policies générées vérifient quand même les permissions CRUD : ces chaînes n\'existeront dans aucun rôle et bloqueront tout le monde. Réactivez le CRUD automatique, ou éditez les policies générées après coup.',
+            'auto_crud_disabled_warning' => 'Le CRUD automatique est désactivé à l\'étape 3, mais les policies générées vérifient quand même les permissions CRUD. Tant qu\'une entité expose une surface Administration ou API REST (étape 4), dont les contrôleurs autorisent contre ces policies, la génération sera refusée : ces chaînes n\'existeraient dans aucun rôle et bloqueraient tout le monde. Réactivez le CRUD automatique, ou désactivez ces surfaces — les routes du site public, elles, n\'autorisent rien et restent possibles.',
             'editable_hint' => 'Les fichiers générés sont protégés par checksum : vous pouvez les modifier à la main sans qu\'une régénération les écrase.',
         ],
 
@@ -751,6 +753,7 @@ return [
             'no_route' => 'Aucune route (simple regroupement)',
             'permission' => 'Permission requise',
             'no_permission' => 'Aucune permission (toujours visible)',
+            'dead_entry' => 'Sans route ni sous-entrée, cette entrée ne s\'affichera jamais dans la barre latérale : donnez-lui une route, ou au moins une sous-entrée.',
             'order' => 'Position',
             'too_deep' => 'Ce brouillon contient des sous-menus de troisième niveau, saisis hors du Studio. Le constructeur graphique n\'affiche que deux niveaux et refuse de les écraser : le bloc est montré ci-dessous en lecture seule et cette étape n\'enregistrera rien. Modifiez-le directement dans le blueprint si nécessaire.',
         ],
@@ -785,6 +788,21 @@ return [
             'add_listen' => 'Écouter un hook',
             'remove_listen' => 'Retirer cet écouteur',
             'skeleton_hint' => 'La liste proposée recense les hooks documentés du Core et ceux émis par les modules actifs. Le champ reste libre : vous pouvez écouter un hook qui n\'y figure pas.',
+        ],
+
+        'recap' => [
+            'intro' => 'Voici exactement ce qui sera écrit sur le disque. Rien de plus, rien de caché : du code Laravel standard que vous pourriez avoir écrit à la main.',
+            'target_directory' => 'Répertoire cible',
+            'file_count' => ':count fichier(s) à écrire',
+            'preview' => 'Contenu des fichiers',
+            'migration_timestamp_hint' => 'L\'horodatage du nom d\'une migration est fixé au moment de la génération : il différera de celui affiché ici.',
+            'generate_action' => 'Générer, installer et activer',
+            'generated' => 'Module généré, installé et activé.',
+            'not_generatable' => 'Ce blueprint ne peut pas encore être généré',
+            'not_generatable_hint' => 'Revenez à l\'étape concernée pour corriger, puis revenez ici. Rien n\'a été écrit sur le disque.',
+            'already_generated' => 'Module déjà généré',
+            'already_generated_at' => 'Généré le :date, installé et activé.',
+            'already_generated_hint' => 'Les fichiers vivent désormais sur le disque et vous pouvez les modifier à la main : ils sont protégés par checksum. La régénération d\'un module existant, avec diff en cas de conflit, arrive dans une prochaine mise à jour.',
         ],
     ],
 

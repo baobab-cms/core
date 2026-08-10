@@ -8,6 +8,7 @@ use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\Studio\Exceptions\InvalidModuleBlueprintException;
 use Baobab\Studio\Exceptions\UnknownStudioRelationTargetException;
 use Baobab\Studio\Relations\StudioRelationTargetResolver;
+use Baobab\Studio\Support\BlueprintIdentifiers;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -47,6 +48,9 @@ final readonly class ModuleBlueprint
         self::validateEntities($data['entities'] ?? [], $registry, $relationTargets ?? app(StudioRelationTargetResolver::class));
         self::validateWidgets($data['widgets'] ?? [], $registry);
         self::validatePermissions($data['permissions'] ?? [], $data['entities'] ?? []);
+        self::validateHooks($data['hooks'] ?? []);
+        self::validateMenus($data['menus'] ?? []);
+        self::validateSurfacesAgainstPermissions($data['permissions'] ?? [], $data['entities'] ?? []);
 
         return new self($data);
     }
@@ -73,6 +77,8 @@ final readonly class ModuleBlueprint
         self::validateEntities($data['entities'] ?? [], $registry, $relationTargets ?? app(StudioRelationTargetResolver::class));
         self::validateWidgets($data['widgets'] ?? [], $registry);
         self::validatePermissions($data['permissions'] ?? [], $data['entities'] ?? []);
+        self::validateHooks($data['hooks'] ?? []);
+        self::validateMenus($data['menus'] ?? []);
 
         return new self($data);
     }
@@ -106,8 +112,55 @@ final readonly class ModuleBlueprint
         );
 
         foreach ($entities as $entity) {
+            self::validateIdentifiers($entity);
             self::validateFields($entity, $fieldRegistry);
             self::validateRelations($entity, $siblings, $relationTargets);
+        }
+    }
+
+    /**
+     * Motifs des identifiants d'une entité, vérifiés **dès le brouillon**
+     * (donc à l'étape où ils sont saisis) et non plus seulement au schéma
+     * complet de la génération : un libellé humain tapé dans un champ « clé »
+     * ne doit pas traverser huit étapes avant d'être refusé. Cf.
+     * `BlueprintIdentifiers`.
+     *
+     * @param  array<string, mixed>  $entity
+     */
+    private static function validateIdentifiers(array $entity): void
+    {
+        $entityKey = $entity['key'] ?? '?';
+
+        BlueprintIdentifiers::check(
+            BlueprintIdentifiers::CLASS_NAME,
+            $entity['key'] ?? null,
+            "entities.{$entityKey}.key",
+            'un nom de modèle s\'écrit en PascalCase, au singulier (Car, BlogPost)'
+        );
+
+        BlueprintIdentifiers::check(
+            BlueprintIdentifiers::SNAKE,
+            $entity['table'] ?? null,
+            "entities.{$entityKey}.table",
+            'un nom de table s\'écrit en minuscules, avec des underscores (cars, blog_posts)'
+        );
+
+        foreach ((array) ($entity['fields'] ?? []) as $field) {
+            BlueprintIdentifiers::check(
+                BlueprintIdentifiers::SNAKE,
+                $field['key'] ?? null,
+                "entities.{$entityKey}.fields.".($field['key'] ?? '?'),
+                'une clé de champ devient un nom de colonne : minuscules et underscores uniquement (title, published_at)'
+            );
+        }
+
+        foreach ((array) ($entity['relations'] ?? []) as $relation) {
+            BlueprintIdentifiers::check(
+                BlueprintIdentifiers::SNAKE,
+                $relation['key'] ?? null,
+                "entities.{$entityKey}.relations.".($relation['key'] ?? '?'),
+                'une clé de relation devient un nom de méthode : minuscules et underscores uniquement (brand, blog_posts)'
+            );
         }
     }
 
@@ -156,10 +209,114 @@ final readonly class ModuleBlueprint
     private static function validateWidgets(array $widgets, FieldRegistry $registry): void
     {
         foreach ($widgets as $widget) {
+            $widgetKey = $widget['key'] ?? '?';
+
+            BlueprintIdentifiers::check(
+                BlueprintIdentifiers::WIDGET_KEY,
+                $widget['key'] ?? null,
+                "widgets.{$widgetKey}.key",
+                'une clé de widget se préfixe par le module et s\'écrit en minuscules (fleet.latest-cars)'
+            );
+
+            BlueprintIdentifiers::check(
+                BlueprintIdentifiers::CLASS_NAME,
+                $widget['class_name'] ?? null,
+                "widgets.{$widgetKey}.class_name",
+                'un nom de classe s\'écrit en PascalCase, sans namespace (LatestCars)'
+            );
+
             self::validateFields([
-                'key' => $widget['key'] ?? '?',
+                'key' => $widgetKey,
                 'fields' => $widget['settings_fields'] ?? [],
             ], $registry);
+
+            foreach ((array) ($widget['settings_fields'] ?? []) as $field) {
+                BlueprintIdentifiers::check(
+                    BlueprintIdentifiers::SNAKE,
+                    $field['key'] ?? null,
+                    "widgets.{$widgetKey}.settings_fields.".($field['key'] ?? '?'),
+                    'une clé de réglage s\'écrit en minuscules, avec des underscores (limit, display_mode)'
+                );
+            }
+        }
+    }
+
+    /**
+     * Une entrée de menu **sans route et sans sous-entrée ne s'affiche jamais** :
+     * `SidebarBuilder::toSidebarItem()` la filtre explicitement (une entrée de
+     * simple regroupement qui ne regroupe rien n'a pas de sens). Le wizard
+     * proposait pourtant « Aucune route » comme choix isolé, et générait donc
+     * un module dont l'entrée de menu n'apparaissait nulle part — défaut réel
+     * signalé en vérification navigateur de la Pass B5.
+     *
+     * Refusé **dès le brouillon**, contrairement au contrôle
+     * `auto_crud` × surface (n° 103) qui n'a lieu qu'à la génération : là-bas,
+     * les deux réglages vivaient sur deux étapes différentes et bloquer tôt
+     * aurait enfermé l'utilisateur ; ici, la route et les sous-entrées se
+     * saisissent sur le même écran, donc l'erreur se montre là où on l'a
+     * commise (leçon du n° 107).
+     *
+     * @param  array<string, mixed>  $menus
+     */
+    private static function validateMenus(array $menus): void
+    {
+        self::validateMenuItems($menus['admin'] ?? []);
+    }
+
+    /**
+     * @param  array<mixed, mixed>  $items
+     */
+    private static function validateMenuItems(array $items): void
+    {
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $label = (string) ($item['label'] ?? '?');
+            $children = (array) ($item['children'] ?? []);
+
+            if (($item['route'] ?? '') === '' && $children === []) {
+                throw InvalidModuleBlueprintException::forField(
+                    "menus.admin.{$label}",
+                    "L'entrée de menu « {$label} » n'a ni route ni sous-entrée : elle ne s'afficherait jamais dans la barre latérale. Donnez-lui une route, ou au moins une sous-entrée."
+                );
+            }
+
+            self::validateMenuItems($children);
+        }
+    }
+
+    /**
+     * Motifs des noms de hooks et des classes d'écouteurs (étape 8).
+     *
+     * @param  array<string, mixed>  $hooks
+     */
+    private static function validateHooks(array $hooks): void
+    {
+        foreach ($hooks['emits'] ?? [] as $hook) {
+            BlueprintIdentifiers::check(
+                BlueprintIdentifiers::HOOK_NAME,
+                $hook,
+                'hooks.emits.'.(is_string($hook) ? $hook : '?'),
+                'un nom de hook s\'écrit en segments pointés, en minuscules (fleet.car.serviced)'
+            );
+        }
+
+        foreach ($hooks['listens'] ?? [] as $hook => $className) {
+            BlueprintIdentifiers::check(
+                BlueprintIdentifiers::HOOK_NAME,
+                $hook,
+                "hooks.listens.{$hook}",
+                'un nom de hook s\'écrit en segments pointés, en minuscules (baobab.content.saved)'
+            );
+
+            BlueprintIdentifiers::check(
+                BlueprintIdentifiers::CLASS_NAME,
+                $className,
+                "hooks.listens.{$hook}",
+                'un nom de classe d\'écouteur s\'écrit en PascalCase, sans namespace (SyncCarIndex)'
+            );
         }
     }
 
@@ -222,6 +379,20 @@ final readonly class ModuleBlueprint
                 );
             }
 
+            BlueprintIdentifiers::check(
+                BlueprintIdentifiers::CLASS_NAME,
+                $permission['entity'] ?? null,
+                "permissions.custom.{$key}.entity",
+                'une entité se désigne par sa clé en PascalCase (Car)'
+            );
+
+            BlueprintIdentifiers::check(
+                BlueprintIdentifiers::SNAKE,
+                $permission['key'] ?? null,
+                "permissions.custom.{$key}.key",
+                'une action de permission s\'écrit en minuscules, avec des underscores (publish, force_delete)'
+            );
+
             if (in_array("{$entity}.{$key}", $seen, true)) {
                 throw InvalidModuleBlueprintException::forField(
                     "permissions.custom.{$key}",
@@ -230,6 +401,51 @@ final readonly class ModuleBlueprint
             }
 
             $seen[] = "{$entity}.{$key}";
+        }
+    }
+
+    /**
+     * Refuse le blueprint dont `auto_crud` est coupé alors qu'une entité
+     * expose une surface **autorisée** (admin ou API REST).
+     *
+     * Le module serait mort-né : `policy.stub` mappe toujours les cinq
+     * méthodes CRUD, et les contrôleurs admin/API générés autorisent contre
+     * elles (`can('viewAny', …)`, `can('update', $model)`) — sans les
+     * permissions correspondantes dans le manifeste, personne ne peut passer.
+     * La surface front est exclue : son contrôleur généré n'autorise rien,
+     * ce sont des pages publiques.
+     *
+     * **Appelée depuis `fromJson()` seulement, jamais depuis
+     * `fromDraftJson()`** (décision du 9 août 2026, suivi n° 103) : bloquer
+     * aussi le brouillon enfermerait l'utilisateur, puisque `routes.admin`
+     * vaut `true` par défaut — couper `auto_crud` à l'étape 3 ferait échouer
+     * l'enregistrement avant qu'il ait pu atteindre l'étape 4 pour désactiver
+     * l'admin. On explore librement dans le wizard, on ne peut jamais
+     * *produire* un module mort-né.
+     *
+     * @param  array<string, mixed>  $permissions
+     * @param  list<array<string, mixed>>  $entities
+     */
+    private static function validateSurfacesAgainstPermissions(array $permissions, array $entities): void
+    {
+        if (($permissions['auto_crud'] ?? true) !== false) {
+            return;
+        }
+
+        // Défauts alignés sur `{Admin,Api}CrudGenerator::isEnabled()`.
+        $guarded = ['admin' => true, 'api' => false];
+
+        foreach ($entities as $entity) {
+            $key = (string) ($entity['key'] ?? '?');
+
+            foreach ($guarded as $surface => $default) {
+                if ((bool) ($entity['routes'][$surface] ?? $default)) {
+                    throw InvalidModuleBlueprintException::forField(
+                        "entities.{$key}.routes.{$surface}",
+                        "L'entité « {$key} » expose une surface {$surface} dont les contrôleurs générés autorisent contre sa policy, alors que « auto_crud » est désactivé : les permissions CRUD n'existeraient dans aucun rôle et bloqueraient tout le monde. Réactivez le CRUD automatique, ou désactivez cette surface."
+                    );
+                }
+            }
         }
     }
 

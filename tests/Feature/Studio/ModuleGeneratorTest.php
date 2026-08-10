@@ -53,6 +53,10 @@ it('generates a complete module tree for a single-entity blueprint', function ()
 
 it('omits permissions from auto CRUD when disabled, keeping only custom ones', function () {
     $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson([
+        // Sans surface autorisée : couper `auto_crud` en laissant l'admin
+        // actif produirait un module que personne ne peut utiliser, et le
+        // blueprint est desormais refuse a la generation pour cette raison.
+        'entities' => [['key' => 'Car', 'table' => 'cars', 'routes' => ['admin' => false, 'front' => false, 'api' => false]]],
         'permissions' => [
             'auto_crud' => false,
             'custom' => [['entity' => 'Car', 'key' => 'publish', 'label' => 'Publier']],

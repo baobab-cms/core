@@ -150,6 +150,33 @@ it('preserves the routes block owned by step 4 when step 2 is re-saved', functio
     expect($draft->fresh()->blueprint['entities'][0]['routes'])->toBe(['admin' => true, 'front' => true, 'api' => false]);
 });
 
+/**
+ * Défaut réel signalé en vérification navigateur de la Pass B5 : « Contenu »
+ * saisi comme clé de champ traversait les huit étapes sans un mot, pour n'être
+ * refusé qu'au récapitulatif — loin de l'écran où la faute avait été commise.
+ * Le motif est désormais vérifié dès l'enregistrement de l'étape 2.
+ */
+it('rejects a human label typed into a key field, at the step where it was typed', function () {
+    $draft = studioEntitiesDraft();
+
+    postEntities($draft, studioEntitiesActor(), [
+        ['key' => 'BlogPost', 'table' => 'blog_posts', 'fields' => [['key' => 'Contenu', 'type' => 'text']], 'relations' => []],
+    ])->assertSessionHasErrors('blueprint');
+
+    expect($draft->fresh()->blueprint)->not->toHaveKey('entities');
+});
+
+it('rejects a badly cased entity key or table name', function (string $key, string $table) {
+    // `studioEntitiesDraft()` porte un `vendor_slug` fixe, unique en base :
+    // un brouillon par cas, jamais deux dans le même test.
+    postEntities(studioEntitiesDraft(), studioEntitiesActor(), [
+        ['key' => $key, 'table' => $table, 'fields' => [], 'relations' => []],
+    ])->assertSessionHasErrors('blueprint');
+})->with([
+    'clé d\'entité en snake_case' => ['blog_post', 'blog_posts'],
+    'nom de table en PascalCase' => ['BlogPost', 'BlogPosts'],
+]);
+
 it('rejects an unknown field type without touching the stored draft', function () {
     $draft = studioEntitiesDraft();
 

@@ -36,7 +36,12 @@
                     :label="__('baobab::admin.studio.identity.icon')"
                     :value="$values['icon']"
                     placeholder="bi-box-seam"
+                    list="baobab-icon-catalogue"
                 />
+
+                <p class="mb-4 -mt-2 text-xs text-muted">{{ __('baobab::admin.studio.identity.icon_hint') }}</p>
+
+                @include('baobab::admin.studio.steps.partials.icon-catalogue')
 
                 <x-baobab::field.text
                     name="version"

@@ -226,6 +226,9 @@ Route::middleware('can:baobab.system.studio.manage')
         Route::delete('/{draft}', [StudioController::class, 'destroy'])->name('destroy');
         Route::get('/{draft}/step/{step}', [StudioController::class, 'stepShow'])->whereNumber('step')->name('step.show');
         Route::post('/{draft}/step/{step}', [StudioController::class, 'stepUpdate'])->whereNumber('step')->name('step.update');
+        // Générer n'est pas enregistrer une étape : route distincte du cycle
+        // `step.update`, qui ne fait qu'écrire dans le blueprint (Pass B5).
+        Route::post('/{draft}/generate', [StudioController::class, 'generate'])->name('generate');
     });
 
 Route::middleware('can:baobab.users.impersonate')

@@ -83,6 +83,16 @@ it('offers the route names and permissions the earlier steps will actually produ
         ->assertSee('fleet.cars.view', false);
 });
 
+it('offers the icon catalogue so the names do not have to be known by heart', function () {
+    $draft = studioMenusDraft();
+
+    $this->actingAs(studioMenusActor(), 'baobab')
+        ->get(route('admin.studio.step.show', [$draft, 6]))
+        ->assertOk()
+        ->assertSee('baobab-icon-catalogue', false)
+        ->assertSee('<option value="bi-box-seam">', false);
+});
+
 it('does not offer an admin route for an entity whose admin surface is off', function () {
     $draft = studioMenusDraft([
         'entities' => [[
@@ -125,12 +135,63 @@ it('saves an entry with its children', function () {
         ->and($menus[0]['children'][0]['route'])->toBe('admin.fleet.cars.index');
 });
 
+/**
+ * Défaut réel signalé en vérification navigateur de la Pass B5 : une entrée
+ * « Membres » sans route ni sous-entrée a été générée et installée, puis n'est
+ * jamais apparue dans la barre latérale — `SidebarBuilder::toSidebarItem()`
+ * filtre exactement ce cas. Le wizard proposait « Aucune route » sans jamais
+ * dire que, seule, elle ne produit rien.
+ */
+it('rejects an entry with neither a route nor a child, which would never render', function () {
+    $draft = studioMenusDraft();
+
+    postMenus($draft, studioMenusActor(), [
+        ['label' => 'Membres', 'icon' => 'bi-people', 'route' => '', 'permission' => '', 'order' => '', 'children' => []],
+    ])->assertSessionHasErrors('blueprint');
+
+    expect($draft->fresh()->blueprint)->not->toHaveKey('menus');
+});
+
+it('accepts a routeless entry as soon as it groups at least one child', function () {
+    $draft = studioMenusDraft();
+
+    postMenus($draft, studioMenusActor(), [[
+        'label' => 'Flotte',
+        'icon' => '',
+        'route' => '',
+        'permission' => '',
+        'order' => '',
+        'children' => [
+            ['label' => 'Voitures', 'route' => 'admin.fleet.cars.index', 'permission' => '', 'icon' => '', 'order' => ''],
+        ],
+    ]])->assertRedirect();
+
+    expect($draft->fresh()->blueprint['menus']['admin'][0]['children'])->toHaveCount(1);
+});
+
+it('rejects a routeless child, which can never group anything', function () {
+    $draft = studioMenusDraft();
+
+    postMenus($draft, studioMenusActor(), [[
+        'label' => 'Flotte',
+        'icon' => '',
+        'route' => 'admin.fleet.cars.index',
+        'permission' => '',
+        'order' => '',
+        'children' => [
+            ['label' => 'Orpheline', 'route' => '', 'permission' => '', 'icon' => '', 'order' => ''],
+        ],
+    ]])->assertSessionHasErrors('blueprint');
+});
+
 it('drops an entry left without a label, the only required key', function () {
     $draft = studioMenusDraft();
 
     postMenus($draft, studioMenusActor(), [
         ['label' => '', 'icon' => 'bi-x', 'route' => '', 'permission' => '', 'order' => '', 'children' => []],
-        ['label' => 'Flotte', 'icon' => '', 'route' => '', 'permission' => '', 'order' => '', 'children' => []],
+        // L'entrée qui survit porte une route : sans elle, la cross-validation
+        // la refuserait pour une raison sans rapport avec ce que ce cas teste.
+        ['label' => 'Flotte', 'icon' => '', 'route' => 'admin.fleet.cars.index', 'permission' => '', 'order' => '', 'children' => []],
     ])->assertRedirect();
 
     expect($draft->fresh()->blueprint['menus']['admin'])->toHaveCount(1);

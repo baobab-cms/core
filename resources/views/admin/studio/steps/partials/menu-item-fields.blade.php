@@ -14,9 +14,11 @@
         class="rounded-md border border-border px-2 py-1 text-sm text-foreground"
     >
 
+    {{-- `list` pointe la datalist unique de l'écran : elle sert tous les champs répétés. --}}
     <input
         type="text"
         x-model="{{ $model }}.icon"
+        list="baobab-icon-catalogue"
         placeholder="bi-box-seam"
         aria-label="{{ __('baobab::admin.studio.menus.icon') }}"
         class="rounded-md border border-border px-2 py-1 font-mono text-sm text-foreground"

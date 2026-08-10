@@ -106,6 +106,7 @@ use Baobab\Studio\Wizard\IdentityStepHandler;
 use Baobab\Studio\Wizard\MenusStepHandler;
 use Baobab\Studio\Wizard\PermissionsStepHandler;
 use Baobab\Studio\Wizard\PoliciesStepHandler;
+use Baobab\Studio\Wizard\RecapStepHandler;
 use Baobab\Studio\Wizard\RoutesStepHandler;
 use Baobab\Studio\Wizard\StudioWizardSteps;
 use Baobab\Studio\Wizard\WidgetsStepHandler;
@@ -1472,6 +1473,7 @@ class BaobabServiceProvider extends ServiceProvider
             MenusStepHandler::class,
             WidgetsStepHandler::class,
             HooksStepHandler::class,
+            RecapStepHandler::class,
         ] as $handler) {
             $steps->register($handler);
         }

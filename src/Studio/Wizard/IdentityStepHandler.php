@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Baobab\Studio\Wizard;
 
 use Baobab\Studio\Models\ModuleBlueprintDraft;
+use Baobab\View\Support\IconCatalogue;
 
 /**
  * Étape 1 — Identité (spec-modules §5.2 étape 1, schéma
@@ -80,9 +81,14 @@ final class IdentityStepHandler implements StudioStepHandler
         ];
     }
 
+    /**
+     * Catalogue des noms d'icônes, pour la saisie assistée du champ `icon` —
+     * la difficulté n'est pas de valider ce qu'on tape, c'est de connaître les
+     * noms disponibles (cf. `IconCatalogue`).
+     */
     public function viewData(array $blueprint): array
     {
-        return [];
+        return ['iconNames' => IconCatalogue::names()];
     }
 
     /**

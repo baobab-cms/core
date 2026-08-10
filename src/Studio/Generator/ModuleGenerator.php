@@ -57,9 +57,38 @@ final class ModuleGenerator
     public function __invoke(ModuleBlueprint $blueprint): string
     {
         $name = (string) $blueprint->name();
+        $moduleDir = $this->moduleDir($name);
+
+        foreach ($this->plan($blueprint) as $relativePath => $contents) {
+            $this->checksums->write($moduleDir, $relativePath, $contents);
+        }
+
+        return $name;
+    }
+
+    /**
+     * Carte complète `chemin relatif → contenu` de ce que la génération
+     * écrirait, **sans rien écrire**.
+     *
+     * Cœur unique extrait en Pass B5 : l'étape 9 du wizard prévisualise
+     * l'arborescence et le contenu de chaque fichier, et `__invoke()` ne fait
+     * plus que dérouler cette même carte à travers `GeneratedFileChecksums`.
+     * Sans cette séparation, l'aperçu aurait été une seconde implémentation du
+     * rendu — la première à mentir dès qu'un stub change (même raisonnement
+     * que `BlueprintPermissions` en Pass B3).
+     *
+     * **Une seule chose n'est pas reproductible d'un appel à l'autre** : le
+     * nom d'une migration porte un horodatage et un suffixe aléatoire
+     * (`MigrationTimestamp`), donc l'aperçu et l'écriture ne montrent pas la
+     * même seconde. L'écran le dit plutôt que de faire semblant.
+     *
+     * @return array<string, string>
+     */
+    public function plan(ModuleBlueprint $blueprint): array
+    {
+        $name = (string) $blueprint->name();
         [$vendor, $slug] = explode('/', $name, 2);
         $namespace = Str::studly($vendor).'\\'.Str::studly($slug);
-        $moduleDir = $this->moduleDir($name);
         $entities = $blueprint->entities();
 
         /** @var list<array{key: string, table: string}> $siblings */
@@ -68,102 +97,118 @@ final class ModuleGenerator
             $entities,
         );
 
+        $files = [];
         $adminRouteFragments = [];
         $webRouteFragments = [];
         $apiRouteFragments = [];
 
         foreach ($entities as $entity) {
-            $this->writeMigration($entity, $moduleDir, $siblings);
-            $this->writeModel($entity, $moduleDir, $namespace, $siblings);
-            $this->writePolicy($entity, $moduleDir, $namespace, $slug, $blueprint);
+            $files = [
+                ...$files,
+                ...$this->planMigration($entity, $siblings),
+                ...$this->planModel($entity, $namespace, $siblings),
+                ...$this->planPolicy($entity, $namespace, $slug, $blueprint),
+            ];
 
             $admin = $this->adminCrud->isEnabled($entity);
             $api = $this->apiCrud->isEnabled($entity);
 
             if ($admin || $api) {
-                $this->checksums->write($moduleDir, "src/Http/Requests/{$entity['key']}Request.php", $this->adminCrud->request($entity, $namespace));
+                $files["src/Http/Requests/{$entity['key']}Request.php"] = $this->adminCrud->request($entity, $namespace);
             }
 
             if ($admin) {
-                $this->writeAdminCrud($entity, $moduleDir, $namespace, $slug);
+                $files = [...$files, ...$this->planAdminCrud($entity, $namespace, $slug)];
                 $adminRouteFragments[] = $this->adminCrud->routesFragment($entity, $namespace, $slug);
             }
 
             if ($this->frontCrud->isEnabled($entity)) {
-                $this->writeFrontCrud($entity, $moduleDir, $namespace, $slug);
+                $files = [...$files, ...$this->planFrontCrud($entity, $namespace, $slug)];
                 $webRouteFragments[] = $this->frontCrud->routesFragment($entity, $namespace, $slug);
             }
 
             if ($api) {
-                $this->writeApiCrud($entity, $moduleDir, $namespace, $slug);
+                $files = [...$files, ...$this->planApiCrud($entity, $namespace)];
                 $apiRouteFragments[] = $this->apiCrud->routesFragment($entity, $namespace, $slug);
             }
         }
 
         if ($adminRouteFragments !== []) {
-            $this->checksums->write($moduleDir, 'routes/admin.php', $this->routesFile($adminRouteFragments));
+            $files['routes/admin.php'] = $this->routesFile($adminRouteFragments);
         }
 
         if ($webRouteFragments !== []) {
-            $this->checksums->write($moduleDir, 'routes/web.php', $this->routesFile($webRouteFragments));
+            $files['routes/web.php'] = $this->routesFile($webRouteFragments);
         }
 
         if ($apiRouteFragments !== []) {
-            $this->checksums->write($moduleDir, 'routes/api.php', $this->routesFile($apiRouteFragments));
+            $files['routes/api.php'] = $this->routesFile($apiRouteFragments);
         }
 
-        $this->writeHookListeners($blueprint, $moduleDir, $namespace);
-        $this->writeWidgets($blueprint, $moduleDir, $namespace, $slug);
+        $files = [
+            ...$files,
+            ...$this->planHookListeners($blueprint, $namespace),
+            ...$this->planWidgets($blueprint, $namespace, $slug),
+        ];
 
         $providerClass = Str::studly($slug).'ServiceProvider';
 
-        $this->checksums->write($moduleDir, 'module.json', $this->moduleJson($blueprint, $name, $namespace, $slug, $providerClass));
+        $files['module.json'] = $this->moduleJson($blueprint, $name, $namespace, $slug, $providerClass);
 
-        $this->checksums->write($moduleDir, "src/Providers/{$providerClass}.php", (new StubRenderer)->render(StudioStubs::path('provider'), [
+        $files["src/Providers/{$providerClass}.php"] = (new StubRenderer)->render(StudioStubs::path('provider'), [
             'namespace' => $namespace,
             'key' => Str::studly($slug),
             'view_namespace' => $slug,
-        ]));
+        ]);
 
-        return $name;
+        return $files;
     }
 
     /**
      * @param  array<string, mixed>  $entity
+     * @return array<string, string>
      */
-    private function writeAdminCrud(array $entity, string $moduleDir, string $namespace, string $slug): void
+    private function planAdminCrud(array $entity, string $namespace, string $slug): array
     {
         $key = (string) $entity['key'];
         $viewPrefix = Str::snake(Str::plural($key));
 
-        $this->checksums->write($moduleDir, "src/Http/Controllers/Admin/{$key}Controller.php", $this->adminCrud->controller($entity, $namespace, $slug));
-        $this->checksums->write($moduleDir, "resources/views/{$viewPrefix}/index.blade.php", $this->adminCrud->indexView($entity, $slug));
-        $this->checksums->write($moduleDir, "resources/views/{$viewPrefix}/form.blade.php", $this->adminCrud->formView($entity));
+        return [
+            "src/Http/Controllers/Admin/{$key}Controller.php" => $this->adminCrud->controller($entity, $namespace, $slug),
+            "resources/views/{$viewPrefix}/index.blade.php" => $this->adminCrud->indexView($entity, $slug),
+            "resources/views/{$viewPrefix}/form.blade.php" => $this->adminCrud->formView($entity),
+        ];
     }
 
     /**
      * @param  array<string, mixed>  $entity
+     * @return array<string, string>
      */
-    private function writeFrontCrud(array $entity, string $moduleDir, string $namespace, string $slug): void
+    private function planFrontCrud(array $entity, string $namespace, string $slug): array
     {
         $key = (string) $entity['key'];
         $var = Str::camel($key);
         $viewPrefix = Str::snake(Str::plural($key));
 
-        $this->checksums->write($moduleDir, "src/Http/Controllers/Front/{$key}Controller.php", $this->frontCrud->controller($entity, $namespace, $slug));
-        $this->checksums->write($moduleDir, "resources/views/{$viewPrefix}/front-index.blade.php", $this->frontCrud->indexView($entity, $slug));
-        $this->checksums->write($moduleDir, "resources/views/{$viewPrefix}/front-show.blade.php", $this->frontCrud->showView($entity, $slug, $var));
+        return [
+            "src/Http/Controllers/Front/{$key}Controller.php" => $this->frontCrud->controller($entity, $namespace, $slug),
+            "resources/views/{$viewPrefix}/front-index.blade.php" => $this->frontCrud->indexView($entity, $slug),
+            "resources/views/{$viewPrefix}/front-show.blade.php" => $this->frontCrud->showView($entity, $slug, $var),
+        ];
     }
 
     /**
      * @param  array<string, mixed>  $entity
+     * @return array<string, string>
      */
-    private function writeApiCrud(array $entity, string $moduleDir, string $namespace, string $slug): void
+    private function planApiCrud(array $entity, string $namespace): array
     {
         $key = (string) $entity['key'];
 
-        $this->checksums->write($moduleDir, "src/Http/Controllers/Api/{$key}Controller.php", $this->apiCrud->controller($entity, $namespace));
-        $this->checksums->write($moduleDir, "src/Http/Resources/{$key}Resource.php", $this->apiCrud->resource($entity, $namespace));
+        return [
+            "src/Http/Controllers/Api/{$key}Controller.php" => $this->apiCrud->controller($entity, $namespace),
+            "src/Http/Resources/{$key}Resource.php" => $this->apiCrud->resource($entity, $namespace),
+        ];
     }
 
     /**
@@ -172,38 +217,37 @@ final class ModuleGenerator
      * indépendante de la boucle `foreach ($entities as $entity)`.
      * `hooks.emits` n'a aucun fichier à générer (cf. docblock
      * `HookListenerGenerator`).
+     *
+     * @return array<string, string>
      */
-    private function writeHookListeners(ModuleBlueprint $blueprint, string $moduleDir, string $namespace): void
+    private function planHookListeners(ModuleBlueprint $blueprint, string $namespace): array
     {
+        $files = [];
+
         foreach ($blueprint->hooksListened() as $hook => $className) {
-            $this->checksums->write(
-                $moduleDir,
-                "src/Hooks/{$className}.php",
-                $this->hookListeners->listener($hook, $className, $namespace),
-            );
+            $files["src/Hooks/{$className}.php"] = $this->hookListeners->listener($hook, $className, $namespace);
         }
+
+        return $files;
     }
 
     /**
      * Classe Widget + vue Blade par widget déclaré — concept de module, pas
      * d'entité, une seule passe indépendante de la boucle `foreach
-     * ($entities as $entity)` (patron `writeHookListeners`).
+     * ($entities as $entity)` (patron `planHookListeners`).
+     *
+     * @return array<string, string>
      */
-    private function writeWidgets(ModuleBlueprint $blueprint, string $moduleDir, string $namespace, string $slug): void
+    private function planWidgets(ModuleBlueprint $blueprint, string $namespace, string $slug): array
     {
-        foreach ($blueprint->widgets() as $widget) {
-            $this->checksums->write(
-                $moduleDir,
-                "src/Widgets/{$widget['class_name']}.php",
-                $this->widgets->widgetClass($widget, $namespace, $slug),
-            );
+        $files = [];
 
-            $this->checksums->write(
-                $moduleDir,
-                "resources/views/widgets/{$this->widgets->viewName($widget)}.blade.php",
-                $this->widgets->widgetView($widget),
-            );
+        foreach ($blueprint->widgets() as $widget) {
+            $files["src/Widgets/{$widget['class_name']}.php"] = $this->widgets->widgetClass($widget, $namespace, $slug);
+            $files["resources/views/widgets/{$this->widgets->viewName($widget)}.blade.php"] = $this->widgets->widgetView($widget);
         }
+
+        return $files;
     }
 
     /**
@@ -235,17 +279,16 @@ final class ModuleGenerator
     /**
      * @param  array<string, mixed>  $entity
      * @param  list<array{key: string, table: string}>  $siblings
+     * @return array<string, string>
      */
-    private function writeMigration(array $entity, string $moduleDir, array $siblings): void
+    private function planMigration(array $entity, array $siblings): array
     {
         $table = (string) $entity['table'];
         $options = $entity['options'] ?? [];
         $uuid = (bool) ($options['uuid'] ?? false);
 
-        $this->checksums->write(
-            $moduleDir,
-            'database/migrations/'.MigrationTimestamp::generate()."_create_{$table}_table.php",
-            (new StubRenderer)->render(StudioStubs::path('migration'), [
+        $files = [
+            'database/migrations/'.MigrationTimestamp::generate()."_create_{$table}_table.php" => (new StubRenderer)->render(StudioStubs::path('migration'), [
                 'table_name' => $table,
                 'id_column' => $uuid
                     ? "            \$table->uuid('id')->primary();"
@@ -259,18 +302,21 @@ final class ModuleGenerator
                     ? '            $table->softDeletes();'
                     : '',
             ]),
-        );
+        ];
 
         foreach ($this->pivotMigrations($entity, $siblings) as $pivot) {
-            $this->checksums->write($moduleDir, $pivot['filename'], $pivot['contents']);
+            $files[$pivot['filename']] = $pivot['contents'];
         }
+
+        return $files;
     }
 
     /**
      * @param  array<string, mixed>  $entity
      * @param  list<array{key: string, table: string}>  $siblings
+     * @return array<string, string>
      */
-    private function writeModel(array $entity, string $moduleDir, string $namespace, array $siblings): void
+    private function planModel(array $entity, string $namespace, array $siblings): array
     {
         $key = (string) $entity['key'];
         $options = $entity['options'] ?? [];
@@ -287,7 +333,7 @@ final class ModuleGenerator
             $uuid ? 'use Illuminate\\Database\\Eloquent\\Concerns\\HasUuids;' : null,
         ]);
 
-        $this->checksums->write($moduleDir, "src/Models/{$key}.php", (new StubRenderer)->render(StudioStubs::path('model'), [
+        return ["src/Models/{$key}.php" => (new StubRenderer)->render(StudioStubs::path('model'), [
             'namespace' => $namespace,
             'key' => $key,
             'table_name' => (string) $entity['table'],
@@ -296,25 +342,26 @@ final class ModuleGenerator
             'fillable' => $this->fillableList($entity),
             'casts' => $this->castsList($entity),
             'relations' => $this->relationMethods($entity, $namespace, $siblings),
-        ]));
+        ])];
     }
 
     /**
      * @param  array<string, mixed>  $entity
+     * @return array<string, string>
      */
-    private function writePolicy(array $entity, string $moduleDir, string $namespace, string $slug, ModuleBlueprint $blueprint): void
+    private function planPolicy(array $entity, string $namespace, string $slug, ModuleBlueprint $blueprint): array
     {
         $key = (string) $entity['key'];
         $var = Str::camel($key);
         $prefix = $this->permissionPrefix($slug, $key);
 
-        $this->checksums->write($moduleDir, "src/Policies/{$key}Policy.php", (new StubRenderer)->render(StudioStubs::path('policy'), [
+        return ["src/Policies/{$key}Policy.php" => (new StubRenderer)->render(StudioStubs::path('policy'), [
             'namespace' => $namespace,
             'key' => $key,
             'var' => $var,
             'permission_prefix' => $prefix,
             'custom_methods' => $this->customPolicyMethods($key, $var, $slug, $blueprint),
-        ]));
+        ])];
     }
 
     /**

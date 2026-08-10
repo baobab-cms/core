@@ -7,6 +7,7 @@ namespace Baobab\Studio\Wizard;
 use Baobab\Studio\Exceptions\InvalidModuleBlueprintException;
 use Baobab\Studio\Models\ModuleBlueprintDraft;
 use Baobab\Studio\Support\BlueprintPermissions;
+use Baobab\View\Support\IconCatalogue;
 use Illuminate\Support\Str;
 
 /**
@@ -132,6 +133,7 @@ final class MenusStepHandler implements StudioStepHandler
             'menuRouteChoices' => $routes,
             'menuPermissionChoices' => $permissions,
             'menusTooDeep' => self::isTooDeep($blueprint),
+            'iconNames' => IconCatalogue::names(),
         ];
     }
 

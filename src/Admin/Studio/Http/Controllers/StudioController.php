@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Baobab\Admin\Studio\Http\Controllers;
 
+use Baobab\ContentTypes\Exceptions\GeneratedFileConflictException;
 use Baobab\Studio\Actions\CreateModuleBlueprintDraft;
 use Baobab\Studio\Actions\DeleteModuleBlueprintDraft;
+use Baobab\Studio\Actions\GenerateModuleFromDraft;
 use Baobab\Studio\Actions\SaveStudioWizardStep;
 use Baobab\Studio\Exceptions\GeneratedDraftCannotBeDeletedException;
 use Baobab\Studio\Exceptions\InvalidModuleBlueprintException;
@@ -117,6 +119,33 @@ final class StudioController
         return redirect()->route('admin.studio.step.show', [$draft, $step]);
     }
 
+    /**
+     * Génération réelle (spec-modules §5.2 étape 9, §5.3) : le module est
+     * écrit dans `/modules`, installé puis activé, et le brouillon marqué
+     * généré. Un brouillon déjà généré ne se régénère pas depuis cet écran —
+     * la reprise d'un module existant (diff en cas de conflit de checksum)
+     * est le périmètre de la Pass C.
+     */
+    public function generate(ModuleBlueprintDraft $draft, GenerateModuleFromDraft $action): RedirectResponse
+    {
+        abort_if($draft->isGenerated(), 409, 'Ce brouillon a déjà été généré.');
+
+        try {
+            $action($draft);
+        } catch (InvalidModuleBlueprintException|GeneratedFileConflictException $e) {
+            // Blueprint incomplet/incohérent, ou fichier généré modifié à la
+            // main depuis la dernière génération : dans les deux cas le
+            // message porte déjà le champ ou le fichier fautif.
+            session()->flash('toast', ['type' => 'danger', 'message' => $e->getMessage()]);
+
+            return redirect()->route('admin.studio.step.show', [$draft, 9]);
+        }
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.studio.recap.generated')]);
+
+        return redirect()->route('admin.studio.step.show', [$draft, 9]);
+    }
+
     public function destroy(ModuleBlueprintDraft $draft, DeleteModuleBlueprintDraft $action): RedirectResponse
     {
         try {
@@ -147,7 +176,12 @@ final class StudioController
         abort_unless($this->views->exists($viewName), 500, "Vue introuvable pour l'étape {$handler->number()}.");
 
         $draft = $data['draft'];
-        $blueprint = $draft instanceof ModuleBlueprintDraft ? $draft->blueprint : [];
+        // `migratedBlueprint()` et non `blueprint` : c'est le chemin de
+        // lecture documenté par le modèle (migrateurs de blueprint appliqués
+        // avant toute lecture), et celui qu'emprunte la génération. No-op
+        // aujourd'hui, mais l'aperçu de l'étape 9 doit lire exactement ce que
+        // la génération lira — sinon la divergence naîtra au premier migrateur.
+        $blueprint = $draft instanceof ModuleBlueprintDraft ? $draft->migratedBlueprint() : [];
 
         return $this->views->make($viewName, [...$handler->viewData($blueprint), ...$data]);
     }
@@ -162,7 +196,7 @@ final class StudioController
      */
     private function stepValues(StudioStepHandler $handler, ModuleBlueprintDraft $draft): array
     {
-        $values = $handler->initialValues($draft->blueprint);
+        $values = $handler->initialValues($draft->migratedBlueprint());
 
         if (! session()->hasOldInput()) {
             return $values;

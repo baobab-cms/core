@@ -182,6 +182,11 @@ it('returns 404 for a step the draft has not reached yet', function () {
         ->assertNotFound();
 });
 
+/**
+ * Les neuf étapes du parcours sont désormais toutes implémentées (Pass B5) :
+ * ce cas garde donc son sens en visant un numéro **hors parcours**, ce que le
+ * shell doit continuer de refuser sans erreur serveur.
+ */
 it('returns 404 for a step number that no handler implements', function () {
     $actor = studioActor(['baobab.system.studio.manage']);
 
@@ -193,6 +198,6 @@ it('returns 404 for a step number that no handler implements', function () {
     ]);
 
     $this->actingAs($actor, 'baobab')
-        ->get(route('admin.studio.step.show', [$draft, 9]))
+        ->get(route('admin.studio.step.show', [$draft, 10]))
         ->assertNotFound();
 });

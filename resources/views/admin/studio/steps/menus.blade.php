@@ -62,6 +62,20 @@
                                     'permissionChoices' => $menuPermissionChoices,
                                 ])
 
+                                {{--
+                                    Sans route ni sous-entrée, le Core filtre l'entrée
+                                    (`SidebarBuilder::toSidebarItem()`) : elle ne s'afficherait
+                                    jamais. Signalé ici avant l'enregistrement, refusé par la
+                                    cross-validation ensuite.
+                                --}}
+                                <p
+                                    class="mt-2 text-xs text-warning"
+                                    x-show="!item.route && item.children.length === 0"
+                                    x-cloak
+                                >
+                                    {{ __('baobab::admin.studio.menus.dead_entry') }}
+                                </p>
+
                                 {{-- Sous-entrées : un seul niveau, cf. docblock du handler --}}
                                 <div class="mt-4 border-t border-border pt-3">
                                     <h4 class="mb-2 text-xs font-medium text-muted">{{ __('baobab::admin.studio.menus.children') }}</h4>
@@ -103,6 +117,8 @@
                     <x-baobab::button type="button" variant="secondary" class="mt-3" x-on:click="addItem()">
                         {{ __('baobab::admin.studio.menus.add_item') }}
                     </x-baobab::button>
+
+                    @include('baobab::admin.studio.steps.partials.icon-catalogue')
                 </div>
             @endif
 

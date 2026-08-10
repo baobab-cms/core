@@ -116,7 +116,8 @@
 
                                 {{-- Champs --}}
                                 <div class="mt-6">
-                                    <h3 class="mb-2 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.studio.entities.fields') }}</h3>
+                                    <h3 class="mb-1 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.studio.entities.fields') }}</h3>
+                                    <p class="mb-2 text-xs text-muted">{{ __('baobab::admin.studio.entities.field_key_hint') }}</p>
 
                                     <template x-if="entity.fields.length === 0">
                                         <p class="mb-2 text-sm text-muted">{{ __('baobab::admin.studio.entities.no_fields') }}</p>
@@ -126,11 +127,17 @@
                                         <template x-for="(field, fieldIndex) in entity.fields" :key="fieldIndex">
                                             <div class="rounded-md border border-border bg-surface-subtle p-2">
                                                 <div class="flex flex-wrap items-center gap-2">
+                                                    {{--
+                                                        Une clé de champ devient un nom de colonne : le placeholder
+                                                        montre la forme attendue, sans quoi on y saisit un libellé
+                                                        humain (défaut réel signalé en vérification navigateur).
+                                                    --}}
                                                     <input
                                                         type="text"
                                                         x-model="field.key"
-                                                        placeholder="{{ __('baobab::admin.studio.entities.field_key') }}"
+                                                        placeholder="published_at"
                                                         aria-label="{{ __('baobab::admin.studio.entities.field_key') }}"
+                                                        title="{{ __('baobab::admin.studio.entities.field_key_hint') }}"
                                                         class="w-40 rounded-md border border-border px-2 py-1 font-mono text-sm text-foreground"
                                                     >
 
