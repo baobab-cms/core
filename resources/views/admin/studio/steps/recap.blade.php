@@ -19,15 +19,21 @@
                 <p class="text-sm text-foreground">{{ $blueprintError }}</p>
                 <p class="mt-2 text-xs text-muted">{{ __('baobab::admin.studio.recap.not_generatable_hint') }}</p>
             </x-baobab::card>
-        @elseif ($draft->isGenerated())
-            <x-baobab::card :header="__('baobab::admin.studio.recap.already_generated')">
-                <p class="text-sm text-foreground">
-                    {{ __('baobab::admin.studio.recap.already_generated_at', ['date' => $draft->generated_at->format('d/m/Y à H:i')]) }}
-                </p>
-                <p class="mt-2 font-mono text-sm text-muted">{{ $moduleDir }}</p>
-                <p class="mt-2 text-xs text-muted">{{ __('baobab::admin.studio.recap.already_generated_hint') }}</p>
-            </x-baobab::card>
         @else
+            @if ($draft->isGenerated())
+                {{--
+                    Régénérable depuis la Pass C : l'aperçu reste donc affiché,
+                    puisqu'il décrit ce qu'une régénération réécrirait.
+                --}}
+                <x-baobab::card :header="__('baobab::admin.studio.recap.already_generated')" class="mb-4">
+                    <p class="text-sm text-foreground">
+                        {{ __('baobab::admin.studio.recap.already_generated_at', ['date' => $draft->generated_at->format('d/m/Y à H:i')]) }}
+                    </p>
+                    <p class="mt-2 text-xs text-muted">{{ __('baobab::admin.studio.recap.already_generated_hint') }}</p>
+                    <p class="mt-1 text-xs text-muted">{{ __('baobab::admin.studio.recap.regenerate_hint') }}</p>
+                </x-baobab::card>
+            @endif
+
             <p class="mb-4 text-sm text-muted">{{ __('baobab::admin.studio.recap.intro') }}</p>
 
             {{-- Répertoire cible, artefact réel --}}
@@ -94,18 +100,32 @@
                 {{ __('baobab::admin.studio.previous') }}
             </x-baobab::button>
 
-            @if (! $blueprintError && ! $draft->isGenerated())
-                <form method="POST" action="{{ route('admin.studio.generate', $draft) }}">
-                    @csrf
-                    <x-baobab::button type="submit" variant="primary">
-                        {{ __('baobab::admin.studio.recap.generate_action') }}
+            <div class="flex items-center gap-2">
+                @if (! $blueprintError)
+                    {{--
+                        Sortie alternative (spec §5.3) : l'archive se construit
+                        depuis le plan, donc elle reste offerte après génération.
+                    --}}
+                    <x-baobab::button :href="route('admin.studio.download', $draft)" variant="secondary">
+                        {{ __('baobab::admin.studio.recap.download_action') }}
                     </x-baobab::button>
-                </form>
-            @else
-                <x-baobab::button :href="route('admin.studio.index')" variant="secondary">
-                    {{ __('baobab::admin.studio.back_to_list') }}
-                </x-baobab::button>
-            @endif
+                @endif
+
+                @if ($blueprintError)
+                    <x-baobab::button :href="route('admin.studio.index')" variant="secondary">
+                        {{ __('baobab::admin.studio.back_to_list') }}
+                    </x-baobab::button>
+                @else
+                    <form method="POST" action="{{ route('admin.studio.generate', $draft) }}">
+                        @csrf
+                        <x-baobab::button type="submit" variant="primary">
+                            {{ $draft->isGenerated()
+                                ? __('baobab::admin.studio.recap.regenerate_action')
+                                : __('baobab::admin.studio.recap.generate_action') }}
+                        </x-baobab::button>
+                    </form>
+                @endif
+            </div>
         </div>
     </x-baobab::page>
 @endsection

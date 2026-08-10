@@ -11,29 +11,51 @@ use Illuminate\Support\Facades\File;
  * Anti-écrasement par checksum (spec 01 §5.4) : jamais d'écrasement silencieux
  * d'un fichier généré modifié à la main. Le registre des checksums voyage
  * avec le module généré (`.baobab-checksums.json`, portable git/zip).
+ *
+ * Le moteur sait **refuser** (`write()`) et, depuis la Pass C du wizard
+ * Studio, **répondre à la question** (`conflicts()`) : quels fichiers seraient
+ * écrasés, pour qu'un appelant puisse en proposer le diff plutôt que d'échouer
+ * sèchement. L'écrasement reste un acte explicite (`$force`), jamais un
+ * défaut.
  */
 final class GeneratedFileChecksums
 {
     private const REGISTRY_FILENAME = '.baobab-checksums.json';
 
     /**
+     * Vrai si écrire ce fichier écraserait une modification manuelle : le
+     * fichier existe et son contenu sur disque ne correspond pas au checksum
+     * enregistré à la dernière génération — ou n'y figure pas du tout, ce qui
+     * signifie qu'il n'a jamais été écrit par nous.
+     */
+    public function conflicts(string $moduleDir, string $relativePath): bool
+    {
+        $absolutePath = $moduleDir.'/'.$relativePath;
+
+        if (! File::isFile($absolutePath)) {
+            return false;
+        }
+
+        $recorded = $this->load($moduleDir)[$relativePath] ?? null;
+
+        return $recorded === null
+            || hash('sha256', (string) file_get_contents($absolutePath)) !== $recorded;
+    }
+
+    /**
      * Écrit $contents dans $moduleDir/$relativePath si c'est sûr : fichier
      * absent, ou présent avec un checksum inchangé depuis la dernière
      * génération. Lève une exception sans rien écraser si le fichier a été
-     * modifié à la main depuis.
+     * modifié à la main depuis — sauf `$force`, réservé à une résolution de
+     * conflit explicitement décidée par un humain.
      */
-    public function write(string $moduleDir, string $relativePath, string $contents): void
+    public function write(string $moduleDir, string $relativePath, string $contents, bool $force = false): void
     {
         $absolutePath = $moduleDir.'/'.$relativePath;
         $registry = $this->load($moduleDir);
 
-        if (File::isFile($absolutePath)) {
-            $recorded = $registry[$relativePath] ?? null;
-            $onDisk = hash('sha256', (string) file_get_contents($absolutePath));
-
-            if ($recorded === null || $onDisk !== $recorded) {
-                throw GeneratedFileConflictException::forFile($relativePath);
-            }
+        if (! $force && $this->conflicts($moduleDir, $relativePath)) {
+            throw GeneratedFileConflictException::forFile($relativePath);
         }
 
         File::ensureDirectoryExists(dirname($absolutePath));

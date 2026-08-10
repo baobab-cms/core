@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Baobab\Admin\Studio\Http\Controllers;
 
-use Baobab\ContentTypes\Exceptions\GeneratedFileConflictException;
 use Baobab\Studio\Actions\CreateModuleBlueprintDraft;
 use Baobab\Studio\Actions\DeleteModuleBlueprintDraft;
 use Baobab\Studio\Actions\GenerateModuleFromDraft;
+use Baobab\Studio\Actions\InspectModuleConflicts;
+use Baobab\Studio\Actions\PackageModuleFromDraft;
 use Baobab\Studio\Actions\SaveStudioWizardStep;
 use Baobab\Studio\Exceptions\GeneratedDraftCannotBeDeletedException;
 use Baobab\Studio\Exceptions\InvalidModuleBlueprintException;
@@ -18,6 +19,7 @@ use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Shell du Wizard Studio (spec-modules §5.2, Pass B1) — accès gouverné par
@@ -120,30 +122,96 @@ final class StudioController
     }
 
     /**
-     * Génération réelle (spec-modules §5.2 étape 9, §5.3) : le module est
-     * écrit dans `/modules`, installé puis activé, et le brouillon marqué
-     * généré. Un brouillon déjà généré ne se régénère pas depuis cet écran —
-     * la reprise d'un module existant (diff en cas de conflit de checksum)
-     * est le périmètre de la Pass C.
+     * Génération, ou régénération d'un brouillon déjà généré (spec-modules
+     * §5.2 étape 9, §5.3 ; spec 01 §5.4 pour les conflits).
+     *
+     * Deux entrées, distinguées par le drapeau `resolved` que seul l'écran de
+     * conflit envoie :
+     *
+     * - depuis le récapitulatif, si des fichiers générés ont été modifiés à la
+     *   main, on **détourne vers le diff** avant d'écrire quoi que ce soit —
+     *   l'utilisateur doit voir ce qu'il risque de perdre ;
+     * - depuis l'écran de conflit, le choix est fait : on régénère ce qui est
+     *   sûr, on écrase ce qui a été coché, et on **laisse intact** le reste.
+     *   C'est bien « régénérer uniquement les nouveaux fichiers », pas
+     *   « tout ou rien ».
      */
-    public function generate(ModuleBlueprintDraft $draft, GenerateModuleFromDraft $action): RedirectResponse
+    public function generate(Request $request, ModuleBlueprintDraft $draft, GenerateModuleFromDraft $action, InspectModuleConflicts $inspect): RedirectResponse
     {
-        abort_if($draft->isGenerated(), 409, 'Ce brouillon a déjà été généré.');
+        $validated = $request->validate([
+            'overwrite' => ['nullable', 'array'],
+            'overwrite.*' => ['string'],
+            'resolved' => ['nullable', 'boolean'],
+        ]);
+
+        /** @var list<string> $overwrite */
+        $overwrite = $validated['overwrite'] ?? [];
 
         try {
-            $action($draft);
-        } catch (InvalidModuleBlueprintException|GeneratedFileConflictException $e) {
-            // Blueprint incomplet/incohérent, ou fichier généré modifié à la
-            // main depuis la dernière génération : dans les deux cas le
-            // message porte déjà le champ ou le fichier fautif.
+            if (! ($validated['resolved'] ?? false) && $inspect($draft) !== []) {
+                return redirect()->route('admin.studio.conflicts', $draft);
+            }
+
+            $result = $action($draft, $overwrite);
+        } catch (InvalidModuleBlueprintException $e) {
             session()->flash('toast', ['type' => 'danger', 'message' => $e->getMessage()]);
 
             return redirect()->route('admin.studio.step.show', [$draft, 9]);
         }
 
-        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.studio.recap.generated')]);
+        session()->flash('toast', $result['skipped'] === []
+            ? ['type' => 'success', 'message' => __('baobab::admin.studio.recap.generated_files', ['count' => count($result['written'])])]
+            : ['type' => 'warning', 'message' => __('baobab::admin.studio.recap.generated_files_kept', [
+                'count' => count($result['written']),
+                'kept' => count($result['skipped']),
+            ])]);
 
         return redirect()->route('admin.studio.step.show', [$draft, 9]);
+    }
+
+    /**
+     * Écran de résolution : ce que la régénération écraserait, fichier par
+     * fichier, avec son diff. L'utilisateur coche ce qu'il accepte de perdre —
+     * rien n'est écrasé par défaut.
+     */
+    public function conflicts(ModuleBlueprintDraft $draft, InspectModuleConflicts $inspect): View|RedirectResponse
+    {
+        try {
+            $conflicts = $inspect($draft);
+        } catch (InvalidModuleBlueprintException $e) {
+            session()->flash('toast', ['type' => 'danger', 'message' => $e->getMessage()]);
+
+            return redirect()->route('admin.studio.step.show', [$draft, 9]);
+        }
+
+        if ($conflicts === []) {
+            return redirect()->route('admin.studio.step.show', [$draft, 9]);
+        }
+
+        return view('baobab::admin.studio.conflicts', [
+            'draft' => $draft,
+            'conflicts' => $conflicts,
+        ]);
+    }
+
+    /**
+     * Téléchargement de l'archive (spec-modules §5.3). `deleteFileAfterSend()`
+     * plutôt qu'un nettoyage différé : l'archive est un fichier temporaire créé
+     * pour cette réponse et pour elle seule.
+     */
+    public function download(ModuleBlueprintDraft $draft, PackageModuleFromDraft $action): BinaryFileResponse|RedirectResponse
+    {
+        try {
+            $archivePath = $action($draft);
+        } catch (InvalidModuleBlueprintException $e) {
+            session()->flash('toast', ['type' => 'danger', 'message' => $e->getMessage()]);
+
+            return redirect()->route('admin.studio.step.show', [$draft, 9]);
+        }
+
+        return response()
+            ->download($archivePath, basename($archivePath))
+            ->deleteFileAfterSend();
     }
 
     public function destroy(ModuleBlueprintDraft $draft, DeleteModuleBlueprintDraft $action): RedirectResponse

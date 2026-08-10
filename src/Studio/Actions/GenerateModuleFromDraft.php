@@ -44,21 +44,54 @@ final class GenerateModuleFromDraft
         private readonly AuditLogger $audit,
     ) {}
 
-    public function __invoke(ModuleBlueprintDraft $draft): ModuleBlueprintDraft
+    /**
+     * Première génération **ou** régénération d'un brouillon déjà généré
+     * (spec-modules §5.4, « rouvrir un blueprint, régénérer »).
+     *
+     * Une régénération **ne réinstalle ni ne réactive** : le module est déjà
+     * installé et actif, elle ne fait que réécrire les fichiers. Conséquence
+     * assumée et à connaître : une entité *ajoutée* après coup produit bien sa
+     * migration sur le disque, mais celle-ci n'est pas exécutée — faire
+     * évoluer le schéma d'un module installé est un sujet distinct, l'équivalent
+     * pour les modules de ce que `EvolveContentType` +
+     * `EvolutionMigrationGenerator` font pour un Content Type ; hors périmètre
+     * de cette passe et consigné.
+     *
+     * `$overwrite` : chemins dont l'utilisateur a explicitement accepté
+     * l'écrasement après avoir vu le diff. **Un conflit non accepté n'arrête
+     * pas la régénération** : le fichier est laissé intact et signalé dans
+     * `skipped`, conformément à la spec 01 §5.4 (« régénérer uniquement les
+     * nouveaux fichiers, jamais d'écrasement silencieux »). C'est à
+     * l'appelant de décider s'il veut d'abord montrer le diff — cette Action,
+     * elle, ne bloque jamais.
+     *
+     * @param  list<string>  $overwrite
+     * @return array{written: list<string>, skipped: list<string>}
+     */
+    public function __invoke(ModuleBlueprintDraft $draft, array $overwrite = []): array
     {
         $blueprint = ModuleBlueprint::fromJson((string) json_encode($draft->migratedBlueprint()));
 
-        $name = ($this->generator)($blueprint);
+        $result = $this->generator->write($blueprint, $overwrite);
+        $name = (string) $blueprint->name();
 
-        ($this->install)($name);
-        $module = ($this->activate)($name);
+        if (! $draft->isGenerated()) {
+            ($this->install)($name);
+            $module = ($this->activate)($name);
 
-        $draft->module_id = $module->id;
+            $draft->module_id = $module->id;
+        }
+
         $draft->generated_at = now();
         $draft->save();
 
-        $this->audit->record('studio.draft.generated', $draft, ['module' => $name]);
+        $this->audit->record('studio.draft.generated', $draft, [
+            'module' => $name,
+            'written' => count($result['written']),
+            'skipped' => $result['skipped'],
+            'overwritten' => $overwrite,
+        ]);
 
-        return $draft;
+        return $result;
     }
 }

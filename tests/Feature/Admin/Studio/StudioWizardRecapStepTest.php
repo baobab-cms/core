@@ -126,18 +126,29 @@ it('creates the permissions declared by the wizard when the module is installed'
         ->toBe(['fleet.cars.view', 'fleet.cars.create', 'fleet.cars.update', 'fleet.cars.delete', 'fleet.cars.publish']);
 });
 
-it('refuses to generate twice from the same draft', function () {
+/**
+ * La Pass B5 refusait toute seconde génération (409) en renvoyant la
+ * régénération à la Pass C. Celle-ci l'a livrée : générer deux fois est
+ * désormais légitime, et n'installe ni ne réactive une seconde fois — le
+ * détail des conflits est couvert par `StudioRegenerationConflictTest`.
+ */
+it('allows a second generation, without reinstalling the module', function () {
     $draft = studioRecapDraft();
     $actor = studioRecapActor();
 
     $this->actingAs($actor, 'baobab')->post(route('admin.studio.generate', $draft))->assertRedirect();
 
+    $moduleId = $draft->fresh()->module_id;
+
     $this->actingAs($actor, 'baobab')
         ->post(route('admin.studio.generate', $draft->fresh()))
-        ->assertStatus(409);
+        ->assertRedirect(route('admin.studio.step.show', [$draft, 9]));
+
+    expect($draft->fresh()->module_id)->toBe($moduleId)
+        ->and(Module::where('name', 'garage/fleet')->count())->toBe(1);
 });
 
-it('shows the already-generated state instead of the preview once generated', function () {
+it('keeps showing the preview once generated, since it can now be regenerated', function () {
     $draft = studioRecapDraft();
     $actor = studioRecapActor();
 
@@ -147,7 +158,9 @@ it('shows the already-generated state instead of the preview once generated', fu
         ->get(route('admin.studio.step.show', [$draft->fresh(), 9]))
         ->assertOk()
         ->assertSee(__('baobab::admin.studio.recap.already_generated'))
-        ->assertDontSee(__('baobab::admin.studio.recap.generate_action'));
+        ->assertSee(__('baobab::admin.studio.recap.regenerate_action'))
+        // L'aperçu reste : il décrit ce qu'une régénération réécrirait.
+        ->assertSee('src/Models/Car.php', false);
 });
 
 /**

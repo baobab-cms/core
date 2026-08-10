@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Studio\Generator;
 
+use Baobab\ContentTypes\Exceptions\GeneratedFileConflictException;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Generator\GeneratedFileChecksums;
 use Baobab\ContentTypes\Generator\MigrationTimestamp;
@@ -52,18 +53,99 @@ final class ModuleGenerator
     ) {}
 
     /**
+     * Génération **stricte** : le moindre fichier modifié à la main fait
+     * échouer l'appel sans rien écrire.
+     *
+     * C'est le contrat de la CLI `module:build`, inchangé depuis la Pass A, et
+     * il doit le rester : au terminal il n'y a ni diff ni case à cocher, donc
+     * sauter un fichier en silence serait le symétrique exact de l'écrasement
+     * silencieux qu'on interdit — l'utilisateur croirait avoir régénéré. Le
+     * wizard, lui, passe par `write()`, qui sait sauter parce qu'il a d'abord
+     * montré ce qu'il sautait.
+     *
      * @return string Le "name" (vendor/slug) du module généré, à passer à InstallModule.
+     *
+     * @throws GeneratedFileConflictException
      */
     public function __invoke(ModuleBlueprint $blueprint): string
     {
-        $name = (string) $blueprint->name();
-        $moduleDir = $this->moduleDir($name);
+        $moduleDir = $this->moduleDir((string) $blueprint->name());
 
         foreach ($this->plan($blueprint) as $relativePath => $contents) {
             $this->checksums->write($moduleDir, $relativePath, $contents);
         }
 
-        return $name;
+        return (string) $blueprint->name();
+    }
+
+    /**
+     * Écrit le plan et **retourne ce qui a été écrit et ce qui a été laissé
+     * intact**. Le produit peut ainsi dire ce qu'il a fait au lieu d'afficher
+     * un « Terminé ✓ » (direction visuelle §11).
+     *
+     * Règle appliquée, celle de la spec 01 §5.4 : **régénérer ce qui est sûr,
+     * ne jamais écraser silencieusement une modification manuelle**. Un
+     * fichier en conflit qui ne figure pas dans `$overwrite` est donc
+     * **sauté** — pas une raison d'abandonner toute la régénération. Le
+     * premier jet de la Pass C bloquait l'ensemble, ce qui contredisait à la
+     * fois la spec et le texte de l'écran de conflit.
+     *
+     * `$overwrite` liste les chemins dont l'utilisateur a explicitement
+     * accepté l'écrasement après avoir vu le diff : eux seuls passent outre
+     * l'anti-écrasement, fichier par fichier — jamais un `force` global, qui
+     * reviendrait à désarmer la protection entière pour un seul conflit
+     * accepté.
+     *
+     * @param  list<string>  $overwrite
+     * @return array{written: list<string>, skipped: list<string>}
+     */
+    public function write(ModuleBlueprint $blueprint, array $overwrite = []): array
+    {
+        $moduleDir = $this->moduleDir((string) $blueprint->name());
+
+        $written = [];
+        $skipped = [];
+
+        foreach ($this->plan($blueprint) as $relativePath => $contents) {
+            $accepted = in_array($relativePath, $overwrite, true);
+
+            if (! $accepted && $this->checksums->conflicts($moduleDir, $relativePath)) {
+                $skipped[] = $relativePath;
+
+                continue;
+            }
+
+            $this->checksums->write($moduleDir, $relativePath, $contents, $accepted);
+            $written[] = $relativePath;
+        }
+
+        return ['written' => $written, 'skipped' => $skipped];
+    }
+
+    /**
+     * Chemins du plan qui écraseraient une modification manuelle, avec les
+     * deux versions à comparer. Vide tant que le module n'a jamais été généré.
+     *
+     * @return array<string, array{disk: string, generated: string}>
+     */
+    public function conflicts(ModuleBlueprint $blueprint): array
+    {
+        $moduleDir = $this->moduleDir((string) $blueprint->name());
+
+        $conflicts = [];
+
+        foreach ($this->plan($blueprint) as $relativePath => $contents) {
+            if ($this->checksums->conflicts($moduleDir, $relativePath)) {
+                $conflicts[$relativePath] = [
+                    'disk' => (string) file_get_contents($moduleDir.'/'.$relativePath),
+                    'generated' => $contents,
+                ];
+            }
+        }
+
+        ksort($conflicts);
+
+        return $conflicts;
     }
 
     /**

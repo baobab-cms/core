@@ -229,6 +229,11 @@ Route::middleware('can:baobab.system.studio.manage')
         // Générer n'est pas enregistrer une étape : route distincte du cycle
         // `step.update`, qui ne fait qu'écrire dans le blueprint (Pass B5).
         Route::post('/{draft}/generate', [StudioController::class, 'generate'])->name('generate');
+        // Seconde sortie du Studio (spec-modules §5.3) : l'archive se construit
+        // depuis le plan, sans passer par `/modules` — donc disponible qu'un
+        // brouillon ait été généré ou non.
+        Route::get('/{draft}/download', [StudioController::class, 'download'])->name('download');
+        Route::get('/{draft}/conflicts', [StudioController::class, 'conflicts'])->name('conflicts');
     });
 
 Route::middleware('can:baobab.users.impersonate')
