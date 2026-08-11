@@ -84,6 +84,7 @@ use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
 use Baobab\Modules\ModuleDiscovery;
 use Baobab\Notify\Notifier;
+use Baobab\Rendering\Actions\RenderServerError;
 use Baobab\Rendering\PublicRouteRegistrar;
 use Baobab\Scheduler\SchedulerRegistrar;
 use Baobab\Search\SearchRegistry;
@@ -121,6 +122,7 @@ use Baobab\Widgets\Models\WidgetInstance;
 use Baobab\Widgets\WidgetRegistry;
 use BladeUI\Icons\BladeIconsServiceProvider;
 use Davidhsianturi\BladeBootstrapIcons\BladeBootstrapIconsServiceProvider;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Config\Repository;
@@ -129,6 +131,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Exceptions\Handler;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Collection;
@@ -143,6 +146,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Intervention\Image\ImageManager;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 use Laravel\Sanctum\Sanctum;
@@ -168,6 +172,8 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionServiceProvider;
 use Spatie\Sitemap\SitemapServiceProvider;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 class BaobabServiceProvider extends ServiceProvider
@@ -248,6 +254,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerApiRateLimiter();
         $this->loadApiRoutes();
         $this->registerApiExceptionRendering();
+        $this->registerPublicErrorRendering();
         $this->registerApiDocsRoutes();
         $this->configureScout();
         $this->registerThemePreviewRoutes();
@@ -706,6 +713,63 @@ class BaobabServiceProvider extends ServiceProvider
         $handler->renderable(fn (Throwable $e, Request $request) => $request->is('api/*') || $request->is('graphql')
             ? $this->app->make(ProblemDetailsRenderer::class)->render($e)
             : null);
+    }
+
+    /**
+     * Page 500 des surfaces publiques (spec 19 §6.4).
+     *
+     * Passe par `renderable()` et non par le namespace `errors` de Laravel,
+     * pour une raison précise : ce namespace est construit depuis
+     * `config('view.paths')`, auquel le thème actif est **prépendu** (spec 03
+     * §5) — un thème pourrait donc intercepter la page d'erreur, alors que la
+     * spec la veut non surchargeable. Une panne serveur se sert sans thème,
+     * puisque c'est peut-être le thème qui a planté.
+     *
+     * Quatre abstentions, et elles ne sont pas décoratives. Un `renderable()`
+     * s'exécute **avant** le `match(true)` du handler de Laravel : sans ces
+     * gardes, on intercepterait les redirections d'authentification et les
+     * retours de validation, cassant tous les formulaires du produit.
+     *
+     * - `app.debug` actif → la trace du développeur prime, toujours ;
+     * - API et GraphQL → contrat RFC 9457, rendu juste au-dessus ;
+     * - les trois exceptions qui sont les trois bras du `match` de Laravel
+     *   (`HttpResponseException`, `AuthenticationException`,
+     *   `ValidationException`) → leur rendu natif est le bon ;
+     * - toute `HttpException` sous 500 (404, 403, 419…) → elles ont déjà leur
+     *   propre chemin, dont le 404 public du Core.
+     */
+    private function registerPublicErrorRendering(): void
+    {
+        /** @var Handler $handler */
+        $handler = $this->app->make(ExceptionHandler::class);
+
+        $handler->renderable(function (Throwable $e, Request $request): ?SymfonyResponse {
+            if ((bool) config('app.debug')) {
+                return null;
+            }
+
+            if ($request->is('api/*') || $request->is('graphql')) {
+                return null;
+            }
+
+            $adminPath = (string) config('baobab.admin.path', 'admin');
+
+            if ($request->is($adminPath) || $request->is($adminPath.'/*')) {
+                return null;
+            }
+
+            if ($e instanceof HttpResponseException
+                || $e instanceof AuthenticationException
+                || $e instanceof ValidationException) {
+                return null;
+            }
+
+            if ($e instanceof HttpExceptionInterface && $e->getStatusCode() < 500) {
+                return null;
+            }
+
+            return $this->app->make(RenderServerError::class)();
+        });
     }
 
     /**

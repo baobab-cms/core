@@ -3,6 +3,23 @@
         {{ __('baobab::admin.admin_bar.dashboard') }}
     </a>
 
+    {{--
+        Diagnostic réservé à qui peut agir (spec 19 §6.5) : ce message vivait
+        auparavant sur la page publique, où un visiteur le lisait sans pouvoir
+        rien en faire.
+    --}}
+    @if ($noActiveTheme)
+        <span style="color: #f0c33c;">
+            {{ __('baobab::rendering.no_active_theme_notice') }}
+
+            @if ($canManageThemes)
+                <a href="{{ route('admin.themes.index') }}" style="color: #f0c33c;">
+                    {{ __('baobab::rendering.no_active_theme_action') }}
+                </a>
+            @endif
+        </span>
+    @endif
+
     <div style="display: flex; align-items: center; gap: 12px;">
         <span style="color: #a7aaad;">{{ $userName }}</span>
 
