@@ -1418,6 +1418,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            if ($user->can('baobab.system.modules.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -17,
+                    label: __('baobab::admin.sidebar.modules'),
+                    icon: 'bi-boxes',
+                    url: route('admin.modules.index'),
+                    order: -8,
+                );
+            }
+
             return $items->concat($coreItems);
         });
     }

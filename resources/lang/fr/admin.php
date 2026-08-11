@@ -66,6 +66,7 @@ return [
         'webhooks' => 'Webhooks',
         'search' => 'Recherche',
         'studio' => 'Studio',
+        'modules' => 'Modules',
         'toggle_collapse' => 'Réduire/étendre la barre latérale',
     ],
 
@@ -817,6 +818,49 @@ return [
             'cancel' => 'Annuler, ne rien écraser',
             'confirm' => 'Écraser les fichiers cochés',
         ],
+    ],
+
+    'modules' => [
+        'title' => 'Modules',
+        'intro' => 'Les modules trouvés dans modules/ et dans vendor/. Installer exécute les migrations du module et enregistre ses permissions ; activer charge son code.',
+        'empty' => 'Aucun module trouvé.',
+
+        'column_module' => 'Module',
+        'column_type' => 'Type',
+        'column_status' => 'Statut',
+        'column_actions' => 'Actions',
+
+        'type_theme' => 'Thème',
+        'type_content-type' => 'Content Type',
+
+        'status_discovered' => 'Sur disque',
+        'status_installed' => 'Installé',
+        'status_inactive' => 'Inactif',
+        'status_active' => 'Actif',
+
+        'source_local' => 'modules/',
+        'source_composer' => 'vendor/',
+        'version_label' => 'v:version',
+        'requires_label' => 'Requiert : :modules',
+        'missing_files' => 'Fichiers absents du disque — seule la désinstallation reste possible.',
+
+        'install_action' => 'Installer',
+        'activate_action' => 'Activer',
+        'deactivate_action' => 'Désactiver',
+        'uninstall_action' => 'Désinstaller',
+        'theme_link' => 'Activer dans Thèmes',
+        'theme_hint' => 'L\'activation d\'un thème passe par l\'écran Thèmes : un seul thème peut être actif à la fois.',
+
+        'uninstall_confirm_title' => 'Désinstaller :module ?',
+        'uninstall_confirm_description' => 'Le module est retiré de la liste et ses permissions sont détachées. Ses données restent en base, sauf si vous demandez explicitement leur suppression ci-dessous.',
+        'uninstall_purge_label' => 'Supprimer aussi les données (rollback des migrations du module)',
+        'uninstall_purge_warning' => 'Irréversible : les tables créées par le module sont supprimées avec leur contenu.',
+
+        'installed' => 'Module installé.',
+        'activated' => 'Module activé.',
+        'deactivated' => 'Module désactivé.',
+        'uninstalled' => 'Module désinstallé. Ses données sont restées en base.',
+        'uninstalled_purged' => 'Module désinstallé et données supprimées.',
     ],
 
     'themes' => [

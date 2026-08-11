@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Baobab\Console\Commands;
 
-use Baobab\Modules\Models\Module;
-use Baobab\Modules\ModuleDiscovery;
+use Baobab\Modules\ModuleInventory;
+use Baobab\Modules\ModuleInventoryEntry;
 use Illuminate\Console\Command;
 
 final class ModuleListCommand extends Command
@@ -14,37 +14,23 @@ final class ModuleListCommand extends Command
 
     protected $description = 'List all installed modules and discovered (not yet installed) ones.';
 
-    public function handle(ModuleDiscovery $discovery): int
+    public function handle(ModuleInventory $inventory): int
     {
-        $installed = Module::all()->keyBy('name');
+        $entries = $inventory->all();
 
-        $rows = $installed->map(fn (Module $m) => [
-            $m->name,
-            $m->title,
-            $m->version,
-            $m->type,
-            $m->status,
-        ])->values()->toArray();
-
-        $discovered = $discovery->scan()->filter(
-            fn ($d) => ! $installed->has($d->manifest->name())
-        );
-
-        foreach ($discovered as $d) {
-            $rows[] = [
-                $d->manifest->name(),
-                $d->manifest->title(),
-                $d->manifest->version(),
-                $d->manifest->type(),
-                '<comment>discovered</comment>',
-            ];
-        }
-
-        if (empty($rows)) {
+        if ($entries === []) {
             $this->info('No modules found.');
 
             return self::SUCCESS;
         }
+
+        $rows = array_map(fn (ModuleInventoryEntry $entry): array => [
+            $entry->name,
+            $entry->title,
+            $entry->version,
+            $entry->type,
+            $entry->status === 'discovered' ? '<comment>discovered</comment>' : $entry->status,
+        ], $entries);
 
         $this->table(['Name', 'Title', 'Version', 'Type', 'Status'], $rows);
 

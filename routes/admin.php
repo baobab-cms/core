@@ -15,6 +15,7 @@ use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
 use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
 use Baobab\Admin\Menus\Http\Controllers\MenusController;
+use Baobab\Admin\Modules\Http\Controllers\ModulesController;
 use Baobab\Admin\Notifications\Http\Controllers\NotificationController;
 use Baobab\Admin\Rendering\Http\Controllers\ReadingSettingsController;
 use Baobab\Admin\Search\Http\Controllers\OmniboxController;
@@ -234,6 +235,26 @@ Route::middleware('can:baobab.system.studio.manage')
         // brouillon ait été généré ou non.
         Route::get('/{draft}/download', [StudioController::class, 'download'])->name('download');
         Route::get('/{draft}/conflicts', [StudioController::class, 'conflicts'])->name('conflicts');
+    });
+
+// Cycle de vie générique des modules (spec-modules §3, M8 point 9). Le nom d'un
+// module est `vendor/slug` : deux segments plutôt qu'un paramètre à barre
+// oblique échappée. La contrainte de route reste large — c'est l'inventaire qui
+// décide de l'existence, pas une regex d'URL.
+Route::middleware('can:baobab.system.modules.manage')
+    ->prefix('modules')
+    ->name('modules.')
+    ->group(function (): void {
+        Route::get('/', [ModulesController::class, 'index'])->name('index');
+
+        Route::prefix('/{vendor}/{slug}')
+            ->where(['vendor' => '[a-z0-9._-]+', 'slug' => '[a-z0-9._-]+'])
+            ->group(function (): void {
+                Route::post('/install', [ModulesController::class, 'install'])->name('install');
+                Route::post('/activate', [ModulesController::class, 'activate'])->name('activate');
+                Route::post('/deactivate', [ModulesController::class, 'deactivate'])->name('deactivate');
+                Route::delete('/', [ModulesController::class, 'uninstall'])->name('uninstall');
+            });
     });
 
 Route::middleware('can:baobab.users.impersonate')

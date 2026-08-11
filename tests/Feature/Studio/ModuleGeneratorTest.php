@@ -51,6 +51,41 @@ it('generates a complete module tree for a single-entity blueprint', function ()
         ]);
 });
 
+/**
+ * Défaut relevé le 10 août 2026 en vérification navigateur : chaque
+ * régénération inventait un horodatage neuf, laissant un fichier de plus pour
+ * la même table. La base ne connaissant que le premier, la réinstallation
+ * suivante rejouait un `CREATE TABLE` sur une table déjà là.
+ */
+it('does not pile up a second create-table migration when regenerated', function () {
+    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson());
+    $moduleDir = generatedModulesPath().'/garage-fleet';
+
+    app(ModuleGenerator::class)($blueprint);
+
+    $first = File::glob($moduleDir.'/database/migrations/*.php');
+
+    app(ModuleGenerator::class)($blueprint);
+    app(ModuleGenerator::class)($blueprint);
+
+    expect(File::glob($moduleDir.'/database/migrations/*.php'))->toBe($first);
+});
+
+/**
+ * Corollaire : l'aperçu de l'étape 9 et l'archive ZIP, tous deux construits
+ * depuis `plan()`, annoncent désormais le **vrai** nom du fichier existant.
+ */
+it('plans the existing migration filename once the module is on disk', function () {
+    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson());
+
+    app(ModuleGenerator::class)($blueprint);
+
+    $onDisk = basename((string) File::glob(generatedModulesPath().'/garage-fleet/database/migrations/*.php')[0]);
+
+    expect(array_keys(app(ModuleGenerator::class)->plan($blueprint)))
+        ->toContain("database/migrations/{$onDisk}");
+});
+
 it('omits permissions from auto CRUD when disabled, keeping only custom ones', function () {
     $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson([
         // Sans surface autorisée : couper `auto_crud` en laissant l'admin

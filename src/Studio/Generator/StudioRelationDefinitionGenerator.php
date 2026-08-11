@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Studio\Generator;
 
-use Baobab\ContentTypes\Generator\MigrationTimestamp;
+use Baobab\ContentTypes\Generator\MigrationFilename;
 use Baobab\ContentTypes\Relations\RelationType;
 use Illuminate\Support\Str;
 
@@ -80,7 +80,7 @@ final class StudioRelationDefinitionGenerator
      * @param  ResolvedTarget  $target
      * @return array{filename: string, contents: string}|null
      */
-    public function pivotMigration(array $relation, string $ownerKey, string $ownerTable, array $target): ?array
+    public function pivotMigration(array $relation, string $ownerKey, string $ownerTable, array $target, string $moduleDir): ?array
     {
         if (RelationType::from((string) $relation['type']) !== RelationType::ManyToMany) {
             return null;
@@ -119,7 +119,7 @@ final class StudioRelationDefinitionGenerator
         PHP;
 
         return [
-            'filename' => 'database/migrations/'.MigrationTimestamp::generate()."_create_{$pivotTable}_table.php",
+            'filename' => MigrationFilename::create($moduleDir, $pivotTable),
             'contents' => $contents,
         ];
     }

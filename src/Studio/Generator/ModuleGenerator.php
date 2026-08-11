@@ -7,7 +7,7 @@ namespace Baobab\Studio\Generator;
 use Baobab\ContentTypes\Exceptions\GeneratedFileConflictException;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Generator\GeneratedFileChecksums;
-use Baobab\ContentTypes\Generator\MigrationTimestamp;
+use Baobab\ContentTypes\Generator\MigrationFilename;
 use Baobab\ContentTypes\Generator\StubRenderer;
 use Baobab\Studio\Blueprint\ModuleBlueprint;
 use Baobab\Studio\Relations\StudioRelationTargetResolver;
@@ -162,7 +162,12 @@ final class ModuleGenerator
      * **Une seule chose n'est pas reproductible d'un appel à l'autre** : le
      * nom d'une migration porte un horodatage et un suffixe aléatoire
      * (`MigrationTimestamp`), donc l'aperçu et l'écriture ne montrent pas la
-     * même seconde. L'écran le dit plutôt que de faire semblant.
+     * même seconde. L'écran le dit plutôt que de faire semblant. **Restreint
+     * le 10 août 2026** : ça ne vaut plus que pour la toute première
+     * génération. Dès qu'un module existe sur disque, `MigrationFilename`
+     * réutilise le nom déjà écrit — sans quoi chaque régénération laissait un
+     * doublon de la migration de création, que l'installation suivante
+     * rejouait sur une table déjà là (suivi n° 116).
      *
      * @return array<string, string>
      */
@@ -187,7 +192,7 @@ final class ModuleGenerator
         foreach ($entities as $entity) {
             $files = [
                 ...$files,
-                ...$this->planMigration($entity, $siblings),
+                ...$this->planMigration($entity, $siblings, $this->moduleDir($name)),
                 ...$this->planModel($entity, $namespace, $siblings),
                 ...$this->planPolicy($entity, $namespace, $slug, $blueprint),
             ];
@@ -363,14 +368,14 @@ final class ModuleGenerator
      * @param  list<array{key: string, table: string}>  $siblings
      * @return array<string, string>
      */
-    private function planMigration(array $entity, array $siblings): array
+    private function planMigration(array $entity, array $siblings, string $moduleDir): array
     {
         $table = (string) $entity['table'];
         $options = $entity['options'] ?? [];
         $uuid = (bool) ($options['uuid'] ?? false);
 
         $files = [
-            'database/migrations/'.MigrationTimestamp::generate()."_create_{$table}_table.php" => (new StubRenderer)->render(StudioStubs::path('migration'), [
+            MigrationFilename::create($moduleDir, $table) => (new StubRenderer)->render(StudioStubs::path('migration'), [
                 'table_name' => $table,
                 'id_column' => $uuid
                     ? "            \$table->uuid('id')->primary();"
@@ -386,7 +391,7 @@ final class ModuleGenerator
             ]),
         ];
 
-        foreach ($this->pivotMigrations($entity, $siblings) as $pivot) {
+        foreach ($this->pivotMigrations($entity, $siblings, $moduleDir) as $pivot) {
             $files[$pivot['filename']] = $pivot['contents'];
         }
 
@@ -672,7 +677,7 @@ final class ModuleGenerator
      * @param  list<array{key: string, table: string}>  $siblings
      * @return list<array{filename: string, contents: string}>
      */
-    private function pivotMigrations(array $entity, array $siblings): array
+    private function pivotMigrations(array $entity, array $siblings, string $moduleDir): array
     {
         $ownerKey = (string) $entity['key'];
         $ownerTable = (string) $entity['table'];
@@ -683,6 +688,7 @@ final class ModuleGenerator
                 $ownerKey,
                 $ownerTable,
                 $this->relationTargets->resolve((string) $relation['target'], $siblings),
+                $moduleDir,
             ))
             ->all()));
     }

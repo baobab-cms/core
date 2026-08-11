@@ -49,7 +49,7 @@ final class ContentTypeModuleGenerator
 
         $this->checksums->write(
             $moduleDir,
-            'database/migrations/'.MigrationTimestamp::generate()."_create_{$contentType->table_name}_table.php",
+            MigrationFilename::create($moduleDir, $contentType->table_name),
             $this->renderer->render(StubRenderer::stubPath('migration'), [
                 'table_name' => $contentType->table_name,
                 'unpublish_at_column' => $contentType->unpublishAtEnabled()

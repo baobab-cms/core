@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\ContentTypes\Relations;
 
-use Baobab\ContentTypes\Generator\MigrationTimestamp;
+use Baobab\ContentTypes\Generator\MigrationFilename;
 use Baobab\ContentTypes\Models\ContentType;
 use Illuminate\Support\Str;
 
@@ -139,7 +139,9 @@ final class RelationDefinitionGenerator
         PHP;
 
         return [
-            'filename' => 'database/migrations/'.MigrationTimestamp::generate()."_create_{$pivotTable}_table.php",
+            // La table pivot est écrite dans le module du déclarant : c'est
+            // donc son dossier qui décide du nom réutilisable.
+            'filename' => MigrationFilename::create($owner->moduleDir(), $pivotTable),
             'contents' => $contents,
         ];
     }
