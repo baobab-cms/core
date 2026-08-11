@@ -852,9 +852,19 @@ return [
         'theme_hint' => 'L\'activation d\'un thème passe par l\'écran Thèmes : un seul thème peut être actif à la fois.',
 
         'uninstall_confirm_title' => 'Désinstaller :module ?',
-        'uninstall_confirm_description' => 'Le module est retiré de la liste et ses permissions sont détachées. Ses données restent en base, sauf si vous demandez explicitement leur suppression ci-dessous.',
+        'uninstall_confirm_description' => 'Le module est retiré de la liste et ses permissions sont détachées. Ses données et ses fichiers restent en place, sauf si vous demandez explicitement leur suppression ci-dessous.',
         'uninstall_purge_label' => 'Supprimer aussi les données (rollback des migrations du module)',
         'uninstall_purge_warning' => 'Irréversible : les tables créées par le module sont supprimées avec leur contenu.',
+        'uninstall_delete_files_label' => 'Supprimer aussi les fichiers du module sur le serveur',
+        'uninstall_delete_files_warning' => 'Le dossier du module est effacé. Sans réinstallation depuis une archive, le module n\'est plus récupérable. Sans effet sur un module installé par Composer.',
+
+        'upload_title' => 'Envoyer une archive',
+        'upload_field' => 'archive du module',
+        'upload_label' => 'Archive .zip du module',
+        'upload_hint' => 'L\'archive doit contenir un module.json, à sa racine ou dans un unique dossier. Le module est déposé sur le serveur sans être installé : il apparaîtra ci-dessous avec un bouton Installer.',
+        'upload_warning' => 'Un module est du code qui s\'exécutera avec tous les droits du site. N\'envoyez que des archives dont vous connaissez la provenance : Baobab en vérifie la forme, jamais les intentions.',
+        'upload_action' => 'Envoyer',
+        'uploaded' => 'Archive déposée. Le module est prêt à être installé.',
 
         'installed' => 'Module installé.',
         'activated' => 'Module activé.',

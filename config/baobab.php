@@ -38,6 +38,25 @@ return [
                 base_path('vendor/*/*'),
             ],
         ],
+
+        /*
+        | Upload d'un module en archive .zip depuis l'admin (spec 01 §2, §4 —
+        | M8 point 9, Pass B). Racines d'écriture, choisies d'après le `type`
+        | déclaré par le manifest : un thème va dans themes/, tout le reste
+        | dans modules/. Séparées des chemins de découverte ci-dessus, et de
+        | studio.modules_path plus bas, pour la même raison qu'eux — rester
+        | surchargeables indépendamment en test (répertoire temporaire).
+        |
+        | Ces deux racines bornent aussi la suppression des fichiers à la
+        | désinstallation : rien n'est jamais supprimé en dehors d'elles.
+        |
+        | max_size : taille maximale de l'archive acceptée, en octets.
+        */
+        'upload' => [
+            'modules_path' => env('BAOBAB_MODULE_UPLOAD_PATH', base_path('modules')),
+            'themes_path' => env('BAOBAB_THEME_UPLOAD_PATH', base_path('themes')),
+            'max_size' => (int) env('BAOBAB_MODULE_UPLOAD_MAX_SIZE', 20 * 1024 * 1024),
+        ],
     ],
 
     /*

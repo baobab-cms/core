@@ -8,18 +8,23 @@ use Baobab\Actions\Modules\ActivateModule;
 use Baobab\Actions\Modules\DeactivateModule;
 use Baobab\Actions\Modules\InstallModule;
 use Baobab\Actions\Modules\UninstallModule;
+use Baobab\Actions\Modules\UploadModuleArchive;
 use Baobab\Mail\Exceptions\InvalidMailTemplateException;
 use Baobab\Modules\Exceptions\IncompatibleModuleException;
+use Baobab\Modules\Exceptions\InvalidManifestException;
+use Baobab\Modules\Exceptions\InvalidModuleArchiveException;
 use Baobab\Modules\Exceptions\ModuleDependencyCycleException;
 use Baobab\Modules\Exceptions\ModuleHasActiveDependentsException;
 use Baobab\Modules\Exceptions\ModuleNotFoundException;
 use Baobab\Modules\Exceptions\ModuleStillActiveException;
 use Baobab\Modules\ModuleInventory;
+use Baobab\Modules\ModuleUploadPaths;
 use Baobab\Notify\Exceptions\InvalidNotificationException;
 use Baobab\Themes\Validation\Exceptions\ThemeValidationFailedException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Écran « Modules » (spec-modules §3, M8 point 9, Pass A) — cycle de vie
@@ -66,12 +71,39 @@ final class ModulesController
     public function uninstall(Request $request, string $vendor, string $slug, UninstallModule $action): RedirectResponse
     {
         // Le rollback des migrations détruit les données du module : la spec §3
-        // exige une confirmation explicite, jamais un défaut implicite.
+        // exige une confirmation explicite, jamais un défaut implicite. Même
+        // règle pour la suppression des fichiers, ajoutée en Pass B.
         $purge = $request->boolean('purge');
+        $deleteFiles = $request->boolean('delete_files');
 
         return $this->run(
-            fn () => $action("{$vendor}/{$slug}", $purge),
+            fn () => $action("{$vendor}/{$slug}", $purge, $deleteFiles),
             $purge ? 'uninstalled_purged' : 'uninstalled',
+        );
+    }
+
+    /**
+     * Dépose une archive `.zip` là où la découverte trouvera le module
+     * (spec §2). N'installe pas : l'écran le montrera « Sur disque », avec son
+     * bouton Installer, comme n'importe quel module déposé à la main.
+     */
+    public function upload(Request $request, UploadModuleArchive $action): RedirectResponse
+    {
+        $request->validate([
+            // La taille réelle et le format sont vérifiés sur les octets par
+            // l'Action ; cette règle-ci ne fait qu'éviter un aller-retour
+            // évident, elle n'est pas le garde-fou. La borne passe par
+            // `ModuleUploadPaths` : lue directement, une configuration publiée
+            // sans le bloc `upload` donnait `max:0`, qui refusait tout.
+            'archive' => ['required', 'file', 'max:'.intdiv(ModuleUploadPaths::maxSize(), 1024)],
+        ], [], ['archive' => __('baobab::admin.modules.upload_field')]);
+
+        /** @var UploadedFile $archive */
+        $archive = $request->file('archive');
+
+        return $this->run(
+            fn () => $action((string) $archive->getRealPath()),
+            'uploaded',
         );
     }
 
@@ -96,7 +128,9 @@ final class ModulesController
             ModuleStillActiveException|
             InvalidMailTemplateException|
             InvalidNotificationException|
-            ThemeValidationFailedException $exception
+            ThemeValidationFailedException|
+            InvalidModuleArchiveException|
+            InvalidManifestException $exception
         ) {
             session()->flash('toast', ['type' => 'error', 'message' => $exception->getMessage()]);
 

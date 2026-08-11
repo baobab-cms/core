@@ -8,6 +8,40 @@
     <x-baobab::page :title="__('baobab::admin.modules.title')">
         <p class="text-sm text-muted">{{ __('baobab::admin.modules.intro') }}</p>
 
+        <x-baobab::card class="mt-6" :header="__('baobab::admin.modules.upload_title')">
+            <x-baobab::form
+                method="POST"
+                action="{{ route('admin.modules.upload') }}"
+                enctype="multipart/form-data"
+                class="space-y-3"
+            >
+                <p class="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning-700">
+                    {{ __('baobab::admin.modules.upload_warning') }}
+                </p>
+
+                <div class="space-y-1">
+                    <label for="module-archive" class="block text-sm font-medium text-foreground">
+                        {{ __('baobab::admin.modules.upload_label') }}
+                    </label>
+
+                    <input
+                        id="module-archive"
+                        type="file"
+                        name="archive"
+                        accept=".zip,application/zip"
+                        required
+                        class="block w-full text-sm text-foreground file:mr-3 file:rounded-md file:border file:border-border file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-medium"
+                    >
+
+                    <p class="text-xs text-muted">{{ __('baobab::admin.modules.upload_hint') }}</p>
+                </div>
+
+                <x-baobab::button type="submit" variant="primary">
+                    {{ __('baobab::admin.modules.upload_action') }}
+                </x-baobab::button>
+            </x-baobab::form>
+        </x-baobab::card>
+
         @if (empty($modules))
             <x-baobab::empty-state class="mt-6" :message="__('baobab::admin.modules.empty')" />
         @else
@@ -120,6 +154,22 @@
                                         {{ __('baobab::admin.modules.uninstall_purge_label') }}
                                         <span class="mt-1 block text-xs text-danger">
                                             {{ __('baobab::admin.modules.uninstall_purge_warning') }}
+                                        </span>
+                                    </span>
+                                </label>
+
+                                {{--
+                                    Deux cases distinctes parce que ce sont deux pertes distinctes :
+                                    les données vivent en base, le code vit sur disque, et on peut
+                                    vouloir l'une sans l'autre (garder les données d'un module qu'on
+                                    réinstallera depuis une archive, par exemple).
+                                --}}
+                                <label class="mt-3 flex items-start gap-2 text-sm text-foreground">
+                                    <input type="checkbox" name="delete_files" value="1" class="mt-1">
+                                    <span>
+                                        {{ __('baobab::admin.modules.uninstall_delete_files_label') }}
+                                        <span class="mt-1 block text-xs text-danger">
+                                            {{ __('baobab::admin.modules.uninstall_delete_files_warning') }}
                                         </span>
                                     </span>
                                 </label>

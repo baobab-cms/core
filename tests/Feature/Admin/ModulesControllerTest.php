@@ -5,7 +5,9 @@ use Baobab\Actions\Modules\ActivateModule;
 use Baobab\Actions\Modules\InstallModule;
 use Baobab\Modules\Models\Module;
 use Baobab\Users\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -192,6 +194,107 @@ it('hides the themes link from an actor who cannot manage themes', function () {
         ->get(route('admin.modules.index'))
         ->assertOk()
         ->assertDontSee(__('baobab::admin.modules.theme_link'));
+});
+
+// --- Upload d'archive (Pass B) ----------------------------------------------
+
+function uploadTestPath(): string
+{
+    return sys_get_temp_dir().'/baobab-test-controller-upload';
+}
+
+function moduleArchive(): UploadedFile
+{
+    $path = uploadTestPath().'/archive.zip';
+    File::ensureDirectoryExists(dirname($path));
+
+    $zip = new ZipArchive;
+    $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $zip->addFromString('module.json', (string) json_encode([
+        'name' => 'acme/sent',
+        'title' => 'Sent',
+        'version' => '1.0.0',
+        'type' => 'module',
+        'provider' => 'Acme\\Sent\\SentServiceProvider',
+    ]));
+    $zip->close();
+
+    return new UploadedFile($path, 'sent.zip', 'application/zip', test: true);
+}
+
+it('accepts an uploaded archive and lists the module as available, without installing it', function () {
+    File::deleteDirectory(uploadTestPath());
+    config([
+        'baobab.modules.upload.modules_path' => uploadTestPath().'/modules',
+        'baobab.modules.paths' => ['local' => [uploadTestPath().'/modules/*']],
+    ]);
+
+    $this->actingAs(modulesActor(), 'baobab')
+        ->post(route('admin.modules.upload'), ['archive' => moduleArchive()])
+        ->assertRedirect(route('admin.modules.index'))
+        ->assertSessionHas('toast', fn (array $toast): bool => $toast['type'] === 'success');
+
+    expect(File::isFile(uploadTestPath().'/modules/acme-sent/module.json'))->toBeTrue()
+        ->and(Module::where('name', 'acme/sent')->exists())->toBeFalse();
+
+    File::deleteDirectory(uploadTestPath());
+});
+
+it('shows the archive refusal as a message instead of failing', function () {
+    File::deleteDirectory(uploadTestPath());
+    File::ensureDirectoryExists(uploadTestPath());
+    File::put(uploadTestPath().'/pas-un-zip.zip', 'contenu quelconque');
+
+    $this->actingAs(modulesActor(), 'baobab')
+        ->post(route('admin.modules.upload'), [
+            'archive' => new UploadedFile(uploadTestPath().'/pas-un-zip.zip', 'pas-un-zip.zip', 'application/zip', test: true),
+        ])
+        ->assertRedirect(route('admin.modules.index'))
+        ->assertSessionHas('toast', fn (array $toast): bool => $toast['type'] === 'error');
+
+    File::deleteDirectory(uploadTestPath());
+});
+
+it('denies the upload route without the modules permission', function () {
+    $this->actingAs(modulesActor([]), 'baobab')
+        ->post(route('admin.modules.upload'))
+        ->assertForbidden();
+});
+
+it('offers the upload form on the screen, with its warning about running code', function () {
+    $this->actingAs(modulesActor(), 'baobab')
+        ->get(route('admin.modules.index'))
+        ->assertOk()
+        ->assertSee(__('baobab::admin.modules.upload_action'))
+        ->assertSee(__('baobab::admin.modules.upload_warning'));
+});
+
+/**
+ * Installé depuis une **copie** des fixtures : effacer pour de vrai est tout
+ * l'intérêt du test, et les fixtures du dépôt ne sont pas jetables.
+ */
+it('deletes the module files when the screen asks for it', function () {
+    $root = uploadTestPath().'/modules';
+    File::deleteDirectory(uploadTestPath());
+    File::copyDirectory(fixtureModulesPath('local/acme-blog'), $root.'/acme-blog');
+
+    config([
+        'baobab.modules.paths' => ['local' => [$root.'/*']],
+        'baobab.modules.upload.modules_path' => $root,
+    ]);
+
+    app(InstallModule::class)('acme/blog');
+
+    $this->actingAs(modulesActor(), 'baobab')
+        ->delete(route('admin.modules.uninstall', blogParams()), ['delete_files' => '1'])
+        ->assertRedirect(route('admin.modules.index'));
+
+    expect(Module::where('name', 'acme/blog')->exists())->toBeFalse()
+        ->and(File::exists($root.'/acme-blog'))->toBeFalse()
+        // Les fixtures d'origine, elles, sont intactes.
+        ->and(File::isFile(fixtureModulesPath('local/acme-blog/module.json')))->toBeTrue();
+
+    File::deleteDirectory(uploadTestPath());
 });
 
 /**

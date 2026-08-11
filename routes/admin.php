@@ -246,6 +246,7 @@ Route::middleware('can:baobab.system.modules.manage')
     ->name('modules.')
     ->group(function (): void {
         Route::get('/', [ModulesController::class, 'index'])->name('index');
+        Route::post('/upload', [ModulesController::class, 'upload'])->name('upload');
 
         Route::prefix('/{vendor}/{slug}')
             ->where(['vendor' => '[a-z0-9._-]+', 'slug' => '[a-z0-9._-]+'])
