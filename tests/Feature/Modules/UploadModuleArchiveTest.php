@@ -134,6 +134,80 @@ it('unwraps an archive whose module sits under a single top-level folder', funct
         ->and(File::exists(uploadModulesPath().'/acme-uploaded/acme-uploaded-main'))->toBeFalse();
 });
 
+// --- Transit et dépôt (suivi n° 123) ----------------------------------------
+
+/**
+ * Le défaut corrigé : le transit vivait dans `sys_get_temp_dir()`, et
+ * `File::moveDirectory()` est un `@rename()` — lequel échoue avec `EXDEV` dès
+ * que la source et la cible sont sur deux systèmes de fichiers. `/tmp` étant un
+ * tmpfs par défaut sur Debian et Ubuntu récents, l'upload échouait sur la
+ * configuration Linux majoritaire, en silence puisque le `@` avale le warning.
+ *
+ * On ne peut pas monter un tmpfs dans un test ; on vérifie donc l'invariant qui
+ * rend le cas impossible : le transit est **dans la racine de destination**,
+ * donc sur son système de fichiers par construction.
+ */
+it('stages inside the destination root, so the final move never crosses a filesystem', function () {
+    $staged = null;
+
+    File::partialMock()
+        ->shouldReceive('moveDirectory')
+        ->once()
+        ->andReturnUsing(function (string $from, string $to) use (&$staged): bool {
+            $staged = $from;
+
+            return rename($from, $to);
+        });
+
+    app(UploadModuleArchive::class)(makeModuleZip());
+
+    expect($staged)->toStartWith(uploadModulesPath().'/')
+        ->and(basename((string) $staged))->toStartWith('.baobab-upload-')
+        ->and(File::isFile(uploadModulesPath().'/acme-uploaded/module.json'))->toBeTrue();
+});
+
+/**
+ * Un dépôt qui échoue n'accuse plus l'archive : le message nomme le dossier et
+ * les droits d'écriture, seule cause plausible une fois le transit ramené dans
+ * la racine.
+ */
+it('says why the deposit failed, instead of blaming the archive', function () {
+    File::partialMock()->shouldReceive('moveDirectory')->once()->andReturnFalse();
+
+    try {
+        app(UploadModuleArchive::class)(makeModuleZip());
+        expect(false)->toBeTrue('Le dépôt aurait dû échouer.');
+    } catch (InvalidModuleArchiveException $exception) {
+        expect($exception->getMessage())->toContain(uploadModulesPath())
+            ->and($exception->getMessage())->toContain("droits d'écriture");
+    }
+
+    // Et le transit est nettoyé : un résidu vivrait désormais dans `modules/`.
+    expect(File::exists(uploadModulesPath().'/acme-uploaded'))->toBeFalse()
+        ->and(glob(uploadModulesPath().'/.baobab-upload-*'))->toBe([]);
+});
+
+it('creates the destination root when a fresh install has never had one', function () {
+    File::deleteDirectory(uploadModulesPath());
+
+    app(UploadModuleArchive::class)(makeModuleZip());
+
+    expect(File::isFile(uploadModulesPath().'/acme-uploaded/module.json'))->toBeTrue();
+});
+
+/**
+ * Le point du préfixe : `ModuleDiscovery` scanne par `glob(..., GLOB_ONLYDIR)`,
+ * qui n'apparie pas les entrées commençant par un point. Un transit abandonné
+ * par un processus tué reste donc invisible — sans quoi déplacer le transit
+ * dans `modules/` aurait échangé un défaut contre un autre.
+ */
+it('keeps an abandoned staging directory invisible to discovery', function () {
+    File::ensureDirectoryExists(uploadModulesPath().'/.baobab-upload-orphelin');
+    File::put(uploadModulesPath().'/.baobab-upload-orphelin/module.json', (string) json_encode(uploadManifest()));
+
+    expect(app(ModuleDiscovery::class)->scan()->has('acme/uploaded'))->toBeFalse();
+});
+
 // --- Refus de forme ---------------------------------------------------------
 
 it('refuses a file that is not a zip, whatever its name says', function () {

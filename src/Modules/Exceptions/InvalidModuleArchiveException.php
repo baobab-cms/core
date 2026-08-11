@@ -67,4 +67,15 @@ final class InvalidModuleArchiveException extends RuntimeException
     {
         return new self("L'extraction de l'archive a échoué ; rien n'a été installé.");
     }
+
+    /**
+     * L'extraction a réussi, c'est le dépôt du dossier qui a échoué. Distinguer
+     * les deux n'est pas cosmétique : le message précédent envoyait chercher un
+     * défaut dans l'archive alors que le problème est sur le serveur, et il a
+     * coûté une session de diagnostic (suivi n° 123).
+     */
+    public static function depositFailed(string $root): self
+    {
+        return new self("Le module n'a pas pu être déposé dans {$root} ; rien n'a été installé. Vérifiez que le serveur web a les droits d'écriture sur ce dossier.");
+    }
 }

@@ -27,10 +27,26 @@ use Illuminate\Support\Str;
  * la main dans `/modules`. Faire les trois d'un coup ferait de l'upload un
  * chemin d'installation parallèle, avec ses propres validations à maintenir.
  *
- * L'extraction se fait dans un dossier temporaire, puis le dossier complet est
+ * L'extraction se fait dans un dossier de transit, puis le dossier complet est
  * déplacé d'un bloc. Sans ça, une archive interrompue en cours d'extraction
  * laisserait un module à moitié écrit, que `ModuleDiscovery` listerait comme
  * découvrable.
+ *
+ * **Ce transit vit dans la racine de destination, jamais dans
+ * `sys_get_temp_dir()`.** `File::moveDirectory()` est un `@rename()`, et
+ * `rename()` échoue avec `EXDEV` dès que la source et la cible sont sur deux
+ * systèmes de fichiers différents. Or `/tmp` est un tmpfs par défaut sur Debian
+ * et Ubuntu récents, et php-fpm reçoit souvent un `/tmp` privé via
+ * `PrivateTmp=yes` : extraire dans le temp système puis déplacer vers
+ * `modules/` échouait donc sur la configuration Linux majoritaire, en silence
+ * puisque le `@` avale le warning. Défaut relevé le 11 août 2026 sur le serveur
+ * de recette, invisible sous Windows où tout vit sur le même volume (suivi
+ * n° 123). Stager dans la racine cible rend le déplacement intra-partition par
+ * construction, sans rien coûter à la propriété « tout ou rien ».
+ *
+ * Le nom du transit commence par un point : `ModuleDiscovery` scanne par
+ * `glob(..., GLOB_ONLYDIR)`, qui n'apparie pas les entrées commençant par un
+ * point. Un résidu laissé par un processus tué reste donc invisible au produit.
  *
  * Ce que cette Action ne vérifie pas : le **code**. Un module est du PHP qui
  * s'exécutera avec tous les privilèges de l'application ; analyse statique et
@@ -61,19 +77,23 @@ final class UploadModuleArchive
 
             $this->assertAvailable($name, $target);
 
-            $staging = self::stagingDirectory();
+            // La racine doit exister **avant** le transit, qui vit dedans : sur
+            // une installation neuve, `modules/` n'a jamais été créé, et
+            // `rename()` échouerait de toute façon sans son dossier parent.
+            $root = dirname($target);
+            File::ensureDirectoryExists($root);
+
+            $staging = self::stagingDirectory($root);
 
             try {
                 $archive->extractTo($staging);
 
-                // `moveDirectory()` est un `rename()` : il échoue si le dossier
-                // parent n'existe pas — cas d'une installation neuve où
-                // `modules/` n'a jamais été créé — et il le signale par un
-                // `false` qu'il serait facile d'ignorer. Les deux sont traités.
-                File::ensureDirectoryExists(dirname($target));
-
+                // `moveDirectory()` signale son échec par un `false` qu'il
+                // serait facile d'ignorer. Le transit étant désormais dans la
+                // même racine, il ne reste qu'une cause plausible — les droits
+                // d'écriture — et le message la nomme.
                 if (! File::moveDirectory($staging, $target)) {
-                    throw InvalidModuleArchiveException::extractionFailed();
+                    throw InvalidModuleArchiveException::depositFailed($root);
                 }
             } finally {
                 File::deleteDirectory($staging);
@@ -126,9 +146,13 @@ final class UploadModuleArchive
         return Str::slug(str_replace('/', '-', $name));
     }
 
-    private static function stagingDirectory(): string
+    /**
+     * @param  string  $root  Racine de destination — le transit y vit, pour que
+     *                        le `rename()` final ne traverse aucun montage.
+     */
+    private static function stagingDirectory(string $root): string
     {
-        return rtrim(sys_get_temp_dir(), '/\\').'/baobab-module-upload-'.Str::random(12);
+        return $root.'/.baobab-upload-'.Str::random(12);
     }
 
     private static function maxSize(): int
