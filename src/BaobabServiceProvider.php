@@ -86,6 +86,7 @@ use Baobab\Modules\ModuleDiscovery;
 use Baobab\Notify\Notifier;
 use Baobab\Rendering\Actions\RenderServerError;
 use Baobab\Rendering\PublicRouteRegistrar;
+use Baobab\Rendering\RenderedTheme;
 use Baobab\Scheduler\SchedulerRegistrar;
 use Baobab\Search\SearchRegistry;
 use Baobab\Search\Sources\ContentsSearchSource;
@@ -224,6 +225,10 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->singleton(SearchRegistry::class);
 
         $this->app->singleton(SeoContext::class);
+
+        // Singleton parce que la décision est prise une fois par requête, par
+        // le middleware, et relue ensuite par les composants de rendu.
+        $this->app->singleton(RenderedTheme::class);
 
         $this->app->singleton(ImageManager::class, function (Application $app): ImageManager {
             /** @var string $driver */

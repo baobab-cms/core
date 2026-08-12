@@ -1,10 +1,15 @@
 {
   "name": "acme/theme-child",
   "title": "Acme Theme Child",
-  "description": "Fixture thème enfant d'acme/theme — ne fournit que single.blade.php (pour prouver le repli vers le parent sur index) et déclare une clé de menu différente (pour prouver l'orphelinat des clés du parent à l'activation).",
+  "description": "Fixture thème enfant d'acme/theme — ne fournit que single.blade.php (pour prouver le repli vers le parent sur index), déclare une clé de menu différente (pour prouver l'orphelinat des clés du parent à l'activation) et porte un provider réellement chargeable (pour prouver son enregistrement en préview).",
   "version": "1.0.0",
   "type": "theme",
   "provider": "Acme\\ThemeChild\\Providers\\ThemeChildServiceProvider",
+  "autoload": {
+    "psr-4": {
+      "Acme\\ThemeChild\\": "src/"
+    }
+  },
   "theme": {
     "parent": "acme/theme",
     "menus": {

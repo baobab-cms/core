@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\View\Components;
 
-use Baobab\Rendering\ActiveThemeResolver;
+use Baobab\Rendering\RenderedTheme;
 use Baobab\Themes\Actions\PublishThemeAssets;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Facades\File;
@@ -12,10 +12,14 @@ use Illuminate\View\Component;
 
 /**
  * `<x-baobab::vite entry="app" />` (spec 03 §8) — émet les balises
- * `<link>`/`<script type="module">` du thème actif à partir de son propre
+ * `<link>`/`<script type="module">` du thème rendu à partir de son propre
  * manifest Vite (`public/themes/{slug}/build/.vite/manifest.json`, publié
  * par `PublishThemeAssets` à l'activation ; `.vite/` est l'emplacement par
  * défaut du manifest depuis Vite 5+, pas `build/manifest.json`).
+ *
+ * **Le thème rendu, pas le thème actif** (`RenderedTheme`, n° 125) : les deux
+ * ne coïncident pas pendant une préview, et lire ici le thème actif servait la
+ * feuille de style d'un thème avec les gabarits d'un autre.
  *
  * Écart assumé avec la lettre de la spec : la façade `Vite` de Laravel est
  * un service **global**, configuré pour un seul manifest (celui de
@@ -37,9 +41,9 @@ final class Vite extends Component
     /** @var list<string> */
     public array $js = [];
 
-    public function __construct(ActiveThemeResolver $resolver, public string $entry = 'app')
+    public function __construct(RenderedTheme $rendered, public string $entry = 'app')
     {
-        $theme = $resolver->current();
+        $theme = $rendered->current();
 
         if ($theme === null) {
             return;
