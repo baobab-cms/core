@@ -42,6 +42,7 @@ final readonly class ContentTypeBlueprint
         self::validateFields($data['fields'] ?? [], $fieldRegistry ?? app(FieldRegistry::class));
         self::validateRelations($data['relations'] ?? [], $relationTargets ?? app(RelationTargetResolver::class));
         self::validateTitleField($data);
+        self::validateDesignatedFields($data);
         self::validateUrlPrefix($data);
         self::validateSeoSchema($data);
 
@@ -132,6 +133,53 @@ final readonly class ContentTypeBlueprint
                 'title_field',
                 "Le champ « {$titleField} » doit être de type text, textarea ou richtext pour servir de source au slug."
             );
+        }
+    }
+
+    /**
+     * `body_field` et `image_field` (spec 02 §3.1) — facultatives, mais
+     * vérifiées dès qu'elles sont écrites, exactement comme `title_field`.
+     * Une désignation qui nomme un champ inexistant est une faute de frappe
+     * silencieuse : sans ce contrôle, `BlueprintFields` retomberait sur la
+     * déduction et le type rendrait « presque bien », ce qui est le pire des
+     * cas — l'auteur croit avoir désigné, et le produit devine.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private static function validateDesignatedFields(array $data): void
+    {
+        $designations = [
+            'body_field' => ['text', 'textarea', 'richtext'],
+            'image_field' => ['image'],
+        ];
+
+        /** @var list<array<string, mixed>> $fields */
+        $fields = (array) ($data['fields'] ?? []);
+
+        foreach ($designations as $designation => $allowedTypes) {
+            $key = $data[$designation] ?? null;
+
+            if ($key === null) {
+                continue;
+            }
+
+            $field = collect($fields)->firstWhere('key', $key);
+
+            if ($field === null) {
+                throw InvalidBlueprintException::forField(
+                    $designation,
+                    "Le champ « {$key} » n'existe pas dans fields[]."
+                );
+            }
+
+            if (! in_array($field['type'], $allowedTypes, true)) {
+                $expected = implode(', ', $allowedTypes);
+
+                throw InvalidBlueprintException::forField(
+                    $designation,
+                    "Le champ « {$key} » doit être de type {$expected}."
+                );
+            }
         }
     }
 

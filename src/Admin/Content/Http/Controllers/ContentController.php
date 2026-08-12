@@ -34,6 +34,7 @@ use Baobab\ContentTypes\Editorial\Support\RevisionDiffer;
 use Baobab\ContentTypes\Exceptions\ContentLockedException;
 use Baobab\ContentTypes\Exceptions\InvalidContentTransitionException;
 use Baobab\ContentTypes\Models\ContentType;
+use Baobab\ContentTypes\Support\BlueprintFields;
 use Baobab\ContentTypes\Support\ContentEntryRules;
 use Baobab\ContentTypes\Support\ContentTrash;
 use Baobab\Facades\Hook;
@@ -857,7 +858,7 @@ final class ContentController
 
             return [
                 ...$field,
-                'label' => Str::headline($name),
+                'label' => BlueprintFields::label($field),
                 'value' => $value,
                 'choices' => $choices,
                 'choice_options' => array_combine($choices, $choices),
@@ -922,7 +923,7 @@ final class ContentController
         $columns = [['key' => 'id', 'label' => 'ID', 'sortable' => true]];
 
         foreach (array_slice((array) ($type->blueprint['fields'] ?? []), 0, 3) as $field) {
-            $columns[] = ['key' => $field['key'], 'label' => $field['key']];
+            $columns[] = ['key' => $field['key'], 'label' => BlueprintFields::label($field)];
         }
 
         if (! $trashed) {

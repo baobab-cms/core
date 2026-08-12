@@ -44,6 +44,16 @@
             "description": "Key of a text/textarea/richtext field used to auto-generate the slug in the admin form (spec 02 §4.2) — required when is_addressable is true, cross-checked at runtime against fields[] by ContentTypeBlueprint.",
             "pattern": "^[a-z][a-z0-9_]*$"
         },
+        "body_field": {
+            "type": "string",
+            "description": "Key of the field carrying the editorial prose — the \"content\" of a public entry (spec 02 §3.1, spec 19 §5.4/§5.10). Optional: falls back to the first richtext field, then the first textarea field. Consumed by <x-baobab::field.auto role=\"body\">.",
+            "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "image_field": {
+            "type": "string",
+            "description": "Key of the field carrying the featured image (spec 02 §3.1, spec 19 §5.4/§5.10). Optional: falls back to the first image field. Consumed by <x-baobab::field.auto role=\"image\">.",
+            "pattern": "^[a-z][a-z0-9_]*$"
+        },
         "url_prefix": {
             "type": "string",
             "description": "Public URL prefix for this Content Type (spec 07 §3, spec 03 §3 pipeline) — routes as /{url_prefix}/{slug}. Only meaningful when is_addressable is true. Defaults to the kebab-plural of the key when absent, cross-checked at runtime against reserved prefixes and other addressable types by ContentTypeBlueprint.",
@@ -107,6 +117,11 @@
                     "key": {
                         "type": "string",
                         "pattern": "^[a-z][a-z0-9_]*$"
+                    },
+                    "label": {
+                        "type": "string",
+                        "description": "Displayed label, independent from the technical key (spec 02 §3.1, spec 19 amendment 17). Optional — falls back to the humanized key. Consumed by the admin form, the list columns and <x-baobab::field.auto>.",
+                        "minLength": 1
                     },
                     "type": {
                         "type": "string",
