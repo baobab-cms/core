@@ -1,10 +1,15 @@
 {
   "name": "acme/theme-assets",
   "title": "Acme Theme Assets",
-  "description": "Fixture thème dont les templates appellent <x-baobab::vite> et dont le public/build porte un manifeste Vite propre — sert à prouver quel thème fournit la feuille de style (actif ou prévisualisé). Vit à part d'acme/theme pour ne pas troubler les tests de cascade de vues, qui asservissent la sortie exacte de leurs templates.",
+  "description": "Fixture thème qui porte ce que l'activation apporte au rendu : un public/build avec son manifeste Vite (quel thème fournit la feuille de style, actif ou prévisualisé) et un bloc tokens (niveau 2 de la cascade, pour prouver la recompilation de l'artefact à l'activation comme à la désactivation). Vit à part d'acme/theme pour ne pas troubler les tests de cascade de vues, qui asservissent la sortie exacte de leurs templates.",
   "version": "1.0.0",
   "type": "theme",
   "provider": "Acme\\ThemeAssets\\Providers\\ThemeAssetsServiceProvider",
+  "tokens": {
+    "colors": {
+      "primary": "#1b7f5a"
+    }
+  },
   "theme": {
     "parent": null,
     "menus": {},

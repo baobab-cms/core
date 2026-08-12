@@ -186,6 +186,7 @@ Route::middleware('can:baobab.system.themes.manage')
             });
 
         Route::post('/{theme}/activate', [ThemesController::class, 'activate'])->name('activate');
+        Route::post('/{theme}/deactivate', [ThemesController::class, 'deactivate'])->name('deactivate');
         Route::get('/{theme}/preview', [ThemesController::class, 'preview'])->name('preview');
     });
 

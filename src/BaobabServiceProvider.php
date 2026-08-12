@@ -1310,6 +1310,21 @@ class BaobabServiceProvider extends ServiceProvider
             $compile();
         });
         Hook::listen('baobab.branding.tokens.saved', fn (BrandingSetting $setting) => $compile());
+
+        // Un thème qui s'en va emporte son niveau de cascade avec lui, et
+        // l'artefact compilé porte encore ses valeurs : sans recompilation, un
+        // site revenu au rendu de repli continuerait de servir les couleurs
+        // d'un thème qui n'est plus là (`<x-baobab::design-tokens />` sert le
+        // fichier `tokens-*.css` trouvé sur disque, quel que soit son
+        // contenu). Branché sur le hook générique des modules plutôt que sur
+        // un `baobab.theme.deactivated` inventé pour l'occasion : la spec ne
+        // documente qu'un hook de thème, celui d'activation, et le nommage des
+        // points d'extension publics est une décision de spec.
+        Hook::listen('baobab.module.deactivated', function (Module $module) use ($compile): void {
+            if ($module->type === 'theme') {
+                $compile();
+            }
+        });
     }
 
     /**

@@ -63,6 +63,43 @@ it('activates an installed theme over HTTP', function () {
     expect(Module::where('id', $theme->id)->value('status'))->toBe('active');
 });
 
+it('deactivates the active theme over HTTP and offers the gesture only on it', function () {
+    app(InstallModule::class)('acme/theme');
+    $theme = Module::where('name', 'acme/theme')->firstOrFail();
+    $actor = themesActor(['baobab.system.themes.manage']);
+    $this->actingAs($actor, 'baobab')->post(route('admin.themes.activate', ['theme' => $theme->id]));
+
+    $this->actingAs($actor, 'baobab')
+        ->get(route('admin.themes.index'))
+        ->assertOk()
+        ->assertSee(route('admin.themes.deactivate', ['theme' => $theme->id]), false);
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.themes.deactivate', ['theme' => $theme->id]))
+        ->assertRedirect(route('admin.themes.index'))
+        ->assertSessionHas('toast');
+
+    expect(Module::where('id', $theme->id)->value('status'))->toBe('inactive');
+
+    // Le geste disparaît une fois le thème inactif : l'écran ne propose plus
+    // que de l'activer ou de le prévisualiser.
+    $this->actingAs($actor, 'baobab')
+        ->get(route('admin.themes.index'))
+        ->assertOk()
+        ->assertDontSee(route('admin.themes.deactivate', ['theme' => $theme->id]), false);
+
+    removeThemeLink('acme-theme');
+});
+
+it('denies deactivating a theme without baobab.system.themes.manage', function () {
+    app(InstallModule::class)('acme/theme');
+    $theme = Module::where('name', 'acme/theme')->firstOrFail();
+
+    $this->actingAs(themesActor([]), 'baobab')
+        ->post(route('admin.themes.deactivate', ['theme' => $theme->id]))
+        ->assertForbidden();
+});
+
 it('redirects to a signed preview link', function () {
     app(InstallModule::class)('acme/theme');
     $theme = Module::where('name', 'acme/theme')->firstOrFail();

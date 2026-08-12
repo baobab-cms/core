@@ -880,8 +880,12 @@ return [
         'inactive_label' => 'Inactif',
         'parent_label' => 'Enfant de :parent',
         'activate_action' => 'Activer',
+        'deactivate_action' => 'Désactiver',
         'preview_action' => 'Prévisualiser',
         'activated' => 'Thème activé.',
+        'deactivated' => 'Thème désactivé. Le site public utilise les pages de repli.',
+        'deactivate_confirm_title' => 'Désactiver « :theme » ?',
+        'deactivate_confirm_description' => 'Le site public passera aussitôt aux pages de repli de Baobab, jusqu\'à ce qu\'un thème soit activé. Aucun contenu, aucun réglage et aucun fichier n\'est supprimé : réactiver le thème rétablit l\'affichage à l\'identique.',
 
         'studio' => [
             'link' => 'Ébauche Studio (theme.json)',
