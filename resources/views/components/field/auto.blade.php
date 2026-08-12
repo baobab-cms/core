@@ -7,37 +7,47 @@
     utilitaire, un attribut `data-field` par champ comme seule accroche. Ce
     composant est rendu à l'intérieur d'un thème, dont c'est le métier de
     styler ; un composant du Core qui imposerait ses classes déciderait à la
-    place du thème qui l'appelle.
+    place du thème qui l'appelle. Les attributs passés à l'appel (classe,
+    id, data-*) sont donc fusionnés sur l'élément racine du rôle : c'est le
+    seul point de style que le thème contrôle.
 
     Un rôle sans matière ne rend rien du tout — pas un conteneur vide, pas une
     étiquette orpheline (§5.9, un vide de chrome disparaît).
 --}}
 @if ($role === 'image' || $role === 'body')
     @if ($field !== null)
-        <div data-role="{{ $role }}">
+        <div {{ $attributes->merge(['data-role' => $role]) }}>
             <x-dynamic-component :component="$field['component']" :attributes="$field['attributes']" />
         </div>
     @endif
+@elseif ($role === 'excerpt')
+    @if ($excerpt !== null)
+        <p {{ $attributes->merge(['data-role' => 'excerpt']) }}>{{ $excerpt }}</p>
+    @endif
 @elseif ($role === 'relations')
-    @foreach ($taxonomies as $taxonomy)
-        <div data-role="relations">
-            <span>{{ $taxonomy['label'] }}</span>
-            <ul>
-                @foreach ($taxonomy['terms'] as $term)
-                    <li>
-                        @if ($term['url'] !== null)
-                            <a href="{{ $term['url'] }}">{{ $term['title'] }}</a>
-                        @else
-                            {{ $term['title'] }}
-                        @endif
-                    </li>
-                @endforeach
-            </ul>
+    @if ($taxonomies !== [])
+        <div {{ $attributes->merge(['data-role' => 'relations']) }}>
+            @foreach ($taxonomies as $taxonomy)
+                <div data-taxonomy="{{ $taxonomy['label'] }}">
+                    <span>{{ $taxonomy['label'] }}</span>
+                    <ul>
+                        @foreach ($taxonomy['terms'] as $term)
+                            <li>
+                                @if ($term['url'] !== null)
+                                    <a href="{{ $term['url'] }}">{{ $term['title'] }}</a>
+                                @else
+                                    {{ $term['title'] }}
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endforeach
         </div>
-    @endforeach
+    @endif
 @else
     @if ($fields !== [])
-        <dl data-role="rest">
+        <dl {{ $attributes->merge(['data-role' => 'rest']) }}>
             @foreach ($fields as $item)
                 <dt data-field="{{ $item['key'] }}">{{ $item['label'] }}</dt>
                 <dd data-field="{{ $item['key'] }}">

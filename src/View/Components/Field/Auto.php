@@ -43,7 +43,15 @@ use Illuminate\View\ComponentAttributeBag;
  */
 final class Auto extends Component
 {
-    public const ROLES = ['image', 'body', 'rest', 'relations'];
+    public const ROLES = ['image', 'body', 'excerpt', 'rest', 'relations'];
+
+    /**
+     * Rôle `excerpt` : le corps débarrassé de ses balises et tronqué. Une
+     * carte de liste ne transporte ainsi jamais l'article entier — et le
+     * `line-clamp` qui aurait pu l'imiter en CSS s'applique mal à du HTML
+     * riche, où un titre ou une image comptent pour une ligne.
+     */
+    public ?string $excerpt = null;
 
     /**
      * Champ unique des rôles `image` et `body`, `null` si le type n'en porte
@@ -72,6 +80,7 @@ final class Auto extends Component
     public function __construct(
         public Model $entry,
         public string $role = 'rest',
+        public int $limit = 160,
     ) {
         $contentType = ContentType::forModelClass($entry::class);
 
@@ -87,6 +96,7 @@ final class Auto extends Component
         match ($this->role) {
             'image' => $this->field = $this->single(FieldDisplay::image($blueprint)),
             'body' => $this->field = $this->single(FieldDisplay::body($blueprint)),
+            'excerpt' => $this->excerpt = $this->resolveExcerpt($blueprint),
             'relations' => $this->taxonomies = $this->resolveTaxonomies($blueprint),
             default => $this->fields = $this->resolveRest($blueprint),
         };
@@ -95,6 +105,35 @@ final class Auto extends Component
     public function render(): View
     {
         return view('baobab::components.field.auto');
+    }
+
+    /**
+     * Le corps en texte nu, tronqué proprement. `strip_tags` avant troncature
+     * et non l'inverse : couper d'abord produirait une balise ouverte à
+     * mi-chemin, donc du HTML cassé dès que l'extrait est rendu tel quel.
+     *
+     * @param  array<string, mixed>  $blueprint
+     */
+    private function resolveExcerpt(array $blueprint): ?string
+    {
+        $field = FieldDisplay::body($blueprint);
+
+        if ($field === null) {
+            return null;
+        }
+
+        $value = $this->entry->getAttribute((string) ($field['key'] ?? ''));
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        // Les balises deviennent des **espaces**, elles ne disparaissent pas :
+        // `strip_tags` seul recolle les blocs entre eux (« …titre</h2><p>Une… »
+        // donne « titreUne »), ce qui fabrique des mots qui n'existent pas.
+        $text = trim(preg_replace('/\s+/u', ' ', (string) preg_replace('/<[^>]*>/', ' ', $value)) ?? '');
+
+        return $text === '' ? null : Str::limit($text, $this->limit);
     }
 
     /**

@@ -65,6 +65,52 @@ it('labels rest fields and never exposes a field withdrawn from the API', functi
         ->and($html)->not->toContain('Prose');
 });
 
+it('renders an excerpt as plain text, tags stripped before truncation', function () {
+    docContentType();
+
+    $entry = new Doc([
+        'title' => 'Titre',
+        'body' => '<h2>Un titre</h2><p>Une prose <strong>assez</strong> longue pour être coupée quelque part.</p>',
+    ]);
+
+    $html = Blade::render('<x-baobab::field.auto :entry="$entry" role="excerpt" :limit="20" />', ['entry' => $entry]);
+
+    // Ni balise conservée, ni balise coupée en deux : le texte est nettoyé
+    // avant d'être tronqué.
+    expect($html)->toContain('Un titre Une prose')
+        ->and($html)->not->toContain('<strong>')
+        ->and($html)->toContain('...');
+});
+
+it('renders no excerpt for a type with no body field', function () {
+    docContentType(['fields' => [['key' => 'title', 'type' => 'text']]]);
+
+    $html = Blade::render('<x-baobab::field.auto :entry="$entry" role="excerpt" />', ['entry' => new Doc(['title' => 'Titre'])]);
+
+    expect(trim($html))->toBe('');
+});
+
+it('links an entry by its blueprint title when its type is addressable', function () {
+    docContentType();
+
+    $entry = new Doc(['title' => 'Le titre réel', 'slug' => 'le-titre-reel']);
+
+    $html = Blade::render('<x-baobab::entry-link :entry="$entry" />', ['entry' => $entry]);
+
+    expect($html)->toContain('Le titre réel')
+        ->and($html)->toContain('href="'.route('baobab.public.show', ['prefix' => 'docs', 'slug' => 'le-titre-reel']).'"');
+});
+
+it('renders a title without a link when the type is not addressable', function () {
+    $type = docContentType();
+    $type->update(['is_addressable' => false]);
+
+    $html = Blade::render('<x-baobab::entry-link :entry="$entry" />', ['entry' => new Doc(['title' => 'Le titre réel', 'slug' => 'le-titre-reel'])]);
+
+    expect($html)->toContain('Le titre réel')
+        ->and($html)->not->toContain('<a ');
+});
+
 it('renders nothing for a role the type has no field for', function () {
     docContentType();
 
