@@ -31,7 +31,7 @@ use Illuminate\Support\Str;
  *    être deviné. Le repli sert les blueprints anciens, pas les cas
  *    ambigus.
  */
-final class BlueprintFields
+final class FieldDisplay
 {
     /**
      * Types de champs pouvant porter la prose éditoriale, par ordre de

@@ -79,6 +79,7 @@ it('content-type:make adds a real field column', function () {
         ->expectsConfirmation('Ajouter un champ ?', 'yes')
         ->expectsQuestion('Clé du champ (snake_case)', 'brand')
         ->expectsQuestion('Type de champ', 'text')
+        ->expectsQuestion('Libellé affiché', 'Marque')
         ->expectsConfirmation('Obligatoire ?', 'yes')
         ->expectsQuestion('Options (JSON, vide si aucune)', '')
         ->expectsConfirmation('Ajouter un champ ?', 'no')
@@ -86,7 +87,10 @@ it('content-type:make adds a real field column', function () {
         ->expectsConfirmation('Construire ce Content Type ?', 'yes')
         ->assertExitCode(0);
 
-    expect(Schema::hasColumn('ct_gadgets', 'brand'))->toBeTrue();
+    // Le libellé diffère du repli humanisé (« Brand ») : il est donc écrit au
+    // blueprint, et c'est lui que l'admin affichera.
+    expect(Schema::hasColumn('ct_gadgets', 'brand'))->toBeTrue()
+        ->and(ContentType::where('key', 'Gadget')->firstOrFail()->blueprint['fields'][0]['label'])->toBe('Marque');
 });
 
 it('content-type:make sets title_field for an addressable content type', function () {
@@ -97,16 +101,23 @@ it('content-type:make sets title_field for an addressable content type', functio
         ->expectsConfirmation('Ajouter un champ ?', 'yes')
         ->expectsQuestion('Clé du champ (snake_case)', 'title')
         ->expectsQuestion('Type de champ', 'text')
+        ->expectsQuestion('Libellé affiché', 'Title')
         ->expectsConfirmation('Obligatoire ?', 'yes')
         ->expectsQuestion('Options (JSON, vide si aucune)', '')
         ->expectsConfirmation('Ajouter un champ ?', 'no')
         ->expectsQuestion('Champ source du slug', 'title')
+        ->expectsConfirmation('Désigner explicitement le body_field ?', 'no')
         ->expectsConfirmation('Ajouter une relation ?', 'no')
         ->expectsConfirmation('Construire ce Content Type ?', 'yes')
         ->assertExitCode(0);
 
     $contentType = ContentType::where('key', 'Article')->firstOrFail();
+
+    // Le libellé saisi vaut exactement le repli humanisé : il n'est pas écrit
+    // au blueprint, et `FieldDisplay::label()` produira la même chaîne.
     expect($contentType->blueprint['title_field'])->toBe('title')
+        ->and($contentType->blueprint['fields'][0])->not->toHaveKey('label')
+        ->and($contentType->blueprint)->not->toHaveKey('body_field')
         ->and(Schema::hasColumn('ct_articles', 'slug'))->toBeTrue();
 });
 

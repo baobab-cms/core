@@ -2,20 +2,21 @@
 
 use Baobab\ContentTypes\Blueprint\ContentTypeBlueprint;
 use Baobab\ContentTypes\Exceptions\InvalidBlueprintException;
-use Baobab\ContentTypes\Support\BlueprintFields;
+use Baobab\ContentTypes\Fields\FieldRegistry;
+use Baobab\ContentTypes\Support\FieldDisplay;
 
 /**
  * Point de résolution unique de ce qu'un blueprint dit de ses champs pour
  * l'affichage (spec 02 §3.1, spec 19 §5.10 amendement n° 17).
  */
 it('prefers a declared label over the humanized key', function () {
-    expect(BlueprintFields::label(['key' => 'featured_image', 'label' => 'Visuel principal']))
+    expect(FieldDisplay::label(['key' => 'featured_image', 'label' => 'Visuel principal']))
         ->toBe('Visuel principal');
 });
 
 it('falls back to the humanized key when no label is declared', function () {
-    expect(BlueprintFields::label(['key' => 'featured_image']))->toBe('Featured Image')
-        ->and(BlueprintFields::label(['key' => 'featured_image', 'label' => '   ']))->toBe('Featured Image');
+    expect(FieldDisplay::label(['key' => 'featured_image']))->toBe('Featured Image')
+        ->and(FieldDisplay::label(['key' => 'featured_image', 'label' => '   ']))->toBe('Featured Image');
 });
 
 it('prefers the designated body field over any deduction', function () {
@@ -27,7 +28,7 @@ it('prefers the designated body field over any deduction', function () {
         ],
     ];
 
-    expect(BlueprintFields::body($blueprint)['key'])->toBe('notes');
+    expect(FieldDisplay::body($blueprint)['key'])->toBe('notes');
 });
 
 it('deduces the body field from the first richtext, then the first textarea', function () {
@@ -44,9 +45,9 @@ it('deduces the body field from the first richtext, then the first textarea', fu
         ['key' => 'summary', 'type' => 'textarea'],
     ]];
 
-    expect(BlueprintFields::body($withRichtext)['key'])->toBe('body')
-        ->and(BlueprintFields::body($withoutRichtext)['key'])->toBe('summary')
-        ->and(BlueprintFields::body(['fields' => [['key' => 'title', 'type' => 'text']]]))->toBeNull();
+    expect(FieldDisplay::body($withRichtext)['key'])->toBe('body')
+        ->and(FieldDisplay::body($withoutRichtext)['key'])->toBe('summary')
+        ->and(FieldDisplay::body(['fields' => [['key' => 'title', 'type' => 'text']]]))->toBeNull();
 });
 
 it('prefers the designated image field over the first image field', function () {
@@ -58,8 +59,8 @@ it('prefers the designated image field over the first image field', function () 
         ],
     ];
 
-    expect(BlueprintFields::image($blueprint)['key'])->toBe('cover')
-        ->and(BlueprintFields::image(['fields' => [['key' => 'author_photo', 'type' => 'image']]])['key'])
+    expect(FieldDisplay::image($blueprint)['key'])->toBe('cover')
+        ->and(FieldDisplay::image(['fields' => [['key' => 'author_photo', 'type' => 'image']]])['key'])
         ->toBe('author_photo');
 });
 
@@ -69,7 +70,7 @@ it('ignores a designation naming a field that does not exist', function () {
         'fields' => [['key' => 'body', 'type' => 'richtext']],
     ];
 
-    expect(BlueprintFields::body($blueprint)['key'])->toBe('body');
+    expect(FieldDisplay::body($blueprint)['key'])->toBe('body');
 });
 
 it('keeps in rest every field no other role consumed, in blueprint order', function () {
@@ -84,7 +85,7 @@ it('keeps in rest every field no other role consumed, in blueprint order', funct
         ],
     ];
 
-    expect(array_column(BlueprintFields::rest($blueprint), 'key'))->toBe(['price', 'published_on']);
+    expect(array_column(FieldDisplay::rest($blueprint), 'key'))->toBe(['price', 'published_on']);
 });
 
 it('never exposes in rest a field its type withdrew from the API', function () {
@@ -93,7 +94,7 @@ it('never exposes in rest a field its type withdrew from the API', function () {
         ['key' => 'purchase_price', 'type' => 'decimal', 'exposed_in_api' => false],
     ]];
 
-    expect(array_column(BlueprintFields::rest($blueprint), 'key'))->toBe(['reference']);
+    expect(array_column(FieldDisplay::rest($blueprint), 'key'))->toBe(['reference']);
 });
 
 it('keeps only many_to_many relations targeting another Content Type', function () {
@@ -104,7 +105,58 @@ it('keeps only many_to_many relations targeting another Content Type', function 
         ['key' => 'reviewers', 'type' => 'many_to_many', 'target' => 'User'],
     ]];
 
-    expect(array_column(BlueprintFields::taxonomies($blueprint), 'key'))->toBe(['tags']);
+    expect(array_column(FieldDisplay::taxonomies($blueprint), 'key'))->toBe(['tags']);
+});
+
+/**
+ * C'est ce test qui rend §9.3 vérifiable : l'exhaustivité du thème par défaut
+ * ne se relit plus template par template, elle se prouve ici. Un type de champ
+ * ajouté au catalogue sans son composant d'affichage, ou qu'aucun rôle
+ * n'atteindrait, fait tomber ce test.
+ */
+it('reaches every display component of the catalogue through its roles', function () {
+    $registry = app(FieldRegistry::class);
+
+    // Un blueprint portant un champ de chaque type enregistré.
+    $blueprint = ['fields' => array_values(array_map(
+        static fn (string $type): array => ['key' => 'f_'.$type, 'type' => $type],
+        array_keys($registry->all()),
+    ))];
+
+    $reached = collect([
+        FieldDisplay::image($blueprint),
+        FieldDisplay::body($blueprint),
+        ...FieldDisplay::rest($blueprint),
+    ])
+        ->filter()
+        ->map(fn (array $field): string => $registry->resolve($field['type'])->displayComponent())
+        ->unique()
+        ->sort()
+        ->values()
+        ->all();
+
+    $catalogue = collect($registry->all())
+        ->map(fn (string $class): string => app($class)->displayComponent())
+        ->unique()
+        ->sort()
+        ->values()
+        ->all();
+
+    expect($reached)->toBe($catalogue);
+});
+
+it('backs every display component of the catalogue with a real view', function () {
+    foreach (app(FieldRegistry::class)->all() as $class) {
+        $component = app($class)->displayComponent();
+
+        // `baobab::field.text-display` (nom de composant) vit dans
+        // `baobab::components.field.text-display` (nom de vue) — convention
+        // Blade des composants d'un namespace de package.
+        $view = str_replace('baobab::', 'baobab::components.', $component);
+
+        expect(view()->exists($view))
+            ->toBeTrue("{$component} est déclaré par un type de champ mais n'a pas de vue.");
+    }
 });
 
 it('accepts a blueprint declaring body_field and image_field', function () {

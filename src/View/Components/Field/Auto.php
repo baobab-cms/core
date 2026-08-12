@@ -6,7 +6,7 @@ namespace Baobab\View\Components\Field;
 
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Models\ContentType;
-use Baobab\ContentTypes\Support\BlueprintFields;
+use Baobab\ContentTypes\Support\FieldDisplay;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -32,7 +32,7 @@ use Illuminate\View\ComponentAttributeBag;
  * un composant unique ; les deux se recouvrent, et le blueprint ne déclare
  * nulle part quel champ est « le contenu ». Le template déclare donc ce qu'il
  * veut voir et dans quel ordre, sans jamais connaître une clé de champ. Les
- * règles de résolution, elles, sont dans `BlueprintFields`, partagé avec
+ * règles de résolution, elles, sont dans `FieldDisplay`, partagé avec
  * l'admin.
  *
  * **L'asymétrie de dispatch est absorbée ici.** Quinze composants d'affichage
@@ -85,8 +85,8 @@ final class Auto extends Component
         $blueprint = $contentType->blueprint;
 
         match ($this->role) {
-            'image' => $this->field = $this->single(BlueprintFields::image($blueprint)),
-            'body' => $this->field = $this->single(BlueprintFields::body($blueprint)),
+            'image' => $this->field = $this->single(FieldDisplay::image($blueprint)),
+            'body' => $this->field = $this->single(FieldDisplay::body($blueprint)),
             'relations' => $this->taxonomies = $this->resolveTaxonomies($blueprint),
             default => $this->fields = $this->resolveRest($blueprint),
         };
@@ -123,7 +123,7 @@ final class Auto extends Component
     {
         $resolved = [];
 
-        foreach (BlueprintFields::rest($blueprint) as $field) {
+        foreach (FieldDisplay::rest($blueprint) as $field) {
             $rendered = $this->describe($field);
 
             if ($rendered !== null) {
@@ -169,7 +169,7 @@ final class Auto extends Component
 
         return [
             'key' => $key,
-            'label' => BlueprintFields::label($field),
+            'label' => FieldDisplay::label($field),
             'component' => $registry->resolve($type)->displayComponent(),
             'attributes' => $attributes,
         ];
@@ -183,7 +183,7 @@ final class Auto extends Component
     {
         $resolved = [];
 
-        foreach (BlueprintFields::taxonomies($blueprint) as $relation) {
+        foreach (FieldDisplay::taxonomies($blueprint) as $relation) {
             $key = (string) ($relation['key'] ?? '');
             $method = Str::camel($key);
 
@@ -218,7 +218,7 @@ final class Auto extends Component
         $prefix = null;
 
         if ($targetType instanceof ContentType) {
-            $titleField = BlueprintFields::titleKey($targetType->blueprint);
+            $titleField = FieldDisplay::titleKey($targetType->blueprint);
             $prefix = $targetType->is_addressable ? $targetType->urlPrefix() : null;
         }
 

@@ -140,7 +140,7 @@ final readonly class ContentTypeBlueprint
      * `body_field` et `image_field` (spec 02 §3.1) — facultatives, mais
      * vérifiées dès qu'elles sont écrites, exactement comme `title_field`.
      * Une désignation qui nomme un champ inexistant est une faute de frappe
-     * silencieuse : sans ce contrôle, `BlueprintFields` retomberait sur la
+     * silencieuse : sans ce contrôle, `FieldDisplay` retomberait sur la
      * déduction et le type rendrait « presque bien », ce qui est le pire des
      * cas — l'auteur croit avoir désigné, et le produit devine.
      *

@@ -41,6 +41,13 @@ final class ContentTypeMakeCommand extends Command
 
         $collectedFields = $this->collectFields($fields);
         $titleField = $isAddressable ? $this->askTitleField($collectedFields) : null;
+
+        // Les deux autres désignations (spec 02 §3.1) ne gouvernent que
+        // l'affichage public : elles n'ont pas de sens sur un type sans pages
+        // publiques, exactement comme title_field — et se demandent dans la
+        // foulée, tant que les champs sont sous les yeux.
+        $designations = $isAddressable ? $this->askDesignations($collectedFields) : [];
+
         $relations = $this->collectRelations();
 
         $blueprint = [
@@ -53,6 +60,10 @@ final class ContentTypeMakeCommand extends Command
 
         if ($titleField !== null) {
             $blueprint['title_field'] = $titleField;
+        }
+
+        foreach ($designations as $designation => $fieldKey) {
+            $blueprint[$designation] = $fieldKey;
         }
 
         $this->summarize($key, $labelSingular, $labelPlural, $isAddressable, $collectedFields, $relations);
@@ -89,10 +100,19 @@ final class ContentTypeMakeCommand extends Command
         while ($this->confirm('Ajouter un champ ?', true)) {
             $key = (string) $this->ask('Clé du champ (snake_case)');
             $type = $this->askChoice('Type de champ', $types);
+            $label = (string) $this->ask('Libellé affiché', Str::headline($key));
             $required = (bool) $this->confirm('Obligatoire ?', false);
             $optionsJson = (string) $this->ask('Options (JSON, vide si aucune)', '');
 
             $field = ['key' => $key, 'type' => $type, 'required' => $required];
+
+            // Un libellé identique au repli n'est pas écrit : le blueprint
+            // reste lisible, et `FieldDisplay::label()` produit exactement la
+            // même chose. On n'enregistre que ce que l'auteur a vraiment
+            // décidé.
+            if ($label !== '' && $label !== Str::headline($key)) {
+                $field['label'] = $label;
+            }
 
             if ($optionsJson !== '') {
                 $decoded = json_decode($optionsJson, true);
@@ -123,6 +143,45 @@ final class ContentTypeMakeCommand extends Command
 
         /** @var list<string> $eligible */
         return $this->askChoice('Champ source du slug', $eligible);
+    }
+
+    /**
+     * `body_field` et `image_field` (spec 02 §3.1) — le champ qui porte la
+     * prose éditoriale et l'image mise en avant.
+     *
+     * Chacune est **proposée seulement si le type porte un champ éligible**,
+     * et chacune peut être déclinée : sans elle, `FieldDisplay` retombe sur sa
+     * déduction, qui suffit au cas courant. Ce qu'elle sert, c'est le cas
+     * ambigu — deux zones de texte, ou deux images —, celui-là même que la
+     * déduction ne peut pas trancher.
+     *
+     * @param  list<array<string, mixed>>  $collectedFields
+     * @return array<string, string>
+     */
+    private function askDesignations(array $collectedFields): array
+    {
+        $designations = [
+            'body_field' => ['types' => ['text', 'textarea', 'richtext'], 'question' => 'Champ portant le contenu éditorial'],
+            'image_field' => ['types' => ['image'], 'question' => 'Champ portant l\'image mise en avant'],
+        ];
+
+        $declared = [];
+
+        foreach ($designations as $designation => $spec) {
+            /** @var list<string> $eligible */
+            $eligible = collect($collectedFields)
+                ->filter(fn (array $field): bool => in_array($field['type'], $spec['types'], true))
+                ->pluck('key')
+                ->all();
+
+            if ($eligible === [] || ! $this->confirm("Désigner explicitement le {$designation} ?", count($eligible) > 1)) {
+                continue;
+            }
+
+            $declared[$designation] = $this->askChoice($spec['question'], $eligible);
+        }
+
+        return $declared;
     }
 
     /**
