@@ -8,6 +8,21 @@ use Illuminate\Foundation\Http\FormRequest;
 
 final class {{ key }}Request extends FormRequest
 {
+    /**
+     * Champs dont la saisie HTML ne parle pas la même langue que la règle de
+     * validation du type. Normalisés avant validation, jamais après : une
+     * règle qui refuse une saisie légitime est un défaut, pas un garde-fou.
+     *
+     * @var list<string>
+     */
+    private const array JSON_FIELDS = [{{ json_fields }}];
+
+    /** @var list<string> */
+    private const array BOOLEAN_FIELDS = [{{ boolean_fields }}];
+
+    /** @var list<string> */
+    private const array TIME_FIELDS = [{{ time_fields }}];
+
     public function authorize(): bool
     {
         return true;
@@ -21,5 +36,38 @@ final class {{ key }}Request extends FormRequest
         return [
 {{ rules }}
         ];
+    }
+
+    /**
+     * Cette requête sert les deux surfaces (formulaire admin et API REST), qui
+     * n'envoient pas la même chose : le formulaire poste des chaînes, l'API un
+     * corps JSON déjà typé. Chaque normalisation ne s'applique donc que si la
+     * valeur reçue en a besoin.
+     */
+    protected function prepareForValidation(): void
+    {
+        foreach (self::JSON_FIELDS as $field) {
+            // Une zone de texte renvoie du JSON en chaîne, là où la règle du
+            // type attend `array`.
+            if (is_string($this->input($field))) {
+                $decoded = json_decode((string) $this->input($field), true);
+                $this->merge([$field => is_array($decoded) ? $decoded : []]);
+            }
+        }
+
+        foreach (self::BOOLEAN_FIELDS as $field) {
+            // Une case décochée ne poste rien du tout : sans cela, décocher
+            // laisserait la valeur précédente intacte.
+            $this->merge([$field => $this->boolean($field)]);
+        }
+
+        foreach (self::TIME_FIELDS as $field) {
+            // `<input type="time">` renvoie `H:i`, la règle du type exige
+            // `H:i:s` — les secondes n'apparaissent qu'avec un `step` explicite,
+            // que personne ne veut voir dans un sélecteur d'heure.
+            if (is_string($this->input($field)) && preg_match('/^\d{2}:\d{2}$/', (string) $this->input($field)) === 1) {
+                $this->merge([$field => $this->input($field).':00']);
+            }
+        }
     }
 }

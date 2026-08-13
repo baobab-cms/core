@@ -4,15 +4,20 @@
     <x-baobab::page title="{{ title }}">
         <x-baobab::card>
             <x-baobab::form method="{{ $method }}" action="{{ $action }}">
+                {{--
+                    Deux branches, et non trois : le cas particulier qu'il y avait
+                    ici pour la case à cocher tenait à un composant orphelin
+                    (n° 117), `field.boolean` l'enveloppe désormais et suit le
+                    contrat commun `name`/`label`/`value`. Ne restent à part que
+                    les champs à choix, qui reçoivent en plus leurs `options`.
+
+                    Le `@if` est **hors** de la balise : le compilateur de tags
+                    Blade ne tolère aucune directive dans une liste d'attributs, et
+                    la sanction n'est pas une erreur mais une balise laissée en
+                    clair dans la page (n° 93).
+                --}}
                 @foreach ($fields as $field)
-                    @if ($field['component'] === 'baobab::field.checkbox')
-                        <x-dynamic-component
-                            :component="$field['component']"
-                            :name="$field['key']"
-                            :label="$field['label']"
-                            :checked="$field['value']"
-                        />
-                    @elseif (isset($field['options']))
+                    @if (isset($field['options']))
                         <x-dynamic-component
                             :component="$field['component']"
                             :name="$field['key']"

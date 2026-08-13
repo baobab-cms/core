@@ -47,7 +47,7 @@ function fleetActor(array $permissions): User
  */
 function generateInstallAndBootFleetModule(array $blueprintOverrides = []): void
 {
-    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson(array_replace([
+    $json = moduleBlueprintJson(array_replace([
         'entities' => [[
             'key' => 'Car',
             'table' => 'cars',
@@ -56,12 +56,22 @@ function generateInstallAndBootFleetModule(array $blueprintOverrides = []): void
                 ['key' => 'status', 'type' => 'select', 'options' => ['choices' => ['draft', 'published']]],
             ],
         ]],
-    ], $blueprintOverrides)));
+    ], $blueprintOverrides));
+
+    $blueprint = ModuleBlueprint::fromJson($json);
 
     app(ModuleGenerator::class)($blueprint);
 
-    app(InstallModule::class)('garage/fleet');
-    app(ActivateModule::class)('garage/fleet');
+    // Le nom vient du blueprint et non d'une constante : un cas qui a besoin
+    // d'entités différentes a besoin d'un **autre module**. Les classes
+    // générées (modèle, contrôleur, Form Request) sont autochargées une fois
+    // par processus, et PHP ne redéclare pas une classe : régénérer
+    // `garage/fleet` avec d'autres champs laisserait en mémoire le contrôleur
+    // du cas précédent, et le test mesurerait le mauvais fichier.
+    $name = (string) json_decode($json, true)['identity']['name'];
+
+    app(InstallModule::class)($name);
+    app(ActivateModule::class)($name);
 
     $provider = app()->getProvider(BaobabServiceProvider::class);
     (new ReflectionMethod($provider, 'bootstrapActiveModules'))->invoke($provider);
@@ -131,6 +141,162 @@ it('lists, creates, updates and deletes entries through the generated admin CRUD
         ->assertRedirect(route('admin.fleet.cars.index'));
 
     expect(DB::table('cars')->count())->toBe(0);
+});
+
+/**
+ * Une entité portant **tous** les types de champ que le générateur expose —
+ * la question à laquelle le n° 117 devait répondre, et qu'aucun test ne posait
+ * puisque la fixture `garage/fleet` ne connaissait que `text` et `select`.
+ *
+ * @return array<string, mixed>
+ */
+function everyFieldTypeEntity(): array
+{
+    return [
+        'identity' => [
+            'name' => 'garage/showroom',
+            'title' => 'Showroom',
+            'version' => '1.0.0',
+            'type' => 'module',
+        ],
+        'entities' => [[
+            'key' => 'Vehicle',
+            'table' => 'vehicles',
+            'fields' => [
+                ['key' => 'brand', 'type' => 'text', 'required' => true],
+                // `textarea`, `richtext`, `slug`, `decimal` et `integer`
+                // produisent des colonnes NOT NULL **quel que soit** `required` :
+                // leur `columnDefinition()` ne regarde jamais ce drapeau. Un
+                // champ facultatif de ces types échoue donc en base au lieu
+                // d'être refusé par la validation, qui le dit `nullable`.
+                // Propriété du Core, partagée avec la fiche de Content Type et
+                // sans rapport avec le n° 117 : relevée en écrivant ce test et
+                // consignée, pas corrigée ici. Les déclarer `required` remet
+                // le blueprint en accord avec ce que la table impose.
+                ['key' => 'summary', 'type' => 'textarea', 'required' => true],
+                ['key' => 'body', 'type' => 'richtext', 'required' => true],
+                ['key' => 'reference', 'type' => 'slug', 'required' => true],
+                ['key' => 'price', 'type' => 'decimal', 'required' => true],
+                ['key' => 'seats', 'type' => 'integer', 'required' => true],
+                ['key' => 'available', 'type' => 'boolean'],
+                ['key' => 'released_on', 'type' => 'date'],
+                ['key' => 'inspected_at', 'type' => 'datetime'],
+                ['key' => 'opens_at', 'type' => 'time'],
+                ['key' => 'specs', 'type' => 'json'],
+                ['key' => 'status', 'type' => 'select', 'options' => ['choices' => ['draft', 'published']]],
+                ['key' => 'fuel', 'type' => 'radio', 'options' => ['choices' => ['petrol', 'diesel']]],
+                ['key' => 'tags', 'type' => 'multiselect', 'options' => ['choices' => ['city', 'sport']]],
+            ],
+        ]],
+    ];
+}
+
+/**
+ * Les champs que toute soumission doit porter pour que la ligne parte — ceux
+ * dont la colonne refuse le nul. Isolés ici pour que chaque cas ne parle que
+ * de ce qu'il mesure.
+ *
+ * @return array<string, string>
+ */
+function vehicleRequiredPayload(): array
+{
+    return [
+        'brand' => 'Renault',
+        'summary' => 'Une citadine.',
+        'body' => '<p>Fiche complète.</p>',
+        'reference' => 'renault-5',
+        'price' => '18450.90',
+        'seats' => '5',
+    ];
+}
+
+it('renders every declared field type in the generated form', function () {
+    generateInstallAndBootFleetModule(everyFieldTypeEntity());
+    $actor = fleetActor(['showroom.vehicles.view', 'showroom.vehicles.create']);
+
+    $response = $this->actingAs($actor, 'baobab')
+        ->get(route('admin.showroom.vehicles.create'))
+        ->assertOk()
+        // Un composant introuvable levait `InvalidArgumentException` (n° 117) ;
+        // un composant trouvé mais non compilé laissait la balise en clair
+        // dans la page (n° 93). Les deux se voient ici.
+        ->assertDontSee('x-dynamic-component', false);
+
+    foreach (['brand', 'summary', 'body', 'reference', 'seats', 'price', 'available', 'released_on', 'inspected_at', 'opens_at', 'specs', 'status', 'fuel'] as $key) {
+        $response->assertSee('name="'.$key.'"', false);
+    }
+
+    $response
+        ->assertSee('name="tags[]"', false)
+        ->assertSee('type="date"', false)
+        ->assertSee('type="datetime-local"', false)
+        ->assertSee('type="time"', false)
+        ->assertSee('type="radio"', false);
+});
+
+it('saves and re-renders a value for every declared field type', function () {
+    generateInstallAndBootFleetModule(everyFieldTypeEntity());
+    $actor = fleetActor(['showroom.vehicles.view', 'showroom.vehicles.create', 'showroom.vehicles.update']);
+    $this->actingAs($actor, 'baobab');
+
+    $this->post(route('admin.showroom.vehicles.store'), [
+        ...vehicleRequiredPayload(),
+        'available' => '1',
+        'released_on' => '2026-08-13',
+        'inspected_at' => '2026-08-13T10:30',
+        // Ce qu'un `<input type="time">` envoie réellement : sans secondes.
+        'opens_at' => '08:30',
+        // Ce qu'une zone de texte envoie : du JSON en chaîne.
+        'specs' => '{"doors": 5}',
+        'status' => 'draft',
+        'fuel' => 'diesel',
+        'tags' => ['city'],
+    ])->assertSessionHasNoErrors()->assertRedirect(route('admin.showroom.vehicles.index'));
+
+    $vehicle = DB::table('vehicles')->first();
+
+    expect($vehicle->seats)->toBe(5)
+        ->and((float) $vehicle->price)->toBe(18450.90)
+        ->and((bool) $vehicle->available)->toBeTrue()
+        ->and((string) $vehicle->opens_at)->toStartWith('08:30')
+        ->and(json_decode((string) $vehicle->specs, true))->toBe(['doors' => 5])
+        ->and(json_decode((string) $vehicle->tags, true))->toBe(['city'])
+        ->and($vehicle->fuel)->toBe('diesel');
+
+    // Le retour au formulaire est l'autre moitié : une valeur enregistrée que
+    // son input ne sait pas relire donne un champ vide, sans la moindre erreur.
+    $this->get(route('admin.showroom.vehicles.edit', $vehicle->id))
+        ->assertOk()
+        ->assertSee('value="2026-08-13"', false)
+        ->assertSee('value="2026-08-13T10:30"', false)
+        ->assertSee('value="08:30:00"', false)
+        ->assertSee('&quot;doors&quot;', false);
+});
+
+it('clears a boolean and a multiselect that the browser stops sending once emptied', function () {
+    generateInstallAndBootFleetModule(everyFieldTypeEntity());
+    $actor = fleetActor(['showroom.vehicles.view', 'showroom.vehicles.create', 'showroom.vehicles.update']);
+    $this->actingAs($actor, 'baobab');
+
+    $this->post(route('admin.showroom.vehicles.store'), [
+        ...vehicleRequiredPayload(),
+        'available' => '1',
+        'tags' => ['city', 'sport'],
+    ])->assertSessionHasNoErrors();
+
+    $vehicle = DB::table('vehicles')->first();
+
+    // Une case décochée et une liste multiple vidée ne postent **rien** : sans
+    // normalisation, l'ancienne valeur survivrait à sa propre suppression.
+    $this->put(route('admin.showroom.vehicles.update', $vehicle->id), [
+        ...vehicleRequiredPayload(),
+        'tags' => [''],
+    ])->assertSessionHasNoErrors();
+
+    $updated = DB::table('vehicles')->first();
+
+    expect((bool) $updated->available)->toBeFalse()
+        ->and(array_filter((array) json_decode((string) $updated->tags, true)))->toBe([]);
 });
 
 it('rejects an invalid submission with a validation error, without creating a row', function () {

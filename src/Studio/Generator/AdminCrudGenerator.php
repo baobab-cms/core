@@ -68,6 +68,9 @@ final class AdminCrudGenerator
             'namespace' => $namespace,
             'key' => (string) $entity['key'],
             'rules' => $this->rulesLiteral($entity),
+            'json_fields' => EntityFields::keysLiteral($entity, 'json'),
+            'boolean_fields' => EntityFields::keysLiteral($entity, 'boolean'),
+            'time_fields' => EntityFields::keysLiteral($entity, 'time'),
         ]);
     }
 
@@ -132,7 +135,10 @@ final class AdminCrudGenerator
                 $label = Str::headline($key);
                 $line = "            ['key' => '{$key}', 'label' => '{$label}', 'component' => '{$component}', 'value' => \${$var}->{$key}";
 
-                if (in_array($field['type'], ['select', 'radio'], true)) {
+                // `multiselect` rejoint la liste avec la création de son
+                // composant (n° 117) : sans ses choix, il rendrait une liste
+                // vide, ce qui est pire qu'un champ absent.
+                if (in_array($field['type'], ['select', 'radio', 'multiselect'], true)) {
                     $choices = (array) ($field['options']['choices'] ?? []);
                     $optionsLiteral = collect($choices)->map(fn (string $choice): string => "'{$choice}' => '{$choice}'")->implode(', ');
                     $line .= ", 'options' => [{$optionsLiteral}]";
