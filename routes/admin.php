@@ -257,6 +257,7 @@ Route::middleware('can:baobab.system.modules.manage')
                 Route::post('/install', [ModulesController::class, 'install'])->name('install');
                 Route::post('/activate', [ModulesController::class, 'activate'])->name('activate');
                 Route::post('/deactivate', [ModulesController::class, 'deactivate'])->name('deactivate');
+                Route::post('/sync', [ModulesController::class, 'sync'])->name('sync');
                 Route::delete('/', [ModulesController::class, 'uninstall'])->name('uninstall');
             });
     });

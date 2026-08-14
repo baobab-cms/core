@@ -820,8 +820,8 @@ return [
             'already_generated_at' => 'Généré le :date, installé et activé.',
             'already_generated_hint' => 'Les fichiers vivent désormais sur le disque et vous pouvez les modifier à la main : ils sont protégés par checksum. Régénérer réécrit les fichiers inchangés et vous demande quoi faire de ceux que vous avez modifiés.',
             'regenerate_action' => 'Régénérer les fichiers',
-            'regenerate_hint' => 'Régénérer ne réinstalle pas le module : les fichiers sont réécrits, puis la base est alignée sur eux — les tables des entités nouvelles sont créées et les colonnes modifiées le sont aussi.',
-            'confirm_destructive' => 'Appliquer aussi les suppressions de colonnes et leurs données',
+            'regenerate_hint' => 'Régénérer ne réinstalle pas le module : les fichiers sont réécrits, puis la base est alignée sur eux — les tables des entités nouvelles sont créées, les colonnes modifiées le sont aussi, et les permissions, menus et déclarations du manifeste sont relus.',
+            'confirm_destructive' => 'Appliquer aussi les suppressions : colonnes, données et permissions retirées',
         ],
 
         'conflicts' => [
@@ -861,6 +861,7 @@ return [
         'activate_action' => 'Activer',
         'deactivate_action' => 'Désactiver',
         'uninstall_action' => 'Désinstaller',
+        'sync_action' => 'Resynchroniser',
         'theme_link' => 'Activer dans Thèmes',
         'theme_hint' => 'L\'activation d\'un thème passe par l\'écran Thèmes : un seul thème peut être actif à la fois.',
 
@@ -870,6 +871,11 @@ return [
         'uninstall_purge_warning' => 'Irréversible : les tables créées par le module sont supprimées avec leur contenu.',
         'uninstall_delete_files_label' => 'Supprimer aussi les fichiers du module sur le serveur',
         'uninstall_delete_files_warning' => 'Le dossier du module est effacé. Sans réinstallation depuis une archive, le module n\'est plus récupérable. Sans effet sur un module installé par Composer.',
+
+        'sync_confirm_title' => 'Resynchroniser :module ?',
+        'sync_confirm_description' => 'Le module.json est relu sur le disque, et ce que Baobab en avait retenu est mis à jour : permissions, entrées de menu, hooks, widgets et déclarations. Ni les données du module, ni son état d\'activation ne changent.',
+        'sync_force_label' => 'Retirer aussi les permissions que le manifeste ne déclare plus',
+        'sync_force_warning' => 'Ces permissions sont révoquées partout où elles avaient été accordées, aux rôles comme aux utilisateurs. Sans cette case, la resynchronisation s\'arrête et vous dit lesquelles sont concernées.',
 
         'upload_title' => 'Envoyer une archive',
         'upload_field' => 'archive du module',
@@ -884,6 +890,7 @@ return [
         'deactivated' => 'Module désactivé.',
         'uninstalled' => 'Module désinstallé. Ses données sont restées en base.',
         'uninstalled_purged' => 'Module désinstallé et données supprimées.',
+        'synced' => 'Manifeste relu. Permissions, menus et déclarations sont à jour.',
     ],
 
     'themes' => [

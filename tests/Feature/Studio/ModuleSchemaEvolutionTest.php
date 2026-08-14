@@ -1,5 +1,6 @@
 <?php
 
+use Baobab\Modules\Models\ModulePermission;
 use Baobab\Studio\Actions\GenerateModuleFromDraft;
 use Baobab\Studio\Exceptions\ColumnHasNullsException;
 use Baobab\Studio\Exceptions\DestructiveSchemaChangeNotConfirmedException;
@@ -275,6 +276,33 @@ it('reuses the pending evolution migration instead of stacking a second one', fu
 
     expect($again['schema']['migrations'])->toBe([])
         ->and(File::glob(evolutionModuleDirectory().'/database/migrations/*_evolve_*.php'))->toHaveCount(1);
+});
+
+it('refreshes the module permissions of an entity added after installation', function () {
+    $draft = evolutionInstalledDraft([['key' => 'brand', 'type' => 'text', 'required' => true]]);
+    $module = $draft->module;
+
+    $before = ModulePermission::where('module_id', $module?->id)->pluck('key');
+
+    expect($before)->not->toBeEmpty()
+        ->and($before->filter(fn (string $key): bool => str_contains($key, 'garage')))->toBeEmpty();
+
+    evolutionRegenerate($draft, evolutionBlueprint([
+        evolutionCarEntity([['key' => 'brand', 'type' => 'text', 'required' => true]]),
+        [
+            'key' => 'Garage',
+            'table' => evolutionTable('garages'),
+            'fields' => [['key' => 'city', 'type' => 'text', 'required' => true]],
+            'relations' => [],
+            'routes' => ['admin' => true, 'front' => false, 'api' => false],
+        ],
+    ]));
+
+    // Le manifeste est capturé à l'installation et n'était jamais relu (n° 95) :
+    // la nouvelle entité générait ses permissions dans module.json sans que
+    // personne ne les voie jamais.
+    expect(ModulePermission::where('module_id', $module?->id)->pluck('key')->implode(','))
+        ->toContain('garage');
 });
 
 function evolutionColumnIsNullable(string $table, string $column): bool

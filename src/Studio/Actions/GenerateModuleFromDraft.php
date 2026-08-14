@@ -6,6 +6,7 @@ namespace Baobab\Studio\Actions;
 
 use Baobab\Actions\Modules\ActivateModule;
 use Baobab\Actions\Modules\InstallModule;
+use Baobab\Actions\Modules\SyncModuleManifest;
 use Baobab\Audit\AuditLogger;
 use Baobab\Studio\Blueprint\ModuleBlueprint;
 use Baobab\Studio\Generator\ModuleGenerator;
@@ -42,6 +43,7 @@ final class GenerateModuleFromDraft
         private readonly InstallModule $install,
         private readonly ActivateModule $activate,
         private readonly EvolveModuleSchema $evolveSchema,
+        private readonly SyncModuleManifest $syncManifest,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -63,7 +65,8 @@ final class GenerateModuleFromDraft
      *
      * L'évolution du schéma **n'est pas tentée à la première génération** : il
      * n'y a alors rien à faire évoluer, `InstallModule` jouant lui-même les
-     * migrations du module.
+     * migrations du module — et il capture au passage le manifeste, ce qui vaut
+     * pour la resynchronisation la même dispense.
      *
      * `$overwrite` : chemins dont l'utilisateur a explicitement accepté
      * l'écrasement après avoir vu le diff. **Un conflit non accepté n'arrête
@@ -74,7 +77,12 @@ final class GenerateModuleFromDraft
      * elle, ne bloque jamais.
      *
      * @param  list<string>  $overwrite
-     * @return array{written: list<string>, skipped: list<string>, schema?: array{migrations: list<string>, created: list<string>, changes: int}}
+     * @return array{
+     *     written: list<string>,
+     *     skipped: list<string>,
+     *     schema?: array{migrations: list<string>, created: list<string>, changes: int},
+     *     manifest?: array{manifest_changed: bool, permissions: array{added: list<string>, updated: list<string>, removed: list<string>}, menu_items: int},
+     * }
      */
     public function __invoke(ModuleBlueprintDraft $draft, array $overwrite = [], bool $confirmDestructive = false): array
     {
@@ -91,6 +99,17 @@ final class GenerateModuleFromDraft
             $draft->module_id = $module->id;
         } else {
             $result['schema'] = ($this->evolveSchema)($draft, $blueprint, $confirmDestructive);
+
+            // Puis ce que le Core sait du module : permissions, menus, hooks,
+            // widgets… tous capturés à l'installation et jamais relus (n° 95).
+            // Après l'évolution du schéma, et non avant : une permission qui
+            // gouverne un écran dont la table n'existe pas encore serait vraie
+            // un instant trop tôt.
+            $module = $draft->module;
+
+            if ($module !== null) {
+                $result['manifest'] = ($this->syncManifest)($module, $confirmDestructive);
+            }
         }
 
         // L'instantané n'est enregistré qu'une fois toute la chaîne passée : il

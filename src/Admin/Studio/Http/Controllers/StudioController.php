@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Admin\Studio\Http\Controllers;
 
+use Baobab\Modules\Exceptions\PermissionRemovalNotConfirmedException;
 use Baobab\Studio\Actions\CreateModuleBlueprintDraft;
 use Baobab\Studio\Actions\DeleteModuleBlueprintDraft;
 use Baobab\Studio\Actions\GenerateModuleFromDraft;
@@ -156,8 +157,8 @@ final class StudioController
             }
 
             $result = $action($draft, $overwrite, (bool) ($validated['confirm_destructive'] ?? false));
-        } catch (InvalidModuleBlueprintException|DestructiveSchemaChangeNotConfirmedException|ColumnHasNullsException $e) {
-            // Ces trois messages sont déjà écrits pour un humain — les afficher
+        } catch (InvalidModuleBlueprintException|DestructiveSchemaChangeNotConfirmedException|ColumnHasNullsException|PermissionRemovalNotConfirmedException $e) {
+            // Ces messages sont déjà écrits pour un humain — les afficher
             // tels quels plutôt qu'en rédiger une seconde version, forcément
             // divergente (patron de l'écran Modules, Pass A du point 9).
             session()->flash('toast', ['type' => 'danger', 'message' => $e->getMessage()]);

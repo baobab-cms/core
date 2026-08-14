@@ -117,6 +117,23 @@
                                     </x-baobab::form>
                                 @endif
 
+                                @if (ModuleLifecyclePresenter::canSync($module))
+                                    {{--
+                                        Le manifeste est capturé à l'installation et jamais relu
+                                        (suivi n° 95) : sans ce geste, un module mis à jour sur
+                                        disque garde indéfiniment les permissions, menus et hooks
+                                        qu'il déclarait le jour de son installation.
+                                    --}}
+                                    <x-baobab::button
+                                        type="button"
+                                        variant="secondary"
+                                        x-data
+                                        x-on:click="$dispatch('open-modal', 'sync-{{ $module->name }}')"
+                                    >
+                                        {{ __('baobab::admin.modules.sync_action') }}
+                                    </x-baobab::button>
+                                @endif
+
                                 @if (ModuleLifecyclePresenter::canUninstall($module))
                                     <x-baobab::button
                                         type="button"
@@ -181,6 +198,46 @@
 
                                     <x-baobab::button type="submit" variant="danger">
                                         {{ __('baobab::admin.modules.uninstall_action') }}
+                                    </x-baobab::button>
+                                </div>
+                            </x-baobab::form>
+                        </x-baobab::modal>
+                    @endif
+
+                    @if (ModuleLifecyclePresenter::canSync($module))
+                        {{--
+                            La resynchronisation n'est destructrice que sur un point : une
+                            permission que le manifeste ne déclare plus est révoquée partout
+                            où elle avait été accordée. La case est cette confirmation ;
+                            sans elle, l'Action refuse et nomme les permissions concernées.
+                        --}}
+                        <x-baobab::modal name="sync-{{ $module->name }}">
+                            <h2 class="font-display text-base font-semibold text-foreground">
+                                {{ __('baobab::admin.modules.sync_confirm_title', ['module' => $module->title]) }}
+                            </h2>
+
+                            <p class="mt-2 text-sm text-muted">
+                                {{ __('baobab::admin.modules.sync_confirm_description') }}
+                            </p>
+
+                            <x-baobab::form method="POST" action="{{ route('admin.modules.sync', $module->routeParams()) }}" class="mt-4">
+                                <label class="flex items-start gap-2 text-sm text-foreground">
+                                    <input type="checkbox" name="force" value="1" class="mt-1">
+                                    <span>
+                                        {{ __('baobab::admin.modules.sync_force_label') }}
+                                        <span class="mt-1 block text-xs text-danger">
+                                            {{ __('baobab::admin.modules.sync_force_warning') }}
+                                        </span>
+                                    </span>
+                                </label>
+
+                                <div class="mt-4 flex justify-end gap-2">
+                                    <x-baobab::button type="button" variant="ghost" x-on:click="show = false">
+                                        {{ __('baobab::admin.components.close') }}
+                                    </x-baobab::button>
+
+                                    <x-baobab::button type="submit" variant="primary">
+                                        {{ __('baobab::admin.modules.sync_action') }}
                                     </x-baobab::button>
                                 </div>
                             </x-baobab::form>

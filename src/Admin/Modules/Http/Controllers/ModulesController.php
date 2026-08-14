@@ -7,6 +7,7 @@ namespace Baobab\Admin\Modules\Http\Controllers;
 use Baobab\Actions\Modules\ActivateModule;
 use Baobab\Actions\Modules\DeactivateModule;
 use Baobab\Actions\Modules\InstallModule;
+use Baobab\Actions\Modules\SyncModuleManifest;
 use Baobab\Actions\Modules\UninstallModule;
 use Baobab\Actions\Modules\UploadModuleArchive;
 use Baobab\Mail\Exceptions\InvalidMailTemplateException;
@@ -17,6 +18,8 @@ use Baobab\Modules\Exceptions\ModuleDependencyCycleException;
 use Baobab\Modules\Exceptions\ModuleHasActiveDependentsException;
 use Baobab\Modules\Exceptions\ModuleNotFoundException;
 use Baobab\Modules\Exceptions\ModuleStillActiveException;
+use Baobab\Modules\Exceptions\PermissionRemovalNotConfirmedException;
+use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleInventory;
 use Baobab\Modules\ModuleUploadPaths;
 use Baobab\Notify\Exceptions\InvalidNotificationException;
@@ -83,6 +86,39 @@ final class ModulesController
     }
 
     /**
+     * Relit `module.json` et rafraîchit ce que le Core en avait retenu (suivi
+     * n° 111, Pass B) — permissions, menus, hooks, widgets, tous capturés à
+     * l'installation et jamais relus depuis.
+     *
+     * Le geste est offert pour **tout** module installé, pas seulement pour ceux
+     * qu'un Studio a produits : un module mis à jour par Composer est exactement
+     * aussi périmé, et c'est même le seul cas que ni le Studio ni sa CLI ne
+     * couvrent.
+     *
+     * `force` couvre la seule opération irréversible : retirer une permission
+     * que le manifeste ne déclare plus révoque les droits déjà accordés. Sans
+     * la case, l'Action refuse en les nommant — même parti pris que la purge.
+     */
+    public function sync(Request $request, string $vendor, string $slug, SyncModuleManifest $action): RedirectResponse
+    {
+        $module = Module::where('name', "{$vendor}/{$slug}")->first();
+
+        if (! $module instanceof Module) {
+            session()->flash('toast', [
+                'type' => 'error',
+                'message' => ModuleNotFoundException::named("{$vendor}/{$slug}")->getMessage(),
+            ]);
+
+            return redirect()->route('admin.modules.index');
+        }
+
+        return $this->run(
+            fn () => $action($module, $request->boolean('force')),
+            'synced',
+        );
+    }
+
+    /**
      * Dépose une archive `.zip` là où la découverte trouvera le module
      * (spec §2). N'installe pas : l'écran le montrera « Sur disque », avec son
      * bouton Installer, comme n'importe quel module déposé à la main.
@@ -126,6 +162,7 @@ final class ModulesController
             ModuleDependencyCycleException|
             ModuleHasActiveDependentsException|
             ModuleStillActiveException|
+            PermissionRemovalNotConfirmedException|
             InvalidMailTemplateException|
             InvalidNotificationException|
             ThemeValidationFailedException|

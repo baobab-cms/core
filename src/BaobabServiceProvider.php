@@ -41,6 +41,7 @@ use Baobab\Console\Commands\ModuleBuildCommand;
 use Baobab\Console\Commands\ModuleDeactivateCommand;
 use Baobab\Console\Commands\ModuleInstallCommand;
 use Baobab\Console\Commands\ModuleListCommand;
+use Baobab\Console\Commands\ModuleSyncCommand;
 use Baobab\Console\Commands\ModuleUninstallCommand;
 use Baobab\Console\Commands\NotFoundPurgeCommand;
 use Baobab\Console\Commands\NotificationsPurgeCommand;
@@ -353,6 +354,7 @@ class BaobabServiceProvider extends ServiceProvider
                 ModuleActivateCommand::class,
                 ModuleDeactivateCommand::class,
                 ModuleUninstallCommand::class,
+                ModuleSyncCommand::class,
                 ModuleBuildCommand::class,
                 HookListCommand::class,
                 SuperAdminCommand::class,

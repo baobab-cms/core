@@ -59,4 +59,18 @@ final class ModuleLifecyclePresenter
     {
         return $module->isInstalled() && ! $module->isActive();
     }
+
+    /**
+     * Resynchroniser suppose les deux moitiés : une ligne en base à rafraîchir,
+     * et un `module.json` sur disque d'où la rafraîchir (suivi n° 111, Pass B).
+     *
+     * Aucune exclusion des thèmes, contrairement à l'activation : relire un
+     * manifeste ne touche ni à l'unicité du thème actif, ni aux emplacements, ni
+     * aux assets — c'est `ActivateTheme` qui porte ces règles, et un thème dont
+     * les tokens ont changé a autant besoin d'être relu qu'un module.
+     */
+    public static function canSync(ModuleInventoryEntry $module): bool
+    {
+        return $module->isInstalled() && $module->onDisk;
+    }
 }
