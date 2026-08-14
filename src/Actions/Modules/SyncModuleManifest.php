@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Baobab\Actions\Modules;
 
 use Baobab\Audit\AuditLogger;
+use Baobab\Facades\Hook;
 use Baobab\Mail\MailTemplateValidator;
 use Baobab\Modules\DependencyResolver;
 use Baobab\Modules\Exceptions\ModuleNotFoundException;
@@ -127,16 +128,14 @@ final class SyncModuleManifest
 
         $result = ['manifest_changed' => $manifestChanged, ...$report];
 
-        // Aucun hook émis ici, et c'est délibéré. La spec-modules §4 énumère un
-        // tableau **fermé** de quatre étapes de cycle de vie et de leurs hooks
-        // (`installed`, `activated`, `deactivated`, `uninstalled`) ; la
-        // resynchronisation en serait une cinquième, et le nommage d'un point
-        // d'extension public est une décision de spec, pas d'implémentation —
-        // même arbitrage qu'au suivi n° 126, où un `baobab.theme.deactivated`
-        // inventé avait été écarté au profit d'un hook déjà documenté.
-        // Proposition consignée au suivi n° 155. L'audit, lui, est de la tenue
-        // de registre interne et n'engage aucune API publique.
         $this->audit->record('module.manifest_synced', $module, $result);
+
+        // La resynchronisation est une étape du cycle de vie à part entière
+        // depuis l'amendement de la spec-modules §3 du 14 août 2026 (suivi
+        // n° 155) : elle est donc observable, comme les cinq autres. Le hook n'a
+        // délibérément pas été émis avant cet amendement — déclarer une étape du
+        // cycle de vie est une décision de spec, pas d'implémentation.
+        Hook::action('baobab.module.manifest_synced', $module, $result);
 
         return $result;
     }

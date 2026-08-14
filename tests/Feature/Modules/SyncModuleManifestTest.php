@@ -3,6 +3,7 @@
 use Baobab\Actions\Modules\ActivateModule;
 use Baobab\Actions\Modules\InstallModule;
 use Baobab\Actions\Modules\SyncModuleManifest;
+use Baobab\Hooks\HookRegistry;
 use Baobab\Modules\Exceptions\ModuleNotFoundException;
 use Baobab\Modules\Exceptions\PermissionRemovalNotConfirmedException;
 use Baobab\Modules\Models\Module;
@@ -261,6 +262,30 @@ it('refuses a module whose files have disappeared from disk', function () {
 
     app(SyncModuleManifest::class)($module);
 })->throws(ModuleNotFoundException::class);
+
+it('emits the lifecycle hook with what actually changed', function () {
+    $module = syncInstalledModule();
+
+    $seen = null;
+    app(HookRegistry::class)->listen('baobab.module.manifest_synced', function (Module $synced, array $result) use (&$seen): void {
+        $seen = ['name' => $synced->name, 'added' => $result['permissions']['added']];
+    });
+
+    syncWriteManifest(syncManifestArray(['permissions' => [
+        ['key' => 'synced.car.view', 'label' => 'Voir les voitures'],
+        ['key' => 'synced.car.update', 'label' => 'Modifier les voitures'],
+        ['key' => 'synced.car.delete', 'label' => 'Supprimer les voitures'],
+    ]]));
+
+    app(SyncModuleManifest::class)($module);
+
+    // Étape du cycle de vie à part entière depuis l'amendement de la
+    // spec-modules §3 (suivi n° 155) : un module tiers doit pouvoir réagir au
+    // fait que les permissions ou les menus d'un autre viennent de changer.
+    expect($seen)->not->toBeNull()
+        ->and($seen['name'])->toBe($module->name)
+        ->and($seen['added'])->toBe(['synced.car.delete']);
+});
 
 it('does not change the activation state', function () {
     $module = syncInstalledModule(activate: true);
