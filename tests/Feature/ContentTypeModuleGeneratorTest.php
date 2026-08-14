@@ -129,10 +129,32 @@ it('generates a real column and validation-friendly fillable for a declared fiel
     $moduleDir = generatedModulesPath().'/content-cars';
 
     $migrationFiles = File::glob($moduleDir.'/database/migrations/*.php');
-    expect(file_get_contents($migrationFiles[0]))->toContain("\$table->string('brand', 255);");
+    expect(file_get_contents($migrationFiles[0]))->toContain("\$table->string('brand', 255)->nullable();");
 
     $modelContents = (string) file_get_contents($moduleDir.'/src/Models/Car.php');
     expect($modelContents)->toContain("'brand',");
+});
+
+it('derives the column nullability from the required flag of each field', function () {
+    $contentType = app(CreateContentType::class)(carBlueprintJson([
+        'title_field' => 'brand',
+        'fields' => [
+            ['key' => 'brand', 'type' => 'text', 'required' => true],
+            ['key' => 'notes', 'type' => 'textarea', 'required' => false],
+            ['key' => 'sold_on', 'type' => 'date', 'required' => true],
+        ],
+    ]));
+
+    app(ContentTypeModuleGenerator::class)($contentType);
+
+    $migrationFiles = File::glob(generatedModulesPath().'/content-cars/database/migrations/*.php');
+    $contents = (string) file_get_contents($migrationFiles[0]);
+
+    // Le catalogue se trompait dans les deux sens (suivi n° 137) : `text` était
+    // NOT NULL même facultatif, `date` était nullable même obligatoire.
+    expect($contents)->toContain("\$table->string('brand', 255);")
+        ->and($contents)->toContain("\$table->text('notes')->nullable();")
+        ->and($contents)->toContain("\$table->date('sold_on');");
 });
 
 it('includes a cast in the generated model for a field whose type declares one', function () {

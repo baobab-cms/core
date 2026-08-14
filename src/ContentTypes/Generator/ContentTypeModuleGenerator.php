@@ -315,7 +315,10 @@ final class ContentTypeModuleGenerator
             ->map(function (array $field): string {
                 $fieldType = $this->fields->resolve($field['type']);
 
-                return $fieldType->columnDefinition($field['key'], $field['options'] ?? []);
+                return ColumnNullability::apply(
+                    $fieldType->columnDefinition($field['key'], $field['options'] ?? []),
+                    (bool) ($field['required'] ?? false),
+                );
             })
             ->filter(fn (string $column): bool => $column !== '')
             ->map(fn (string $column): string => '            '.$column)

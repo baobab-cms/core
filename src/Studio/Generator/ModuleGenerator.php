@@ -6,6 +6,7 @@ namespace Baobab\Studio\Generator;
 
 use Baobab\ContentTypes\Exceptions\GeneratedFileConflictException;
 use Baobab\ContentTypes\Fields\FieldRegistry;
+use Baobab\ContentTypes\Generator\ColumnNullability;
 use Baobab\ContentTypes\Generator\GeneratedFileChecksums;
 use Baobab\ContentTypes\Generator\MigrationFilename;
 use Baobab\ContentTypes\Generator\MigrationOrder;
@@ -648,7 +649,10 @@ final class ModuleGenerator
             ->map(function (array $field): string {
                 $fieldType = $this->fields->resolve($field['type']);
 
-                return $fieldType->columnDefinition($field['key'], $field['options'] ?? []);
+                return ColumnNullability::apply(
+                    $fieldType->columnDefinition($field['key'], $field['options'] ?? []),
+                    (bool) ($field['required'] ?? false),
+                );
             })
             ->filter(fn (string $column): bool => $column !== '')
             ->map(fn (string $column): string => '            '.$column)

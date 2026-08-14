@@ -41,6 +41,7 @@ final class GenerateModuleFromDraft
         private readonly ModuleGenerator $generator,
         private readonly InstallModule $install,
         private readonly ActivateModule $activate,
+        private readonly EvolveModuleSchema $evolveSchema,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -49,13 +50,20 @@ final class GenerateModuleFromDraft
      * (spec-modules §5.4, « rouvrir un blueprint, régénérer »).
      *
      * Une régénération **ne réinstalle ni ne réactive** : le module est déjà
-     * installé et actif, elle ne fait que réécrire les fichiers. Conséquence
-     * assumée et à connaître : une entité *ajoutée* après coup produit bien sa
-     * migration sur le disque, mais celle-ci n'est pas exécutée — faire
-     * évoluer le schéma d'un module installé est un sujet distinct, l'équivalent
-     * pour les modules de ce que `EvolveContentType` +
-     * `EvolutionMigrationGenerator` font pour un Content Type ; hors périmètre
-     * de cette passe et consigné.
+     * installé et actif. Elle réécrit les fichiers, **puis aligne la base sur
+     * eux** (`EvolveModuleSchema`, suivi n° 111) — une entité ajoutée après coup
+     * voit désormais sa table créée, et une colonne fausse depuis l'origine
+     * corrigée (n° 137). Les deux moitiés vivent dans le même appel parce
+     * qu'elles n'ont de sens qu'ensemble : des fichiers qui décrivent un schéma
+     * que la base ne porte pas ne sont pas une régénération réussie.
+     *
+     * L'ordre compte, et il est l'inverse de l'intuition : on écrit les fichiers
+     * **avant** de migrer, parce que la migration de création d'une entité
+     * nouvelle est l'un des fichiers écrits.
+     *
+     * L'évolution du schéma **n'est pas tentée à la première génération** : il
+     * n'y a alors rien à faire évoluer, `InstallModule` jouant lui-même les
+     * migrations du module.
      *
      * `$overwrite` : chemins dont l'utilisateur a explicitement accepté
      * l'écrasement après avoir vu le diff. **Un conflit non accepté n'arrête
@@ -66,22 +74,30 @@ final class GenerateModuleFromDraft
      * elle, ne bloque jamais.
      *
      * @param  list<string>  $overwrite
-     * @return array{written: list<string>, skipped: list<string>}
+     * @return array{written: list<string>, skipped: list<string>, schema?: array{migrations: list<string>, created: list<string>, changes: int}}
      */
-    public function __invoke(ModuleBlueprintDraft $draft, array $overwrite = []): array
+    public function __invoke(ModuleBlueprintDraft $draft, array $overwrite = [], bool $confirmDestructive = false): array
     {
         $blueprint = ModuleBlueprint::fromJson((string) json_encode($draft->migratedBlueprint()));
 
+        $wasGenerated = $draft->isGenerated();
         $result = $this->generator->write($blueprint, $overwrite);
         $name = (string) $blueprint->name();
 
-        if (! $draft->isGenerated()) {
+        if (! $wasGenerated) {
             ($this->install)($name);
             $module = ($this->activate)($name);
 
             $draft->module_id = $module->id;
+        } else {
+            $result['schema'] = ($this->evolveSchema)($draft, $blueprint, $confirmDestructive);
         }
 
+        // L'instantané n'est enregistré qu'une fois toute la chaîne passée : il
+        // affirme « voici ce qui est sur disque et en base », et une évolution
+        // refusée (suppression non confirmée, colonne à remplir) ne doit pas
+        // laisser croire que l'état visé a été atteint.
+        $draft->generated_blueprint = $blueprint->toArray();
         $draft->generated_at = now();
         $draft->save();
 

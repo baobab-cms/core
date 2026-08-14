@@ -10,6 +10,8 @@ use Baobab\Studio\Actions\GenerateModuleFromDraft;
 use Baobab\Studio\Actions\InspectModuleConflicts;
 use Baobab\Studio\Actions\PackageModuleFromDraft;
 use Baobab\Studio\Actions\SaveStudioWizardStep;
+use Baobab\Studio\Exceptions\ColumnHasNullsException;
+use Baobab\Studio\Exceptions\DestructiveSchemaChangeNotConfirmedException;
 use Baobab\Studio\Exceptions\GeneratedDraftCannotBeDeletedException;
 use Baobab\Studio\Exceptions\InvalidModuleBlueprintException;
 use Baobab\Studio\Models\ModuleBlueprintDraft;
@@ -142,6 +144,7 @@ final class StudioController
             'overwrite' => ['nullable', 'array'],
             'overwrite.*' => ['string'],
             'resolved' => ['nullable', 'boolean'],
+            'confirm_destructive' => ['nullable', 'boolean'],
         ]);
 
         /** @var list<string> $overwrite */
@@ -152,8 +155,11 @@ final class StudioController
                 return redirect()->route('admin.studio.conflicts', $draft);
             }
 
-            $result = $action($draft, $overwrite);
-        } catch (InvalidModuleBlueprintException $e) {
+            $result = $action($draft, $overwrite, (bool) ($validated['confirm_destructive'] ?? false));
+        } catch (InvalidModuleBlueprintException|DestructiveSchemaChangeNotConfirmedException|ColumnHasNullsException $e) {
+            // Ces trois messages sont déjà écrits pour un humain — les afficher
+            // tels quels plutôt qu'en rédiger une seconde version, forcément
+            // divergente (patron de l'écran Modules, Pass A du point 9).
             session()->flash('toast', ['type' => 'danger', 'message' => $e->getMessage()]);
 
             return redirect()->route('admin.studio.step.show', [$draft, 9]);

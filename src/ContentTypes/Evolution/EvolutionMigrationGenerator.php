@@ -6,6 +6,7 @@ namespace Baobab\ContentTypes\Evolution;
 
 use Baobab\ContentTypes\Exceptions\UnsafeTypeChangeException;
 use Baobab\ContentTypes\Fields\FieldRegistry;
+use Baobab\ContentTypes\Generator\ColumnNullability;
 use Baobab\ContentTypes\Generator\GeneratedFileChecksums;
 use Baobab\ContentTypes\Generator\MigrationTimestamp;
 use Baobab\ContentTypes\Generator\StubRenderer;
@@ -56,8 +57,7 @@ final class EvolutionMigrationGenerator
         $down = [];
 
         foreach ($diff['added'] as $field) {
-            $fieldType = $this->fields->resolve((string) $field['type']);
-            $columnDefinition = $fieldType->columnDefinition((string) $field['key'], $field['options'] ?? []);
+            $columnDefinition = $this->columnDefinition($field);
 
             // Un champ sans colonne propre (ex. "gallery", matérialisé dans
             // media_usages) n'a rien à ajouter/retirer au schéma — le laisser
@@ -71,8 +71,7 @@ final class EvolutionMigrationGenerator
         }
 
         foreach ($diff['removed'] as $field) {
-            $fieldType = $this->fields->resolve((string) $field['type']);
-            $columnDefinition = $fieldType->columnDefinition((string) $field['key'], $field['options'] ?? []);
+            $columnDefinition = $this->columnDefinition($field);
 
             if ($columnDefinition === '') {
                 continue;
@@ -90,11 +89,8 @@ final class EvolutionMigrationGenerator
         }
 
         foreach ($diff['type_changed'] as $change) {
-            $newFieldType = $this->fields->resolve((string) $change['to']['type']);
-            $up[] = $this->asChange('            '.$newFieldType->columnDefinition((string) $change['key'], $change['to']['options'] ?? []));
-
-            $oldFieldType = $this->fields->resolve($change['from_type']);
-            $down[] = $this->asChange('            '.$oldFieldType->columnDefinition((string) $change['key'], $change['from']['options'] ?? []));
+            $up[] = $this->asChange('            '.$this->columnDefinition($change['to'], (string) $change['key']));
+            $down[] = $this->asChange('            '.$this->columnDefinition($change['from'], (string) $change['key'], $change['from_type']));
         }
 
         if ($up === []) {
@@ -133,5 +129,26 @@ final class EvolutionMigrationGenerator
     private function asChange(string $columnDefinitionLine): string
     {
         return rtrim($columnDefinitionLine, ';').'->change();';
+    }
+
+    /**
+     * Ligne de colonne d'un champ, nullabilité comprise — un seul endroit pour
+     * les quatre volets du diff, qui la calculaient chacun à leur façon et
+     * sautaient donc tous les quatre le drapeau `required` (suivi n° 137).
+     *
+     * `$typeOverride` sert au seul volet `type_changed`, dont le `down()` doit
+     * restaurer l'**ancien** type avec les options de l'ancien champ ; partout
+     * ailleurs le type se lit dans le champ lui-même.
+     *
+     * @param  array<string, mixed>  $field
+     */
+    private function columnDefinition(array $field, ?string $key = null, ?string $typeOverride = null): string
+    {
+        $fieldType = $this->fields->resolve($typeOverride ?? (string) $field['type']);
+
+        return ColumnNullability::apply(
+            $fieldType->columnDefinition($key ?? (string) $field['key'], $field['options'] ?? []),
+            (bool) ($field['required'] ?? false),
+        );
     }
 }

@@ -20,12 +20,20 @@ use Illuminate\Support\Str;
  * et `generated_at` ne sont renseignés qu'une fois le module effectivement
  * généré et installé (Pass B).
  *
+ * Deux blueprints, et la distinction porte tout le mécanisme d'évolution
+ * (suivi n° 111) : `blueprint` est le brouillon **en cours de saisie**, réécrit
+ * à chaque étape du wizard, tandis que `generated_blueprint` fige ce qui a été
+ * réellement généré et installé la dernière fois. Le second est la seule chose
+ * qui dise ce que le générateur possède sur disque et en base — le premier ne
+ * décrit qu'une intention.
+ *
  * @property int $id
  * @property string $vendor_slug
  * @property string $title
  * @property int $blueprint_version
  * @property int $current_step
  * @property array<string, mixed> $blueprint
+ * @property array<string, mixed>|null $generated_blueprint
  * @property int|null $module_id
  * @property Carbon|null $generated_at
  */
@@ -42,6 +50,7 @@ class ModuleBlueprintDraft extends Model
         'blueprint_version',
         'current_step',
         'blueprint',
+        'generated_blueprint',
         'module_id',
         'generated_at',
     ];
@@ -53,6 +62,7 @@ class ModuleBlueprintDraft extends Model
     {
         return [
             'blueprint' => 'array',
+            'generated_blueprint' => 'array',
             'generated_at' => 'datetime',
         ];
     }

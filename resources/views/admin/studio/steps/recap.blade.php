@@ -116,8 +116,22 @@
                         {{ __('baobab::admin.studio.back_to_list') }}
                     </x-baobab::button>
                 @else
-                    <form method="POST" action="{{ route('admin.studio.generate', $draft) }}">
+                    <form method="POST" action="{{ route('admin.studio.generate', $draft) }}" class="flex items-center gap-3">
                         @csrf
+                        @if ($draft->isGenerated())
+                            {{--
+                                La case *est* la confirmation explicite qu'exige
+                                `EvolveModuleSchema` (même parti pris que la purge
+                                de l'écran Modules) : décochée, une colonne retirée
+                                du blueprint reste en base avec ses données, et la
+                                régénération le dit au lieu d'échouer.
+                            --}}
+                            <label class="flex items-center gap-2 text-sm text-muted">
+                                <input type="checkbox" name="confirm_destructive" value="1" class="rounded border-border">
+                                {{ __('baobab::admin.studio.recap.confirm_destructive') }}
+                            </label>
+                        @endif
+
                         <x-baobab::button type="submit" variant="primary">
                             {{ $draft->isGenerated()
                                 ? __('baobab::admin.studio.recap.regenerate_action')

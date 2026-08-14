@@ -820,7 +820,8 @@ return [
             'already_generated_at' => 'Généré le :date, installé et activé.',
             'already_generated_hint' => 'Les fichiers vivent désormais sur le disque et vous pouvez les modifier à la main : ils sont protégés par checksum. Régénérer réécrit les fichiers inchangés et vous demande quoi faire de ceux que vous avez modifiés.',
             'regenerate_action' => 'Régénérer les fichiers',
-            'regenerate_hint' => 'Régénérer ne réinstalle pas le module et n\'exécute aucune nouvelle migration : les fichiers sont réécrits, le schéma de base de données reste tel quel.',
+            'regenerate_hint' => 'Régénérer ne réinstalle pas le module : les fichiers sont réécrits, puis la base est alignée sur eux — les tables des entités nouvelles sont créées et les colonnes modifiées le sont aussi.',
+            'confirm_destructive' => 'Appliquer aussi les suppressions de colonnes et leurs données',
         ],
 
         'conflicts' => [

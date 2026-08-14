@@ -56,7 +56,7 @@ it('generates an ADD COLUMN up and a dropColumn down for an added field', functi
 
     $contents = (string) file_get_contents(evolutionModuleDir().'/'.$filename);
 
-    expect($contents)->toContain("\$table->integer('mileage');")
+    expect($contents)->toContain("\$table->integer('mileage')->nullable();")
         ->and($contents)->toContain("\$table->dropColumn('mileage');");
 });
 
@@ -76,7 +76,7 @@ it('generates a dropColumn up and a re-add down for a removed field', function (
     $upSection = implode("\n", array_slice($lines, 0, (int) array_search('    public function down(): void', $lines, true)));
 
     expect($upSection)->toContain("\$table->dropColumn('mileage');")
-        ->and($contents)->toContain("\$table->integer('mileage');");
+        ->and($contents)->toContain("\$table->integer('mileage')->nullable();");
 });
 
 it('generates renameColumn both ways for a renamed field', function () {
@@ -112,8 +112,8 @@ it('generates a ->change() line for a safe type conversion', function () {
 
     $contents = (string) file_get_contents(evolutionModuleDir().'/'.$filename);
 
-    expect($contents)->toContain("\$table->text('notes')->change();")
-        ->and($contents)->toContain("\$table->string('notes', 255)->change();");
+    expect($contents)->toContain("\$table->text('notes')->nullable()->change();")
+        ->and($contents)->toContain("\$table->string('notes', 255)->nullable()->change();");
 });
 
 it('returns null and writes nothing for an added field without its own column', function () {
@@ -151,8 +151,33 @@ it('skips a columnless field while still emitting the column for a sibling added
 
     $contents = (string) file_get_contents(evolutionModuleDir().'/'.$filename);
 
-    expect($contents)->toContain("\$table->integer('mileage');")
+    expect($contents)->toContain("\$table->integer('mileage')->nullable();")
         ->and($contents)->not->toContain('gallery');
+});
+
+it('derives the column nullability from the required flag, in both directions', function () {
+    $contentType = new ContentType(['key' => 'Car', 'table_name' => 'ct_cars']);
+    $diff = diffWith(added: [
+        ['key' => 'mileage', 'type' => 'integer', 'required' => true],
+        ['key' => 'notes', 'type' => 'textarea', 'required' => false],
+        ['key' => 'sold_on', 'type' => 'date', 'required' => true],
+    ]);
+
+    $filename = app(EvolutionMigrationGenerator::class)->generate($contentType, $diff, evolutionModuleDir());
+
+    if ($filename === null) {
+        throw new RuntimeException('Expected a migration file to be generated.');
+    }
+
+    $contents = (string) file_get_contents(evolutionModuleDir().'/'.$filename);
+
+    // Les deux sens du n° 137 : un type qui écrivait NOT NULL en dur devient
+    // nullable quand le champ est facultatif, et un type qui écrivait
+    // ->nullable() en dur cesse de l'être quand le champ est obligatoire.
+    expect($contents)->toContain("\$table->integer('mileage');")
+        ->and($contents)->toContain("\$table->text('notes')->nullable();")
+        ->and($contents)->toContain("\$table->date('sold_on');")
+        ->and($contents)->not->toContain("\$table->date('sold_on')->nullable();");
 });
 
 it('refuses a type conversion outside the safe whitelist', function () {

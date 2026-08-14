@@ -172,7 +172,7 @@ it('generates a real column, cast and fillable for a declared field', function (
 
     $moduleDir = generatedModulesPath().'/garage-fleet';
     $migrationFiles = File::glob($moduleDir.'/database/migrations/*.php');
-    expect(file_get_contents($migrationFiles[0]))->toContain("\$table->string('brand', 255);");
+    expect(file_get_contents($migrationFiles[0]))->toContain("\$table->string('brand', 255)->nullable();");
 
     $modelContents = (string) file_get_contents($moduleDir.'/src/Models/Car.php');
     expect($modelContents)->toContain("'brand',")
