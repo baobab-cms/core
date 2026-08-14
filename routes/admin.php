@@ -93,6 +93,8 @@ Route::middleware('can:baobab.system.branding.manage')
         Route::get('/', [BrandingController::class, 'index'])->name('index');
         Route::post('/', [BrandingController::class, 'update'])->name('update');
         Route::post('/profile', [BrandingController::class, 'applyProfile'])->name('profile');
+        Route::post('/reset-token/{group}/{key}', [BrandingController::class, 'resetToken'])->name('reset-token');
+        Route::post('/reset', [BrandingController::class, 'resetTokens'])->name('reset');
     });
 
 Route::middleware('can:baobab.system.fonts.manage')

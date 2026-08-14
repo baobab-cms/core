@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Baobab\Admin\Branding\Http\Controllers;
 
 use Baobab\Branding\Actions\ApplyBrandProfile;
+use Baobab\Branding\Actions\ResetBrandingToken;
+use Baobab\Branding\Actions\ResetBrandingTokens;
 use Baobab\Branding\Actions\UpdateBrandingSettings;
 use Baobab\Branding\Exceptions\UnknownBrandProfileException;
+use Baobab\Branding\Exceptions\UnknownDesignTokenException;
 use Baobab\Branding\Models\BrandingSetting;
 use Baobab\Branding\Models\Font;
 use Baobab\Branding\Support\BrandProfileRegistry;
@@ -67,6 +70,8 @@ final class BrandingController
             'spacing' => $groups['spacing'],
             'shadow' => $groups['shadow'],
             'profiles' => $profiles,
+            'profileSwatches' => $this->profileSwatches($profiles),
+            'profileOptions' => $this->profileOptions($profiles, $setting->brand_profile),
             'currentProfile' => $setting->brand_profile,
             'profileModified' => $profileModified,
             'canManageFonts' => $canManageFonts,
@@ -121,6 +126,96 @@ final class BrandingController
         }
 
         session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.branding.profile_applied')]);
+
+        return redirect()->route('admin.branding.index');
+    }
+
+    /**
+     * Réinitialisation d'un token (spec 18 §8). Le groupe et la clé viennent
+     * du formulaire, donc du dehors : l'Action les revalide contre le
+     * vocabulaire et lève une exception typée, rattrapée ici pour être
+     * traduite — jamais servie brute à l'utilisateur (patron n° 113).
+     */
+    /**
+     * Les options du menu de profils.
+     *
+     * **Une option vide en tête tant qu'aucun profil n'est appliqué**, et elle
+     * n'est pas cosmétique : un `<select>` dont aucune option ne correspond à
+     * la valeur courante affiche sa **première**, si bien que l'écran annonçait
+     * « Corporate » sur un site dont `brand_profile` est `null` — un état qui
+     * n'existait pas (relevé en vérification navigateur de la Pass A, suivi
+     * n° 149). La valeur vide échoue la validation `required` du contrôleur :
+     * appliquer un profil reste un choix explicite.
+     *
+     * @param  array<string, array{label: string, tokens: array<string, array<string, string>>}>  $profiles
+     * @return array<string, string>
+     */
+    private function profileOptions(array $profiles, ?string $current): array
+    {
+        $options = [];
+
+        if ($current === null) {
+            $options[''] = __('baobab::admin.branding.profile_none');
+        }
+
+        foreach ($profiles as $slug => $profile) {
+            $options[$slug] = $profile['label'];
+        }
+
+        return $options;
+    }
+
+    /**
+     * Les couleurs représentatives de chaque profil, pour l'« aperçu des
+     * pastilles » qu'exige la spec 18 §8 et que la section Profil n'avait
+     * jamais rendu (suivi n° 149) — on choisissait un preset par son nom, sans
+     * voir ce qu'il change.
+     *
+     * Quatre couleurs suffisent à reconnaître un profil, et ce sont celles que
+     * l'œil lit en premier : primaire, secondaire, accent, fond. Résolues ici
+     * plutôt que dans la vue, qui n'a pas à connaître le vocabulaire.
+     *
+     * @param  array<string, array{label: string, tokens: array<string, array<string, string>>}>  $profiles
+     * @return array<string, list<string>>
+     */
+    private function profileSwatches(array $profiles): array
+    {
+        $swatches = [];
+
+        foreach ($profiles as $slug => $profile) {
+            $colors = $profile['tokens']['colors'] ?? [];
+
+            $swatches[$slug] = array_values(array_filter([
+                $colors['primary'] ?? null,
+                $colors['secondary'] ?? null,
+                $colors['accent'] ?? null,
+                $colors['background'] ?? null,
+            ]));
+        }
+
+        return $swatches;
+    }
+
+    public function resetToken(string $group, string $key, ResetBrandingToken $action): RedirectResponse
+    {
+        try {
+            $action($group, $key);
+        } catch (UnknownDesignTokenException) {
+            session()->flash('toast', ['type' => 'danger', 'message' => __('baobab::admin.branding.unknown_token')]);
+
+            return redirect()->route('admin.branding.index');
+        }
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.branding.token_reset')]);
+
+        return redirect()->route('admin.branding.index');
+    }
+
+    public function resetTokens(ResetBrandingTokens $action): RedirectResponse
+    {
+        $action();
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.branding.tokens_reset')]);
 
         return redirect()->route('admin.branding.index');
     }

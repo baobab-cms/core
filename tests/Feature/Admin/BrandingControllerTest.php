@@ -173,3 +173,59 @@ it('denies font upload/deletion routes without baobab.system.fonts.manage', func
         ->post(route('admin.branding.fonts.store'), [])
         ->assertForbidden();
 });
+
+it('n\'annonce aucun profil appliqué tant que brand_profile est null', function () {
+    // Relevé en vérification navigateur de la Pass A (suivi n° 149) : un
+    // <select> dont aucune option ne correspond à la valeur courante affiche
+    // sa première, si bien que l'écran annonçait « Corporate » sur un site
+    // qui n'avait appliqué aucun profil.
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    expect(BrandingSetting::current()->brand_profile)->toBeNull();
+
+    $this->actingAs($actor, 'baobab')
+        ->get(route('admin.branding.index'))
+        ->assertOk()
+        ->assertSeeText('Aucun profil appliqué')
+        ->assertDontSeeText('Appliqué', escape: false);
+});
+
+it('marque le profil appliqué et retire l\'option vide une fois un profil choisi', function () {
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.profile'), ['profile' => 'corporate'])
+        ->assertRedirect(route('admin.branding.index'));
+
+    $this->actingAs($actor, 'baobab')
+        ->get(route('admin.branding.index'))
+        ->assertOk()
+        ->assertDontSeeText('Aucun profil appliqué');
+});
+
+it('réinitialise un token depuis l\'écran et refuse un token inconnu sans exception brute', function () {
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.update'), ['tokens' => ['colors' => ['accent' => '#123456']]])
+        ->assertRedirect(route('admin.branding.index'));
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.reset-token', ['group' => 'colors', 'key' => 'accent']))
+        ->assertRedirect(route('admin.branding.index'));
+
+    expect(BrandingSetting::current()->tokens['colors']['accent'] ?? null)->toBeNull();
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.reset-token', ['group' => 'colors', 'key' => 'chartreuse']))
+        ->assertRedirect(route('admin.branding.index'))
+        ->assertSessionHas('toast.type', 'danger');
+});
+
+it('refuse la réinitialisation à un acteur sans la permission branding', function () {
+    $actor = brandingActor([]);
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.reset'))
+        ->assertForbidden();
+});
