@@ -80,7 +80,7 @@ final class StudioRelationDefinitionGenerator
      * @param  ResolvedTarget  $target
      * @return array{filename: string, contents: string}|null
      */
-    public function pivotMigration(array $relation, string $ownerKey, string $ownerTable, array $target, string $moduleDir): ?array
+    public function pivotMigration(array $relation, string $ownerKey, string $ownerTable, array $target, string $moduleDir, ?int $rank = null): ?array
     {
         if (RelationType::from((string) $relation['type']) !== RelationType::ManyToMany) {
             return null;
@@ -119,12 +119,18 @@ final class StudioRelationDefinitionGenerator
         PHP;
 
         return [
-            'filename' => MigrationFilename::create($moduleDir, $pivotTable),
+            'filename' => MigrationFilename::create($moduleDir, $pivotTable, $rank),
             'contents' => $contents,
         ];
     }
 
-    private function pivotTableName(string $ownerKey, string $targetKey): string
+    /**
+     * Publique depuis le n° 120 : le générateur doit connaître le nom du pivot
+     * pour le placer dans le graphe de dépendances, avant même de produire sa
+     * migration. Le nom reste dérivé des deux clés triées — deux entités liées
+     * dans un sens ou dans l'autre donnent le même pivot.
+     */
+    public function pivotTableName(string $ownerKey, string $targetKey): string
     {
         $parts = [Str::snake($ownerKey), Str::snake($targetKey)];
         sort($parts);

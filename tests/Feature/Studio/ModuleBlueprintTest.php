@@ -16,7 +16,14 @@ afterEach(function () {
 });
 
 it('accepts a minimal valid blueprint', function () {
-    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson());
+    // Le blueprint minimal est déclaré ici plutôt qu'emprunté à la fixture
+    // partagée : ce test mesure ce qu'un blueprint *sans rien de facultatif*
+    // produit, et il doit rester vrai quand la fixture partagée gagne des
+    // champs — ce qu'elle a fait au n° 120, une table n'ayant qu'une seule
+    // migration de création et son schéma devant donc être unique par module.
+    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson([
+        'entities' => [['key' => 'Car', 'table' => 'cars']],
+    ]));
 
     expect($blueprint->name())->toBe('garage/fleet')
         ->and($blueprint->title())->toBe('Fleet')
@@ -264,3 +271,15 @@ describe('fromDraftJson', function () {
             ->toThrow(InvalidModuleBlueprintException::class);
     });
 });
+
+it('refuse deux entités qui visent la même table', function () {
+    // Deux migrations de création pour un seul CREATE TABLE possible : la
+    // seconde échouerait en SQL brut à l'installation. Refusé au blueprint,
+    // là où la faute se nomme (suivi n° 120).
+    ModuleBlueprint::fromJson(moduleBlueprintJson([
+        'entities' => [
+            ['key' => 'Car', 'table' => 'cars'],
+            ['key' => 'Van', 'table' => 'cars'],
+        ],
+    ]));
+})->throws(InvalidModuleBlueprintException::class, 'cars');

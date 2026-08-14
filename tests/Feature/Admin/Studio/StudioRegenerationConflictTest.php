@@ -54,7 +54,15 @@ function studioRegenDraft(): ModuleBlueprintDraft
             'entities' => [[
                 'key' => 'Car',
                 'table' => 'cars',
-                'fields' => [['key' => 'plate', 'type' => 'text']],
+                // Même schéma que la fixture partagée : `garage/fleet` est
+                // installé par plusieurs tests du même processus, et une table
+                // n'a qu'une migration de création (n° 120). Deux schémas sous
+                // un même nom de module laissaient le premier installé fixer
+                // `cars` pour tous les suivants.
+                'fields' => [
+                    ['key' => 'brand', 'type' => 'text', 'required' => true],
+                    ['key' => 'status', 'type' => 'select', 'options' => ['choices' => ['draft', 'published']]],
+                ],
                 'relations' => [],
                 'routes' => ['admin' => true, 'front' => false, 'api' => false],
             ]],

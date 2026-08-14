@@ -31,20 +31,64 @@ final class MigrationFilename
     private const DIRECTORY = 'database/migrations';
 
     /**
+     * Préfixe synthétique, sur le patron du squelette de Laravel lui-même
+     * (`0001_01_01_000000_create_users_table.php`) : la date d'un nom de
+     * migration n'a jamais porté autre chose qu'un ordre.
+     */
+    private const PREFIX = '0001_01_01_';
+
+    /**
      * @param  string  $moduleDir  Racine du module sur disque (peut ne pas encore exister).
+     * @param  int|null  $rank  Rang de la table dans l'ordre de création (`MigrationOrder`).
+     *                          `null` conserve l'ancien nommage horodaté, pour les appelants
+     *                          qui n'ont pas de graphe à leur disposition.
      * @return string Chemin relatif au module.
      */
-    public static function create(string $moduleDir, string $table): string
+    public static function create(string $moduleDir, string $table, ?int $rank = null): string
     {
         $suffix = "_create_{$table}_table.php";
 
+        // Un module déjà présent sur disque garde ses noms : ils sont ceux que
+        // la table `migrations` de cette installation connaît, et les renommer
+        // ferait rejouer des migrations déjà exécutées (suivi n° 116, n° 120).
         $existing = self::existingFile(rtrim($moduleDir, '/\\').'/'.self::DIRECTORY, $suffix);
 
         if ($existing !== null) {
             return self::DIRECTORY.'/'.$existing;
         }
 
-        return self::DIRECTORY.'/'.MigrationTimestamp::generate().$suffix;
+        if ($rank === null) {
+            return self::DIRECTORY.'/'.MigrationTimestamp::generate().$suffix;
+        }
+
+        $ordinal = str_pad((string) $rank, 6, '0', STR_PAD_LEFT);
+
+        return self::DIRECTORY.'/'.self::PREFIX.$ordinal.'_'.self::moduleToken($moduleDir).$suffix;
+    }
+
+    /**
+     * Un discriminant stable, dérivé du dossier du module.
+     *
+     * **Sans lui, deux modules ne peuvent pas posséder une table du même nom.**
+     * Laravel enregistre une migration dans la table `migrations` sous son seul
+     * nom de fichier, sans le chemin d'où elle vient : deux modules ayant
+     * chacun une table `cars` produiraient le même nom, et le second serait
+     * considéré comme déjà exécuté — sa table ne serait jamais créée. Défaut
+     * introduit puis rattrapé en écrivant le n° 120, et attrapé par deux tests
+     * existants qui installent `garage/fleet` et `garage/showroom` dans le même
+     * processus.
+     *
+     * Le jeton occupe la place qu'occupait le suffixe aléatoire de
+     * `MigrationTimestamp`, mais il est **déterminé par le module** : même
+     * module, même jeton, sur n'importe quelle machine. Le condensat n'a aucun
+     * rôle de sécurité, seulement de distinction — le dossier du module est
+     * lui-même dérivé de son nom `vendor/slug`, donc unique.
+     */
+    private static function moduleToken(string $moduleDir): string
+    {
+        $basename = basename(rtrim(str_replace('\\', '/', $moduleDir), '/'));
+
+        return substr(md5($basename), 0, 6);
     }
 
     /**

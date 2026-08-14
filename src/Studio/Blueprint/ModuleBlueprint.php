@@ -89,6 +89,7 @@ final readonly class ModuleBlueprint
     private static function validateEntities(array $entities, FieldRegistry $fieldRegistry, StudioRelationTargetResolver $relationTargets): void
     {
         $keys = [];
+        $tables = [];
 
         foreach ($entities as $entity) {
             $key = $entity['key'] ?? null;
@@ -102,6 +103,26 @@ final readonly class ModuleBlueprint
 
             if ($key !== null) {
                 $keys[] = $key;
+            }
+
+            // Deux entités qui visent la même table produiraient deux
+            // migrations de création pour un seul `CREATE TABLE` possible : la
+            // seconde échouerait à l'installation sur un « table already
+            // exists » brut. Refusé ici, où la faute se nomme, plutôt que subi
+            // en SQL (suivi n° 120, même principe que le refus d'un cycle de
+            // dépendances).
+            $table = $entity['table'] ?? null;
+
+            if ($table !== null && in_array($table, $tables, true)) {
+                throw InvalidModuleBlueprintException::forField(
+                    'entities',
+                    "La table « {$table} » est déclarée par plus d'une entité de ce blueprint. "
+                    .'Une table n\'a qu\'une migration de création : donnez à chaque entité sa propre table.'
+                );
+            }
+
+            if ($table !== null) {
+                $tables[] = $table;
             }
         }
 

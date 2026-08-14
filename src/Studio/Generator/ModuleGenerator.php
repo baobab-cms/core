@@ -8,6 +8,7 @@ use Baobab\ContentTypes\Exceptions\GeneratedFileConflictException;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Generator\GeneratedFileChecksums;
 use Baobab\ContentTypes\Generator\MigrationFilename;
+use Baobab\ContentTypes\Generator\MigrationOrder;
 use Baobab\ContentTypes\Generator\StubRenderer;
 use Baobab\Studio\Blueprint\ModuleBlueprint;
 use Baobab\Studio\Relations\StudioRelationTargetResolver;
@@ -184,6 +185,11 @@ final class ModuleGenerator
             $entities,
         );
 
+        // Rang de chaque table dans l'ordre de création, calculé une fois pour
+        // tout le module : c'est lui qui nomme les migrations, donc lui qui
+        // décide de leur ordre d'exécution et de leur identité (suivi n° 120).
+        $ranks = $this->tableRanks($entities, $siblings);
+
         $files = [];
         $adminRouteFragments = [];
         $webRouteFragments = [];
@@ -192,7 +198,7 @@ final class ModuleGenerator
         foreach ($entities as $entity) {
             $files = [
                 ...$files,
-                ...$this->planMigration($entity, $siblings, $this->moduleDir($name)),
+                ...$this->planMigration($entity, $siblings, $this->moduleDir($name), $ranks),
                 ...$this->planModel($entity, $namespace, $siblings),
                 ...$this->planPolicy($entity, $namespace, $slug, $blueprint),
             ];
@@ -364,18 +370,73 @@ final class ModuleGenerator
     }
 
     /**
+     * Le rang de chaque table du module dans l'ordre de création : une table
+     * référencée précède celle qui la référence, et le pivot d'un `many_to_many`
+     * passe après ses deux côtés (suivi n° 120).
+     *
+     * Les cibles hors du module (Content Type existant, modèle du Core) ne
+     * figurent pas dans le graphe : leur table existe déjà, il n'y a rien à
+     * ordonner avant elle. Une entité qui se référence elle-même non plus — sa
+     * colonne naît dans le même `CREATE TABLE` que la clé qu'elle vise.
+     *
+     * @param  list<array<string, mixed>>  $entities
+     * @param  list<array{key: string, table: string}>  $siblings
+     * @return array<string, int>
+     */
+    private function tableRanks(array $entities, array $siblings): array
+    {
+        $moduleTables = array_map(static fn (array $sibling): string => $sibling['table'], $siblings);
+
+        /** @var array<string, list<string>> $graph */
+        $graph = array_fill_keys($moduleTables, []);
+
+        foreach ($entities as $entity) {
+            $table = (string) $entity['table'];
+
+            foreach ($this->ownColumnRelations($entity) as $relation) {
+                $target = $this->relationTargets->resolve((string) $relation['target'], $siblings);
+
+                // Une cible polymorphique n'a pas de table unique à attendre :
+                // elle n'impose aucun ordre.
+                if (is_string($target['table'])) {
+                    $graph[$table][] = $target['table'];
+                }
+            }
+
+            foreach ($this->manyToManyRelations($entity) as $relation) {
+                $target = $this->relationTargets->resolve((string) $relation['target'], $siblings);
+                $pivot = $this->relationDefinitions->pivotTableName((string) $entity['key'], $target['key']);
+
+                $graph[$pivot] = array_filter(
+                    [$table, $target['table']],
+                    static fn (?string $dependency): bool => is_string($dependency),
+                );
+            }
+        }
+
+        $ranks = [];
+
+        foreach (MigrationOrder::sort($graph) as $position => $table) {
+            $ranks[$table] = $position + 1;
+        }
+
+        return $ranks;
+    }
+
+    /**
      * @param  array<string, mixed>  $entity
      * @param  list<array{key: string, table: string}>  $siblings
+     * @param  array<string, int>  $ranks
      * @return array<string, string>
      */
-    private function planMigration(array $entity, array $siblings, string $moduleDir): array
+    private function planMigration(array $entity, array $siblings, string $moduleDir, array $ranks): array
     {
         $table = (string) $entity['table'];
         $options = $entity['options'] ?? [];
         $uuid = (bool) ($options['uuid'] ?? false);
 
         $files = [
-            MigrationFilename::create($moduleDir, $table) => (new StubRenderer)->render(StudioStubs::path('migration'), [
+            MigrationFilename::create($moduleDir, $table, $ranks[$table] ?? null) => (new StubRenderer)->render(StudioStubs::path('migration'), [
                 'table_name' => $table,
                 'id_column' => $uuid
                     ? "            \$table->uuid('id')->primary();"
@@ -391,7 +452,7 @@ final class ModuleGenerator
             ]),
         ];
 
-        foreach ($this->pivotMigrations($entity, $siblings, $moduleDir) as $pivot) {
+        foreach ($this->pivotMigrations($entity, $siblings, $moduleDir, $ranks) as $pivot) {
             $files[$pivot['filename']] = $pivot['contents'];
         }
 
@@ -675,21 +736,28 @@ final class ModuleGenerator
     /**
      * @param  array<string, mixed>  $entity
      * @param  list<array{key: string, table: string}>  $siblings
+     * @param  array<string, int>  $ranks
      * @return list<array{filename: string, contents: string}>
      */
-    private function pivotMigrations(array $entity, array $siblings, string $moduleDir): array
+    private function pivotMigrations(array $entity, array $siblings, string $moduleDir, array $ranks): array
     {
         $ownerKey = (string) $entity['key'];
         $ownerTable = (string) $entity['table'];
 
         return array_values(array_filter(collect($this->manyToManyRelations($entity))
-            ->map(fn (array $relation) => $this->relationDefinitions->pivotMigration(
-                $relation,
-                $ownerKey,
-                $ownerTable,
-                $this->relationTargets->resolve((string) $relation['target'], $siblings),
-                $moduleDir,
-            ))
+            ->map(function (array $relation) use ($ownerKey, $ownerTable, $siblings, $moduleDir, $ranks): ?array {
+                $target = $this->relationTargets->resolve((string) $relation['target'], $siblings);
+                $pivot = $this->relationDefinitions->pivotTableName($ownerKey, $target['key']);
+
+                return $this->relationDefinitions->pivotMigration(
+                    $relation,
+                    $ownerKey,
+                    $ownerTable,
+                    $target,
+                    $moduleDir,
+                    $ranks[$pivot] ?? null,
+                );
+            })
             ->all()));
     }
 

@@ -57,7 +57,12 @@ function studioPackagingDraft(array $extraBlueprint = []): ModuleBlueprintDraft
             'entities' => [[
                 'key' => 'Car',
                 'table' => 'cars',
-                'fields' => [['key' => 'plate', 'type' => 'text']],
+                // Même schéma que la fixture partagée — voir n° 120 : un nom
+                // de module, un schéma.
+                'fields' => [
+                    ['key' => 'brand', 'type' => 'text', 'required' => true],
+                    ['key' => 'status', 'type' => 'select', 'options' => ['choices' => ['draft', 'published']]],
+                ],
                 'relations' => [],
                 'routes' => ['admin' => true, 'front' => false, 'api' => false],
             ]],

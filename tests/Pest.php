@@ -209,8 +209,22 @@ function moduleBlueprintJson(array $overrides = []): string
             'version' => '1.0.0',
             'type' => 'module',
         ],
+        // Les champs appartiennent à la fixture partagée depuis le n° 120 :
+        // une table n'a qu'une migration de création, et son nom est désormais
+        // stable. Deux tests qui installent `garage/fleet` avec des schémas
+        // différents fixaient donc `cars` sur celui qui passait le premier,
+        // le second étant ignoré comme « déjà migrée ». Un nom de module, un
+        // schéma — la règle que ce dépôt énonce déjà (« un cas qui a besoin
+        // d'entités différentes a besoin d'un autre module »).
         'entities' => [
-            ['key' => 'Car', 'table' => 'cars'],
+            [
+                'key' => 'Car',
+                'table' => 'cars',
+                'fields' => [
+                    ['key' => 'brand', 'type' => 'text', 'required' => true],
+                    ['key' => 'status', 'type' => 'select', 'options' => ['choices' => ['draft', 'published']]],
+                ],
+            ],
         ],
     ], $overrides));
 }
