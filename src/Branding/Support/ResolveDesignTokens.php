@@ -25,6 +25,37 @@ final class ResolveDesignTokens
      */
     public function __invoke(): array
     {
+        $resolved = $this->baseline();
+
+        /** @var array<string, array<string, string>> $adminTokens */
+        $adminTokens = BrandingSetting::current()->tokens ?? [];
+        $resolved = $this->mergeGroup($resolved, $adminTokens);
+
+        /** @var array<string, array<string, string>> $filtered */
+        $filtered = Hook::filter('baobab.branding.tokens', $resolved);
+
+        return $filtered;
+    }
+
+    /**
+     * La cascade **sans** les surcharges admin : défauts Core, puis `tokens`
+     * du thème actif.
+     *
+     * C'est la valeur sur laquelle un token retombe quand on le réinitialise,
+     * et donc la référence qui permet de dire si un token est *surchargé* —
+     * ce que l'écran de marque marque désormais carte par carte (spec 18 §8,
+     * suivi n° 149). Extrait de `__invoke()` plutôt que recalculé ailleurs :
+     * deux définitions de « niveau inférieur » finiraient par diverger.
+     *
+     * Le filtre `baobab.branding.tokens` n'est **pas** appliqué ici : il
+     * décrit ce qui est servi, pas ce qui est réglé, et un module qui force
+     * une couleur au rendu ne doit pas faire passer un token pour surchargé
+     * dans l'écran d'administration.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public function baseline(): array
+    {
         $resolved = DesignTokenSchema::CORE_DEFAULTS;
 
         $theme = $this->themeResolver->current();
@@ -35,14 +66,7 @@ final class ResolveDesignTokens
             $resolved = $this->mergeGroup($resolved, $themeTokens);
         }
 
-        /** @var array<string, array<string, string>> $adminTokens */
-        $adminTokens = BrandingSetting::current()->tokens ?? [];
-        $resolved = $this->mergeGroup($resolved, $adminTokens);
-
-        /** @var array<string, array<string, string>> $filtered */
-        $filtered = Hook::filter('baobab.branding.tokens', $resolved);
-
-        return $filtered;
+        return $resolved;
     }
 
     /**

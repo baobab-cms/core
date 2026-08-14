@@ -14,6 +14,7 @@ use Baobab\Branding\Models\BrandingSetting;
 use Baobab\Branding\Models\Font;
 use Baobab\Branding\Support\BrandProfileRegistry;
 use Baobab\Branding\Support\DesignTokenSchema;
+use Baobab\Branding\Support\ResolveDesignTokens;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ use Illuminate\Validation\Validator as ValidatorContract;
  */
 final class BrandingController
 {
-    public function index(Request $request, BrandProfileRegistry $registry): View
+    public function index(Request $request, BrandProfileRegistry $registry, ResolveDesignTokens $resolver): View
     {
         $setting = BrandingSetting::current()->load(['logo', 'favicon']);
 
@@ -41,6 +42,7 @@ final class BrandingController
         }
 
         $profiles = $registry->all();
+        $cards = $this->tokenCards($groups, $setting, $registry, $resolver);
         $profileModified = $setting->brand_profile !== null
             && ($setting->tokens ?? []) !== $registry->load($setting->brand_profile);
 
@@ -72,6 +74,7 @@ final class BrandingController
             'profiles' => $profiles,
             'profileSwatches' => $this->profileSwatches($profiles),
             'profileOptions' => $this->profileOptions($profiles, $setting->brand_profile),
+            'cards' => $cards,
             'currentProfile' => $setting->brand_profile,
             'profileModified' => $profileModified,
             'canManageFonts' => $canManageFonts,
@@ -136,6 +139,52 @@ final class BrandingController
      * vocabulaire et lève une exception typée, rattrapée ici pour être
      * traduite — jamais servie brute à l'utilisateur (patron n° 113).
      */
+    /**
+     * Une carte par token : sa valeur courante, la valeur sur laquelle il
+     * retomberait, et s'il est **surchargé** (spec 18 §8, suivi n° 149).
+     *
+     * La référence est celle que `ResetBrandingToken` restaurerait — profil
+     * appliqué s'il définit le token, sinon la cascade sans surcharges admin
+     * (thème actif, puis défauts Core), lue par `ResolveDesignTokens::
+     * baseline()`. Une seule définition du « niveau inférieur » pour l'Action
+     * et pour l'écran : sans quoi la carte pourrait annoncer une
+     * réinitialisation qui ne rend pas la valeur promise.
+     *
+     * `overridden` gouverne deux choses à l'écran : le contour de la carte, et
+     * l'affichage même du bouton « Réinitialiser », qui n'a rien à faire là
+     * où il n'aurait aucun effet.
+     *
+     * @param  array<string, array<string, string>>  $groups
+     * @return array<string, list<array{key: string, value: string, baseline: string, overridden: bool, reset: string}>>
+     */
+    private function tokenCards(
+        array $groups,
+        BrandingSetting $setting,
+        BrandProfileRegistry $registry,
+        ResolveDesignTokens $resolver,
+    ): array {
+        $baseline = $resolver->baseline();
+        $profile = $setting->brand_profile === null ? [] : $registry->load($setting->brand_profile);
+
+        $cards = [];
+
+        foreach ($groups as $group => $values) {
+            foreach ($values as $key => $value) {
+                $reference = $profile[$group][$key] ?? $baseline[$group][$key] ?? $value;
+
+                $cards[$group][] = [
+                    'key' => $key,
+                    'value' => $value,
+                    'baseline' => $reference,
+                    'overridden' => $value !== $reference,
+                    'reset' => route('admin.branding.reset-token', ['group' => $group, 'key' => $key]),
+                ];
+            }
+        }
+
+        return $cards;
+    }
+
     /**
      * Les options du menu de profils.
      *

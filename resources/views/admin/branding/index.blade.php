@@ -43,47 +43,124 @@
 
                 <h2 class="mb-4 mt-8 font-display text-lg font-semibold text-foreground">{{ __('baobab::admin.branding.section_colors') }}</h2>
 
-                @foreach ($colors as $key => $value)
-                    @if ($key !== 'primary')
-                        <x-baobab::field.color
-                            name="tokens[colors][{{ $key }}]"
-                            :label="__('baobab::admin.branding.color_'.$key.'_label')"
-                            :value="$value"
-                            :reset-action="route('admin.branding.reset-token', ['group' => 'colors', 'key' => $key])"
-                        />
-                    @endif
-                @endforeach
+                {{-- Grille et non liste : le point est de comparer les couleurs
+                     entre elles d'un coup d'œil, ce qu'une colonne interdit. --}}
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                    @foreach ($cards['colors'] as $card)
+                        @if ($card['key'] !== 'primary')
+                            <x-baobab::field.color-card
+                                name="tokens[colors][{{ $card['key'] }}]"
+                                :label="__('baobab::admin.branding.color_'.$card['key'].'_label')"
+                                :value="$card['value']"
+                                :overridden="$card['overridden']"
+                                :reset-action="$card['reset']"
+                            />
+                        @endif
+                    @endforeach
+                </div>
 
                 <h2 class="mb-4 mt-8 font-display text-lg font-semibold text-foreground">{{ __('baobab::admin.branding.section_fonts') }}</h2>
 
-                @foreach ($fonts as $key => $value)
-                    <x-baobab::field.text
-                        name="tokens[fonts][{{ $key }}]"
-                        label="{{ __('baobab::admin.branding.font_'.$key.'_label') }}"
-                        :value="$value"
-                    />
+                {{-- La pile CSS reste saisie telle quelle : la remplacer par un
+                     menu ferait perdre les fallbacks qu'impose §5.2. L'aperçu
+                     rend la pile sans la remplacer — on lit la police, et on
+                     garde la main sur la déclaration. --}}
+                @foreach ($cards['fonts'] as $card)
+                    <div class="mb-4">
+                        <x-baobab::field.text
+                            name="tokens[fonts][{{ $card['key'] }}]"
+                            :label="__('baobab::admin.branding.font_'.$card['key'].'_label')"
+                            :value="$card['value']"
+                            class="mb-1"
+                        />
+
+                        <p class="rounded-md border border-border bg-surface-subtle px-3 py-2 text-lg text-foreground" style="font-family: {{ $card['value'] }}">
+                            {{ __('baobab::admin.branding.font_preview_sample') }}
+                        </p>
+
+                        @if ($card['overridden'])
+                            <button
+                                type="submit"
+                                form="branding-reset"
+                                formaction="{{ $card['reset'] }}"
+                                class="mt-1 text-xs font-medium text-muted hover:text-foreground"
+                            >
+                                {{ __('baobab::admin.branding.reset_token_action') }}
+                            </button>
+                        @endif
+                    </div>
                 @endforeach
 
-                @foreach (['text' => $text, 'leading' => $leading, 'weight' => $weight] as $group => $values)
-                    @foreach ($values as $key => $value)
-                        <x-baobab::field.text
-                            name="tokens[{{ $group }}][{{ $key }}]"
-                            label="{{ __('baobab::admin.branding.'.$group.'_'.$key.'_label') }}"
-                            :value="$value"
-                        />
-                    @endforeach
+                {{-- L'échelle se montre à ses tailles réelles : une liste de
+                     `rem` ne dit pas si le rapport entre deux paliers tient. --}}
+                @foreach (['text', 'leading', 'weight'] as $group)
+                    <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach ($cards[$group] as $card)
+                            <x-baobab::token-card
+                                :label="__('baobab::admin.branding.'.$group.'_'.$card['key'].'_label')"
+                                :value="$card['value']"
+                                :overridden="$card['overridden']"
+                                :reset-action="$card['reset']"
+                            >
+                                <span
+                                    class="truncate px-2 text-foreground"
+                                    @if ($group === 'text') style="font-size: {{ $card['value'] }}"
+                                    @elseif ($group === 'leading') style="line-height: {{ $card['value'] }}"
+                                    @else style="font-weight: {{ $card['value'] }}"
+                                    @endif
+                                >{{ __('baobab::admin.branding.scale_preview_sample') }}</span>
+
+                                <x-slot:caption>
+                                    <input
+                                        type="text"
+                                        name="tokens[{{ $group }}][{{ $card['key'] }}]"
+                                        value="{{ $card['value'] }}"
+                                        aria-label="{{ __('baobab::admin.branding.'.$group.'_'.$card['key'].'_label') }}"
+                                        class="w-full rounded-md border border-border bg-surface px-2 py-1 font-mono text-xs text-foreground"
+                                    >
+                                </x-slot:caption>
+                            </x-baobab::token-card>
+                        @endforeach
+                    </div>
                 @endforeach
 
                 <h2 class="mb-4 mt-8 font-display text-lg font-semibold text-foreground">{{ __('baobab::admin.branding.section_surfaces') }}</h2>
 
-                @foreach (['radius' => $radius, 'spacing' => $spacing, 'shadow' => $shadow] as $group => $values)
-                    @foreach ($values as $key => $value)
-                        <x-baobab::field.text
-                            name="tokens[{{ $group }}][{{ $key }}]"
-                            label="{{ __('baobab::admin.branding.'.$group.'_'.$key.'_label') }}"
-                            :value="$value"
-                        />
-                    @endforeach
+                {{-- Témoin adapté à la nature du token : le carré porte
+                     réellement le rayon, l'espacement ou l'ombre. Une valeur
+                     en `rem` ne dit pas ce qu'elle fait. --}}
+                @foreach (['radius', 'spacing', 'shadow'] as $group)
+                    <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                        @foreach ($cards[$group] as $card)
+                            <x-baobab::token-card
+                                :label="__('baobab::admin.branding.'.$group.'_'.$card['key'].'_label')"
+                                :value="$card['value']"
+                                :overridden="$card['overridden']"
+                                :reset-action="$card['reset']"
+                            >
+                                @if ($group === 'radius')
+                                    <span class="h-12 w-12 border-2 border-primary bg-surface" style="border-radius: {{ $card['value'] }}"></span>
+                                @elseif ($group === 'spacing')
+                                    <span class="flex items-center bg-surface" style="gap: {{ $card['value'] }}">
+                                        <span class="h-8 w-3 rounded-sm bg-primary"></span>
+                                        <span class="h-8 w-3 rounded-sm bg-primary"></span>
+                                    </span>
+                                @else
+                                    <span class="h-12 w-12 rounded-md bg-surface" style="box-shadow: {{ $card['value'] }}"></span>
+                                @endif
+
+                                <x-slot:caption>
+                                    <input
+                                        type="text"
+                                        name="tokens[{{ $group }}][{{ $card['key'] }}]"
+                                        value="{{ $card['value'] }}"
+                                        aria-label="{{ __('baobab::admin.branding.'.$group.'_'.$card['key'].'_label') }}"
+                                        class="w-full rounded-md border border-border bg-surface px-2 py-1 font-mono text-xs text-foreground"
+                                    >
+                                </x-slot:caption>
+                            </x-baobab::token-card>
+                        @endforeach
+                    </div>
                 @endforeach
 
                 <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.branding.save_action') }}</x-baobab::button>

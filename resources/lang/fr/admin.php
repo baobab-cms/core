@@ -358,6 +358,8 @@ return [
         'profile_swatches_label' => 'Couleurs de ce profil',
         'profile_none' => '— Aucun profil appliqué —',
         'profile_applied_badge' => 'Appliqué',
+        'font_preview_sample' => 'Portez ce vieux whisky au juge blond qui fume',
+        'scale_preview_sample' => 'Baobab',
         'fonts' => [
             'title' => 'Polices',
             'column_family' => 'Famille',

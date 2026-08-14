@@ -229,3 +229,38 @@ it('refuse la réinitialisation à un acteur sans la permission branding', funct
         ->post(route('admin.branding.reset'))
         ->assertForbidden();
 });
+
+it('n\'affiche « Réinitialiser » que sur les tokens réellement surchargés', function () {
+    // Le marquage « surchargé » est la nouveauté logique de la Pass B : sans
+    // lui, la grille proposerait de réinitialiser des tokens qui sont déjà à
+    // leur valeur de référence, geste sans effet (suivi n° 149).
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $fresh = $this->actingAs($actor, 'baobab')->get(route('admin.branding.index'));
+
+    $fresh->assertOk()->assertDontSee(route('admin.branding.reset-token', ['group' => 'colors', 'key' => 'accent']));
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.update'), ['tokens' => ['colors' => ['accent' => '#123456']]])
+        ->assertRedirect(route('admin.branding.index'));
+
+    $this->actingAs($actor, 'baobab')
+        ->get(route('admin.branding.index'))
+        ->assertOk()
+        ->assertSee(route('admin.branding.reset-token', ['group' => 'colors', 'key' => 'accent']));
+});
+
+it('ne compte pas comme surchargée une couleur identique au profil appliqué', function () {
+    // Appliquer un profil copie ses valeurs dans `tokens` : sans comparaison
+    // au profil, les douze couleurs paraîtraient surchargées d'un coup.
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.branding.profile'), ['profile' => 'corporate'])
+        ->assertRedirect(route('admin.branding.index'));
+
+    $this->actingAs($actor, 'baobab')
+        ->get(route('admin.branding.index'))
+        ->assertOk()
+        ->assertDontSee(route('admin.branding.reset-token', ['group' => 'colors', 'key' => 'accent']));
+});
