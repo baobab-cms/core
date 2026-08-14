@@ -101,6 +101,7 @@ final class ContentController
         return view('baobab::admin.content.index', [
             'contentType' => $type,
             'slug' => $contentType,
+            'pageTitle' => $this->pluralLabel($type),
             'columns' => $this->listColumns($type, $contentType, $trashed),
             'rows' => $rows,
             'statuses' => $statuses,
@@ -143,6 +144,7 @@ final class ContentController
             'slug' => $contentType,
             'label' => $this->label($type),
             'isEdit' => false,
+            'editFormConfig' => null,
             'formMethod' => 'POST',
             'formAction' => route('admin.content.store', ['contentType' => $contentType]),
             'fields' => $this->formFieldsForView($type, null),
@@ -191,6 +193,7 @@ final class ContentController
             'slug' => $contentType,
             'label' => $this->label($type),
             'isEdit' => true,
+            'editFormConfig' => $this->editFormConfig($contentType, $model->getKey(), $lockedBy !== null),
             'formMethod' => 'PUT',
             'formAction' => route('admin.content.update', ['contentType' => $contentType, 'entry' => $model->getKey()]),
             'fields' => $this->formFieldsForView($type, $model),
@@ -813,6 +816,46 @@ final class ContentController
     private function label(ContentType $type): string
     {
         return $type->blueprint['label']['singular'] ?? $type->key;
+    }
+
+    private function pluralLabel(ContentType $type): string
+    {
+        return $type->blueprint['label']['plural'] ?? $type->key;
+    }
+
+    /**
+     * Configuration du formulaire d'édition consommée par `contentEditForm()`
+     * (heartbeat de verrou, autosave). `null` en création : il n'y a ni entrée
+     * à verrouiller, ni brouillon à sauvegarder automatiquement.
+     *
+     * Calculée ici et non dans la vue : elle y vivait dans un bloc `@php`
+     * (suivi n° 138), au motif que Blade ne compile pas un `@if` placé dans la
+     * liste d'attributs d'un tag de composant. C'est exact, mais cela plaidait
+     * pour sortir le calcul de la balise — pas pour le faire dans la vue.
+     *
+     * `csrfToken` est déclaré nullable parce qu'il l'est : `csrf_token()`
+     * rend `?string` (null sans session). Cet écran est derrière la session
+     * admin, donc le cas ne se produit pas — mais le type dit ce qui est,
+     * plutôt que de promettre ce que l'appel ne garantit pas. Le rendre non
+     * nullable supposerait de servir le jeton autrement (le champ `@csrf` du
+     * formulaire est déjà là), ce qui touche au JavaScript d'autosave : hors
+     * du périmètre d'une passe de conformité.
+     *
+     * @return array<string, bool|int|string|null>
+     */
+    private function editFormConfig(string $contentType, int|string $entryId, bool $readOnly): array
+    {
+        $params = ['contentType' => $contentType, 'entry' => $entryId];
+
+        return [
+            'heartbeatUrl' => route('admin.content.lock.heartbeat', $params),
+            'releaseUrl' => route('admin.content.lock.release', $params),
+            'autosaveUrl' => route('admin.content.autosave', $params),
+            'heartbeatSeconds' => (int) config('baobab.content.lock_heartbeat_seconds', 30),
+            'autosaveSeconds' => (int) config('baobab.content.autosave_seconds', 60),
+            'readOnly' => $readOnly,
+            'csrfToken' => csrf_token(),
+        ];
     }
 
     /**

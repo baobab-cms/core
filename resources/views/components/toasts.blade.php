@@ -1,12 +1,10 @@
-@php
-    $variants = [
-        'success' => 'border-success/30 bg-success/10 text-success',
-        'warning' => 'border-warning/30 bg-warning/10 text-warning',
-        'danger' => 'border-danger/30 bg-danger/10 text-danger',
-        'info' => 'border-border bg-surface text-foreground',
-    ];
-@endphp
-
+{{--
+    Aucune table de variantes côté serveur : le type d'un toast n'est connu
+    qu'au moment où il est poussé dans la pile Alpine, donc les classes se
+    choisissent côté client, dans le `x-bind:class` ci-dessous. Un tableau
+    `$variants` a existé ici jusqu'au 14 août 2026 sans être lu par personne —
+    du code mort, supprimé avec la passe de conformité (suivi n° 138).
+--}}
 <div
     x-data="{
         toasts: [],

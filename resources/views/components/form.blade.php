@@ -1,19 +1,7 @@
-@props([
-    'method' => 'POST',
-])
-
-@php
-    $spoofedMethods = ['PUT', 'PATCH', 'DELETE'];
-    $httpMethod = strtoupper($method);
-@endphp
-
-<form
-    method="{{ in_array($httpMethod, $spoofedMethods, true) ? 'POST' : $httpMethod }}"
-    {{ $attributes->except('method') }}
->
+<form method="{{ $formMethod }}" {{ $attributes }}>
     @csrf
 
-    @if (in_array($httpMethod, $spoofedMethods, true))
+    @if ($isSpoofed)
         @method($httpMethod)
     @endif
 

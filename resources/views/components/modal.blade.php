@@ -1,18 +1,3 @@
-@props([
-    'name',
-    'maxWidth' => 'md',
-    'open' => false,
-])
-
-@php
-    $maxWidths = [
-        'sm' => 'max-w-sm',
-        'md' => 'max-w-md',
-        'lg' => 'max-w-lg',
-        'xl' => 'max-w-xl',
-    ];
-@endphp
-
 <div
     x-data="{ show: @js($open) }"
     x-on:open-modal.window="show = ($event.detail === '{{ $name }}')"
@@ -30,7 +15,7 @@
 
     <div
         x-show="show"
-        {{ $attributes->class(['relative w-full rounded-lg border border-border bg-surface p-6 shadow-lg', $maxWidths[$maxWidth] ?? $maxWidths['md']]) }}
+        {{ $attributes->class(['relative w-full rounded-lg border border-border bg-surface p-6 shadow-lg', $maxWidthClass]) }}
     >
         {{ $slot }}
     </div>

@@ -31,7 +31,7 @@
                         ]"
                     />
 
-                    @include('baobab::admin.widgets.partials.settings-fields', ['fields' => $fields, 'values' => []])
+                    @include('baobab::admin.widgets.partials.settings-fields', ['fields' => $fields])
 
                     <x-baobab::button type="submit" variant="primary">
                         {{ __('baobab::admin.widgets.create_action') }}

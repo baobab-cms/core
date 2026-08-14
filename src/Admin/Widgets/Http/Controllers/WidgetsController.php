@@ -60,7 +60,7 @@ final class WidgetsController
             'widgetKey' => $widgetKey,
             'zoneKey' => $request->query('zone_key'),
             'zones' => ThemeWidgetZone::where('is_active', true)->orderBy('label')->get(),
-            'fields' => $fields,
+            'fields' => $this->withResolvedValues($fields, []),
         ]);
     }
 
@@ -97,7 +97,10 @@ final class WidgetsController
         return view('baobab::admin.widgets.edit', [
             'instance' => $instance,
             'widgetLabel' => $widget::label(),
-            'fields' => $this->withCurrentValue($widget->settingsSchema(), $instance->settings ?? []),
+            'fields' => $this->withResolvedValues(
+                $this->withCurrentValue($widget->settingsSchema(), $instance->settings ?? []),
+                $instance->settings ?? [],
+            ),
             'zones' => ThemeWidgetZone::where('is_active', true)
                 ->orWhere('key', $instance->zone_key)
                 ->orderBy('label')
@@ -196,6 +199,31 @@ final class WidgetsController
         }
 
         return $settings;
+    }
+
+    /**
+     * La valeur à afficher pour chaque champ : celle enregistrée, sinon le
+     * défaut du schéma.
+     *
+     * Résolue ici et non dans le partiel, où elle vivait dans un `@php`
+     * inline (suivi n° 138) — c'est le même geste que `ContentController`,
+     * dont ce formulaire reprend déjà le patron.
+     *
+     * @param  list<array<string, mixed>>  $fields
+     * @param  array<string, mixed>  $settings
+     * @return list<array<string, mixed>>
+     */
+    private function withResolvedValues(array $fields, array $settings): array
+    {
+        foreach ($fields as &$field) {
+            $key = $field['key'] ?? null;
+
+            $field['value'] = is_string($key) && array_key_exists($key, $settings)
+                ? $settings[$key]
+                : ($field['default'] ?? null);
+        }
+
+        return $fields;
     }
 
     /**

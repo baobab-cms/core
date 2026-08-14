@@ -30,7 +30,7 @@
                     :checked="$instance->is_active"
                 />
 
-                @include('baobab::admin.widgets.partials.settings-fields', ['fields' => $fields, 'values' => $instance->settings ?? []])
+                @include('baobab::admin.widgets.partials.settings-fields', ['fields' => $fields])
 
                 <x-baobab::button type="submit" variant="primary">
                     {{ __('baobab::admin.widgets.update_action') }}

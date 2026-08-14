@@ -1,9 +1,5 @@
 @extends('baobab::layouts.admin')
 
-@php
-    $pageTitle = $contentType->blueprint['label']['plural'] ?? $contentType->key;
-@endphp
-
 @section('title', $pageTitle)
 
 @section('content')

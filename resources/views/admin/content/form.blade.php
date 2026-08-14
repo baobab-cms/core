@@ -200,21 +200,6 @@
             {!! $section !!}
         @endforeach
 
-        @php
-            // Calculé en dehors de la balise du composant : Blade ne compile pas correctement
-            // des directives @if/@endif placées à l'intérieur de la liste d'attributs d'un tag
-            // de composant (<x-baobab::form ...>), contrairement à une balise HTML brute.
-            $editFormConfig = $isEdit ? [
-                'heartbeatUrl' => route('admin.content.lock.heartbeat', ['contentType' => $slug, 'entry' => $entryId]),
-                'releaseUrl' => route('admin.content.lock.release', ['contentType' => $slug, 'entry' => $entryId]),
-                'autosaveUrl' => route('admin.content.autosave', ['contentType' => $slug, 'entry' => $entryId]),
-                'heartbeatSeconds' => (int) config('baobab.content.lock_heartbeat_seconds', 30),
-                'autosaveSeconds' => (int) config('baobab.content.autosave_seconds', 60),
-                'readOnly' => (bool) ($readOnly ?? false),
-                'csrfToken' => csrf_token(),
-            ] : null;
-        @endphp
-
         <x-baobab::card>
             <x-baobab::form
                 method="{{ $formMethod }}"

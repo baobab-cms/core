@@ -1,27 +1,17 @@
-@props([
-    'title' => null,
-    'breadcrumbs' => [],
-])
-
 <div {{ $attributes->class(['mb-6']) }}>
     <div class="flex items-center justify-between gap-4">
         <div>
-            @if (! empty($breadcrumbs))
+            @if (! empty($crumbs))
                 <nav aria-label="breadcrumb" class="mb-1 flex items-center gap-1 text-xs text-muted">
-                    @foreach ($breadcrumbs as $index => $crumb)
-                        @php
-                            $label = is_array($crumb) ? ($crumb[0] ?? '') : $crumb;
-                            $url = is_array($crumb) ? ($crumb[1] ?? null) : null;
-                        @endphp
-
-                        @if ($index > 0)
+                    @foreach ($crumbs as $crumb)
+                        @if (! $loop->first)
                             <span aria-hidden="true">/</span>
                         @endif
 
-                        @if ($url)
-                            <a href="{{ $url }}" class="hover:text-foreground">{{ $label }}</a>
+                        @if ($crumb['url'])
+                            <a href="{{ $crumb['url'] }}" class="hover:text-foreground">{{ $crumb['label'] }}</a>
                         @else
-                            <span>{{ $label }}</span>
+                            <span>{{ $crumb['label'] }}</span>
                         @endif
                     @endforeach
                 </nav>

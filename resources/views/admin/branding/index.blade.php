@@ -162,7 +162,7 @@
 
                     <x-baobab::field.checkbox
                         name="license_attested"
-                        label="{{ __('baobab::admin.branding.fonts.license_attested_label') }}"
+                        :label="__('baobab::admin.branding.fonts.license_attested_label')"
                     />
 
                     <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.branding.fonts.upload_action') }}</x-baobab::button>

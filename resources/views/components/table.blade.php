@@ -1,15 +1,3 @@
-@props([
-    'columns' => [],
-    'rows' => [],
-    'bulkActions' => [],
-    'rowKey' => 'id',
-])
-
-@php
-    $hasBulkActions = ! empty($bulkActions);
-    $isEmpty = $rows instanceof \Countable ? count($rows) === 0 : empty($rows);
-@endphp
-
 @if ($isEmpty)
     <x-baobab::empty-state />
 @else
@@ -60,18 +48,10 @@
                     @foreach ($columns as $column)
                         <th class="px-3 py-2 font-medium">
                             @if ($column['sortable'] ?? false)
-                                @php
-                                    $currentSort = request('sort');
-                                    $currentDirection = request('direction', 'asc');
-                                    $nextDirection = $currentSort === $column['key'] && $currentDirection === 'asc' ? 'desc' : 'asc';
-                                @endphp
-                                <a
-                                    href="{{ request()->fullUrlWithQuery(['sort' => $column['key'], 'direction' => $nextDirection]) }}"
-                                    class="hover:text-foreground"
-                                >
+                                <a href="{{ $sortUrl($column) }}" class="hover:text-foreground">
                                     {{ $column['label'] }}
-                                    @if ($currentSort === $column['key'])
-                                        <span aria-hidden="true">{{ $currentDirection === 'asc' ? '&uarr;' : '&darr;' }}</span>
+                                    @if ($sortArrow($column))
+                                        <span aria-hidden="true">{{ $sortArrow($column) }}</span>
                                     @endif
                                 </a>
                             @else
@@ -108,7 +88,7 @@
         </table>
     </div>
 
-    @if ($rows instanceof \Illuminate\Contracts\Pagination\Paginator)
+    @if ($isPaginated)
         <div class="mt-4">
             {{ $rows->links() }}
         </div>
