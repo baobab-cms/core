@@ -11,11 +11,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('{{ table_name }}', function (Blueprint $table): void {
-{{ id_column }}
+{{ leading_columns }}
 {{ field_columns }}
 {{ relation_columns }}
-{{ timestamps_column }}
-{{ soft_deletes_column }}
+{{ trailing_columns }}
         });
     }
 

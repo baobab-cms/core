@@ -12,8 +12,9 @@ use Baobab\ContentTypes\Generator\MigrationFilename;
 use Baobab\ContentTypes\Generator\MigrationOrder;
 use Baobab\ContentTypes\Generator\StubRenderer;
 use Baobab\Studio\Blueprint\ModuleBlueprint;
+use Baobab\Studio\Generator\Profiles\GenerationProfile;
+use Baobab\Studio\Generator\Profiles\ModuleProfile;
 use Baobab\Studio\Relations\StudioRelationTargetResolver;
-use Baobab\Studio\Support\BlueprintPermissions;
 use Illuminate\Support\Str;
 
 /**
@@ -39,21 +40,52 @@ use Illuminate\Support\Str;
  * `bootstrapActiveModules()` a dû être complété pour enregistrer les
  * widgets d'un module actif dans `WidgetRegistry`). Reste, pour clore
  * Pass A : la CLI `baobab:module:build` qui assemble A1+A2+A3.
+ *
+ * **Générateur unique du Core depuis la Pass A du M8 point 2** (suivi n° 157).
+ * Ce qui distinguait la génération d'un Content Type de celle d'un module du
+ * Studio — préfixe `ct_`, socle de colonnes éditoriales, policy own/any,
+ * fragment GraphQL, absence de toute surface générée — est passé derrière un
+ * `GenerationProfile` : le moteur assemble, le profil décide des conventions.
+ * `ContentTypeModuleGenerator` n'est plus qu'un adaptateur qui projette un
+ * `ContentType` en blueprint et branche `ContentTypeProfile`.
  */
 final class ModuleGenerator
 {
+    /** Conventions appliquées à la génération — module ordinaire par défaut. */
+    private GenerationProfile $profile;
+
     public function __construct(
         private readonly GeneratedFileChecksums $checksums,
         private readonly FieldRegistry $fields,
         private readonly StudioRelationTargetResolver $relationTargets,
-        private readonly StudioRelationDefinitionGenerator $relationDefinitions,
+        private StudioRelationDefinitionGenerator $relationDefinitions,
         private readonly EntityActionGenerator $entityActions,
         private readonly AdminCrudGenerator $adminCrud,
         private readonly FrontCrudGenerator $frontCrud,
         private readonly ApiCrudGenerator $apiCrud,
         private readonly HookListenerGenerator $hookListeners,
         private readonly WidgetGenerator $widgets,
-    ) {}
+    ) {
+        $this->profile = new ModuleProfile;
+    }
+
+    /**
+     * Copie du moteur réglée sur un autre jeu de conventions. Une copie plutôt
+     * qu'un paramètre sur chaque méthode publique : `__invoke()`, `write()`,
+     * `conflicts()`, `plan()` et `moduleDir()` gardent la signature que tout le
+     * Studio leur connaît, et le profil ne peut plus être oublié entre deux
+     * d'entre elles — `moduleDir()` et `plan()` doivent impérativement
+     * s'accorder, sous peine d'écrire le plan d'un module dans le dossier d'un
+     * autre.
+     */
+    public function withProfile(GenerationProfile $profile): self
+    {
+        $clone = clone $this;
+        $clone->profile = $profile;
+        $clone->relationDefinitions = $this->relationDefinitions->withPivotPrefix($profile->pivotPrefix());
+
+        return $clone;
+    }
 
     /**
      * Génération **stricte** : le moindre fichier modifié à la main fait
@@ -177,8 +209,8 @@ final class ModuleGenerator
     public function plan(ModuleBlueprint $blueprint): array
     {
         $name = (string) $blueprint->name();
-        [$vendor, $slug] = explode('/', $name, 2);
-        $namespace = Str::studly($vendor).'\\'.Str::studly($slug);
+        [, $slug] = explode('/', $name, 2);
+        $namespace = $this->profile->rootNamespace($name, $blueprint);
         $entities = $blueprint->entities();
 
         /** @var list<array{key: string, table: string}> $siblings */
@@ -203,8 +235,17 @@ final class ModuleGenerator
                 ...$this->planMigration($entity, $siblings, $this->moduleDir($name), $ranks),
                 ...$this->planModel($entity, $namespace, $siblings),
                 ...$this->planPolicy($entity, $namespace, $slug, $blueprint),
-                ...$this->planActions($entity, $namespace, $slug),
+                ...$this->profile->extraEntityFiles($entity, $namespace),
             ];
+
+            // Un Content Type n'a ni couche d'actions générée ni contrôleur :
+            // il est servi par les surfaces génériques du Core (spec 02 §6,
+            // §7). Les surfaces à la carte du Studio s'arrêtent donc ici.
+            if (! $this->profile->generatesSurfaces()) {
+                continue;
+            }
+
+            $files = [...$files, ...$this->planActions($entity, $namespace, $slug)];
 
             $admin = $this->adminCrud->isEnabled($entity);
             $api = $this->apiCrud->isEnabled($entity);
@@ -241,23 +282,17 @@ final class ModuleGenerator
             $files['routes/api.php'] = $this->routesFile($apiRouteFragments);
         }
 
-        $files = [
-            ...$files,
-            ...$this->planHookListeners($blueprint, $namespace),
-            ...$this->planWidgets($blueprint, $namespace, $slug),
-        ];
+        if ($this->profile->generatesSurfaces()) {
+            $files = [
+                ...$files,
+                ...$this->planHookListeners($blueprint, $namespace),
+                ...$this->planWidgets($blueprint, $namespace, $slug),
+            ];
+        }
 
-        $providerClass = Str::studly($slug).'ServiceProvider';
+        $files['module.json'] = $this->moduleJson($blueprint, $name, $namespace, $slug);
 
-        $files['module.json'] = $this->moduleJson($blueprint, $name, $namespace, $slug, $providerClass);
-
-        $files["src/Providers/{$providerClass}.php"] = (new StubRenderer)->render(StudioStubs::path('provider'), [
-            'namespace' => $namespace,
-            'key' => Str::studly($slug),
-            'view_namespace' => $slug,
-        ]);
-
-        return $files;
+        return [...$files, ...$this->profile->providerFiles($namespace, $slug, $blueprint)];
     }
 
     /**
@@ -387,9 +422,7 @@ final class ModuleGenerator
 
     public function moduleDir(string $name): string
     {
-        $dirSlug = Str::slug(str_replace('/', '-', $name));
-
-        return rtrim((string) config('baobab.studio.modules_path'), '/')."/{$dirSlug}";
+        return $this->profile->moduleDir($name);
     }
 
     /**
@@ -455,23 +488,14 @@ final class ModuleGenerator
     private function planMigration(array $entity, array $siblings, string $moduleDir, array $ranks): array
     {
         $table = (string) $entity['table'];
-        $options = $entity['options'] ?? [];
-        $uuid = (bool) ($options['uuid'] ?? false);
 
         $files = [
-            MigrationFilename::create($moduleDir, $table, $ranks[$table] ?? null) => (new StubRenderer)->render(StudioStubs::path('migration'), [
+            MigrationFilename::create($moduleDir, $table, $this->rankOf($table, $ranks)) => (new StubRenderer)->render(StudioStubs::path('migration'), [
                 'table_name' => $table,
-                'id_column' => $uuid
-                    ? "            \$table->uuid('id')->primary();"
-                    : '            $table->id();',
+                'leading_columns' => $this->profile->leadingColumns($entity),
                 'field_columns' => $this->fieldColumns($entity),
                 'relation_columns' => $this->relationColumns($entity, $siblings),
-                'timestamps_column' => ($options['timestamps'] ?? true)
-                    ? '            $table->timestamps();'
-                    : '',
-                'soft_deletes_column' => ($options['soft_deletes'] ?? false)
-                    ? '            $table->softDeletes();'
-                    : '',
+                'trailing_columns' => $this->profile->trailingColumns($entity),
             ]),
         ];
 
@@ -490,30 +514,51 @@ final class ModuleGenerator
     private function planModel(array $entity, string $namespace, array $siblings): array
     {
         $key = (string) $entity['key'];
-        $options = $entity['options'] ?? [];
-        $softDeletes = (bool) ($options['soft_deletes'] ?? false);
-        $uuid = (bool) ($options['uuid'] ?? false);
-
-        $traits = array_filter([
-            $softDeletes ? 'SoftDeletes' : null,
-            $uuid ? 'HasUuids' : null,
-        ]);
-
-        $traitImports = array_filter([
-            $softDeletes ? 'use Illuminate\\Database\\Eloquent\\SoftDeletes;' : null,
-            $uuid ? 'use Illuminate\\Database\\Eloquent\\Concerns\\HasUuids;' : null,
-        ]);
+        $traits = $this->profile->modelTraits($entity);
 
         return ["src/Models/{$key}.php" => (new StubRenderer)->render(StudioStubs::path('model'), [
             'namespace' => $namespace,
             'key' => $key,
             'table_name' => (string) $entity['table'],
-            'trait_imports' => implode("\n", $traitImports),
-            'trait_use' => $traits === [] ? '' : '    use '.implode(', ', $traits).';',
+            'trait_imports' => $traits['imports'],
+            'trait_use' => $traits['use'],
             'fillable' => $this->fillableList($entity),
-            'casts' => $this->castsList($entity),
-            'relations' => $this->relationMethods($entity, $namespace, $siblings),
+            'casts' => self::joinNonEmpty([$this->profile->leadingCasts($entity), $this->castsList($entity)]),
+            // Les méthodes du profil (`toSearchableArray()`) et les méthodes de
+            // relation partagent un placeholder : deux placeholders adjacents
+            // laisseraient une ligne vide de plus dès que l'un des deux est
+            // vide, sur un code généré déjà non conforme Pint (suivi n° 69).
+            'relations' => self::joinNonEmpty([
+                $this->profile->modelMethods($entity),
+                $this->relationMethods($entity, $namespace, $siblings),
+            ]),
         ])];
+    }
+
+    /**
+     * Rang de la table dans l'ordre de création, ou `null` quand le profil
+     * garde le nommage horodaté — `MigrationFilename` retombe alors sur
+     * `MigrationTimestamp`. Le graphe est calculé dans tous les cas : c'est lui
+     * qui refuse un cycle de dépendances avec un message clair, service utile
+     * quel que soit le nommage retenu.
+     *
+     * @param  array<string, int>  $ranks
+     */
+    private function rankOf(string $table, array $ranks): ?int
+    {
+        if (! $this->profile->ranksMigrations()) {
+            return null;
+        }
+
+        return $ranks[$table] ?? null;
+    }
+
+    /**
+     * @param  list<string>  $parts
+     */
+    private static function joinNonEmpty(array $parts): string
+    {
+        return implode("\n", array_filter($parts, static fn (string $part): bool => $part !== ''));
     }
 
     /**
@@ -523,76 +568,39 @@ final class ModuleGenerator
     private function planPolicy(array $entity, string $namespace, string $slug, ModuleBlueprint $blueprint): array
     {
         $key = (string) $entity['key'];
-        $var = Str::camel($key);
-        $prefix = $this->permissionPrefix($slug, $key);
 
-        return ["src/Policies/{$key}Policy.php" => (new StubRenderer)->render(StudioStubs::path('policy'), [
-            'namespace' => $namespace,
-            'key' => $key,
-            'var' => $var,
-            'permission_prefix' => $prefix,
-            'custom_methods' => $this->customPolicyMethods($key, $var, $slug, $blueprint),
-        ])];
+        return ["src/Policies/{$key}Policy.php" => $this->profile->policy(
+            $entity,
+            $namespace,
+            $this->profile->permissionPrefix($slug, $key),
+            $blueprint,
+        )];
     }
 
-    /**
-     * Méthodes de policy supplémentaires, une par permission personnalisée de
-     * l'entité. Le nom de méthode et la chaîne de permission viennent de
-     * `BlueprintPermissions` — la même source que l'aperçu de l'étape 5 du
-     * wizard, qui ne promet donc jamais autre chose que ce qui est écrit ici.
-     */
-    private function customPolicyMethods(string $key, string $var, string $slug, ModuleBlueprint $blueprint): string
-    {
-        return collect(BlueprintPermissions::policyMethods($slug, $key, $blueprint->customPermissions()))
-            ->filter(fn (array $method): bool => $method['custom'])
-            ->map(fn (array $method): string => "\n    public function {$method['method']}(User \$user, {$key} \${$var}): bool\n    {\n        return \$user->can('{$method['permission']}');\n    }\n")
-            ->implode('');
-    }
-
-    private function permissionPrefix(string $slug, string $entityKey): string
-    {
-        return BlueprintPermissions::prefix($slug, $entityKey);
-    }
-
-    private function moduleJson(ModuleBlueprint $blueprint, string $name, string $namespace, string $slug, string $providerClass): string
+    private function moduleJson(ModuleBlueprint $blueprint, string $name, string $namespace, string $slug): string
     {
         $identity = $blueprint->identity();
+        $providerClass = $this->profile->providerClass($slug, $blueprint);
 
         $manifest = array_filter([
             'name' => $name,
             'title' => $identity['title'] ?? $slug,
             'description' => $identity['description'] ?? null,
             'version' => $identity['version'] ?? '1.0.0',
-            'type' => 'module',
+            'type' => $this->profile->manifestType(),
             'icon' => $identity['icon'] ?? null,
             'authors' => $identity['authors'] ?? null,
             'provider' => "{$namespace}\\Providers\\{$providerClass}",
             'autoload' => [
                 'psr-4' => ["{$namespace}\\" => 'src/'],
             ],
-            'permissions' => $this->permissions($blueprint, $slug),
-            'hooks' => $this->hooksBlock($blueprint, $namespace, $slug),
-            'menus' => $this->menusBlock($blueprint),
-            'widgets' => $this->widgetsBlock($blueprint, $namespace),
+            'permissions' => $this->profile->permissions($blueprint, $slug),
+            'hooks' => $this->profile->generatesSurfaces() ? $this->hooksBlock($blueprint, $namespace, $slug) : null,
+            'menus' => $this->profile->menus($blueprint),
+            'widgets' => $this->profile->generatesSurfaces() ? $this->widgetsBlock($blueprint, $namespace) : null,
         ], static fn (mixed $value): bool => $value !== null);
 
         return (string) json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    }
-
-    /**
-     * Recopie directe, aucune transformation : contrairement aux hooks (nom
-     * court de classe → FQCN), une entrée de menu déclarée au blueprint a
-     * déjà la forme exacte attendue par `module.schema.json`/`ModuleManifest::adminMenuItems()`
-     * (route/permission/icône déjà des chaînes complètes saisies par
-     * l'utilisateur).
-     *
-     * @return array{admin: list<array<string, mixed>>}|null
-     */
-    private function menusBlock(ModuleBlueprint $blueprint): ?array
-    {
-        $admin = $blueprint->adminMenuItems();
-
-        return $admin === [] ? null : ['admin' => $admin];
     }
 
     /**
@@ -654,29 +662,6 @@ final class ModuleGenerator
     }
 
     /**
-     * @return list<array{key: string, label: string}>
-     */
-    private function permissions(ModuleBlueprint $blueprint, string $slug): array
-    {
-        $permissions = [];
-
-        if ($blueprint->autoCrudEnabled()) {
-            foreach ($blueprint->entities() as $entity) {
-                foreach (BlueprintPermissions::crudEntries($slug, (string) $entity['key']) as $entry) {
-                    $permissions[] = $entry;
-                }
-            }
-        }
-
-        foreach ($blueprint->customPermissions() as $custom) {
-            $prefix = $this->permissionPrefix($slug, (string) $custom['entity']);
-            $permissions[] = ['key' => "{$prefix}.{$custom['key']}", 'label' => (string) $custom['label']];
-        }
-
-        return $permissions;
-    }
-
-    /**
      * @param  array<string, mixed>  $entity
      */
     private function fieldColumns(array $entity): string
@@ -730,7 +715,7 @@ final class ModuleGenerator
      */
     private function fillableList(array $entity): string
     {
-        $columns = [];
+        $columns = $this->profile->leadingFillable($entity);
 
         foreach ((array) ($entity['fields'] ?? []) as $field) {
             $fieldType = $this->fields->resolve($field['type']);
@@ -795,7 +780,7 @@ final class ModuleGenerator
                     $ownerTable,
                     $target,
                     $moduleDir,
-                    $ranks[$pivot] ?? null,
+                    $this->rankOf($pivot, $ranks),
                 );
             })
             ->all()));

@@ -16,14 +16,19 @@ use Illuminate\Support\Facades\Validator;
  * (spec-modules §5.2, §5.4). Contrairement à `ContentTypeBlueprint` (une
  * seule entité), modélise **N entités**, chacune avec ses propres
  * `fields[]`/`relations[]` — sous-forme volontairement identique à
- * `ContentTypeBlueprint` pour permettre au futur Content Type builder (M8
- * point 2, spec-modules §6) de réutiliser `FieldRegistry`/
- * `RelationDefinitionGenerator` sans adaptation.
+ * `ContentTypeBlueprint`, ce qui a permis à la Pass A du M8 point 2
+ * (spec-modules §6) de faire passer les Content Types par le moteur de
+ * génération commun sans toucher au catalogue de champs ni au générateur de
+ * relations. L'unification des deux **formats**, elle, reste la moitié
+ * différée du point (suivi n° 157) : c'est pourquoi un `ContentType` est
+ * *projeté* ici par `ContentTypeModuleGenerator` plutôt que d'y être stocké.
  *
- * Deux modes de construction : `fromJson()` (strict, schéma complet — utilisé
- * à la génération) et `fromDraftJson()` (permissif — un brouillon en cours de
+ * Trois modes de construction : `fromJson()` (strict, schéma complet — utilisé
+ * à la génération), `fromDraftJson()` (permissif — un brouillon en cours de
  * saisie aux étapes 1-9 du wizard n'a pas à satisfaire le schéma complet,
- * seules les entités déjà déclarées sont cross-vérifiées).
+ * seules les entités déjà déclarées sont cross-vérifiées) et `fromValidated()`
+ * (aucune vérification — réservé à la projection d'un blueprint déjà validé
+ * sous son propre jeu de règles, voir son docblock).
  */
 final readonly class ModuleBlueprint
 {
@@ -80,6 +85,28 @@ final readonly class ModuleBlueprint
         self::validateHooks($data['hooks'] ?? []);
         self::validateMenus($data['menus'] ?? []);
 
+        return new self($data);
+    }
+
+    /**
+     * Blueprint **déjà validé ailleurs**, monté sans repasser par les
+     * vérifications croisées (M8 point 2, Pass A — suivi n° 157).
+     *
+     * Unique appelant prévu : la projection d'un `ContentType` en blueprint de
+     * module, faite par `ContentTypeModuleGenerator` pour alimenter le moteur
+     * commun. Le blueprint de contenu a déjà été validé par
+     * `ContentTypeBlueprint::fromJson()` au moment où il a été créé ou évolué,
+     * contre le catalogue de champs et le résolveur de cibles qui le
+     * concernent. Le repasser ici sous un **second** jeu de règles n'ajouterait
+     * aucune sûreté : il ouvrirait la possibilité que les deux ne soient pas
+     * d'accord, et un type parfaitement valide deviendrait ingénérable — y
+     * compris pendant `CompileGraphqlSchema`, qui régénère le fragment de
+     * *chaque* type éligible et tomberait alors en entier.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function fromValidated(array $data): self
+    {
         return new self($data);
     }
 

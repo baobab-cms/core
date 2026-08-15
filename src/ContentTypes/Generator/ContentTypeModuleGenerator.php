@@ -6,25 +6,43 @@ namespace Baobab\ContentTypes\Generator;
 
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Models\ContentType;
-use Baobab\ContentTypes\Relations\RelationDefinitionGenerator;
 use Baobab\ContentTypes\Relations\RelationTargetResolver;
+use Baobab\Studio\Blueprint\ModuleBlueprint;
+use Baobab\Studio\Generator\ModuleGenerator;
+use Baobab\Studio\Generator\Profiles\ContentTypeProfile;
+use Baobab\Studio\Generator\StudioRelationDefinitionGenerator;
+use Baobab\Studio\Relations\StudioRelationTargetResolver;
 use Illuminate\Support\Str;
 
 /**
- * Transforme un ContentType persisté (blueprint validé, table_name dérivé —
- * M3 point 1a) en un vrai module Laravel sur disque : module.json, migration,
- * modèle, policy, provider (spec 02 §1.2). Ne fait tourner ni la migration ni
- * l'installation — c'est le rôle de BuildContentType, qui compose ce
- * générateur avec InstallModule/ActivateModule (M1, inchangés).
+ * Transforme un `ContentType` persisté (blueprint validé, `table_name` dérivé —
+ * M3 point 1a) en un vrai module Laravel sur disque : `module.json`, migration,
+ * modèle, policy, provider, fragment GraphQL (spec 02 §1.2). Ne fait tourner ni
+ * la migration ni l'installation — c'est le rôle de `BuildContentType`, qui
+ * compose ce générateur avec `InstallModule`/`ActivateModule` (M1, inchangés).
+ *
+ * **Adaptateur, plus générateur, depuis la Pass A du M8 point 2** (suivi
+ * n° 157). Il ne sait plus écrire une migration ni un modèle : il **projette**
+ * le Content Type en blueprint de module et confie l'assemblage au moteur
+ * commun (`ModuleGenerator`), réglé sur `ContentTypeProfile` — le profil qui
+ * porte les conventions de contenu (préfixe `ct_`, socle éditorial du §4.2,
+ * policy own/any, GraphQL, aucune surface générée). Ce qui reste ici est
+ * exactement ce qui est propre au Content Type : la projection, et les deux
+ * régénérations partielles que le cycle de vie du contenu réclame.
+ *
+ * La signature publique n'a pas bougé — c'est ce qui a permis à ses six
+ * appelants (`BuildContentType`, `EvolveContentType`, `CompileGraphqlSchema`,
+ * `ContentType`, `ModuleServiceProvider`, `ThemeGenerator`) et à sa suite de
+ * tests de rester tels quels au travers de la fusion.
  */
 final class ContentTypeModuleGenerator
 {
     public function __construct(
-        private readonly StubRenderer $renderer,
         private readonly GeneratedFileChecksums $checksums,
+        private readonly ModuleGenerator $modules,
         private readonly FieldRegistry $fields,
-        private readonly RelationTargetResolver $relationTargets,
-        private readonly RelationDefinitionGenerator $relationDefinitions,
+        private readonly StudioRelationDefinitionGenerator $relationDefinitions,
+        private readonly StudioRelationTargetResolver $relationTargets,
     ) {}
 
     /**
@@ -32,392 +50,130 @@ final class ContentTypeModuleGenerator
      */
     public function __invoke(ContentType $contentType): string
     {
-        $key = $contentType->key;
-        $dirSlug = Str::kebab(Str::plural($key));
-        $moduleName = "content-types/{$dirSlug}";
-        $namespace = "Modules\\{$key}";
-        $permissionPrefix = 'content.'.Str::snake($key);
-        $moduleDir = $contentType->moduleDir();
-
-        $this->checksums->write($moduleDir, 'module.json', $this->moduleJson(
-            $contentType,
-            $moduleName,
-            $namespace,
-            $permissionPrefix,
-            $dirSlug,
-        ));
-
-        $this->checksums->write(
-            $moduleDir,
-            MigrationFilename::create($moduleDir, $contentType->table_name),
-            $this->renderer->render(StubRenderer::stubPath('migration'), [
-                'table_name' => $contentType->table_name,
-                'unpublish_at_column' => $contentType->unpublishAtEnabled()
-                    ? "            \$table->timestamp('unpublish_at')->nullable();\n"
-                    : '',
-                'slug_column' => $contentType->is_addressable
-                    ? "            \$table->string('slug')->unique();\n"
-                    : '',
-                'field_columns' => $this->fieldColumns($contentType),
-                'relation_columns' => $this->relationColumns($contentType),
-            ]),
-        );
-
-        foreach ($this->pivotMigrations($contentType) as $pivot) {
-            $this->checksums->write($moduleDir, $pivot['filename'], $pivot['contents']);
-        }
-
-        $this->writeModel($contentType, $moduleDir);
-
-        $this->checksums->write($moduleDir, "src/Policies/{$key}Policy.php", $this->renderer->render(StubRenderer::stubPath('policy'), [
-            'namespace' => $namespace,
-            'key' => $key,
-            'var' => Str::camel($key),
-            'permission_prefix' => $permissionPrefix,
-        ]));
-
-        $this->checksums->write($moduleDir, "src/Providers/{$key}ServiceProvider.php", $this->renderer->render(StubRenderer::stubPath('provider'), [
-            'namespace' => $namespace,
-            'key' => $key,
-        ]));
-
-        $this->regenerateGraphql($contentType);
-
-        return $moduleName;
+        return $this->generatorFor($contentType)($this->project($contentType));
     }
 
     /**
-     * Régénère uniquement le modèle Eloquent (fillable/casts/relations à
-     * jour) — utilisé par EvolveContentType (M3 point 4) après une migration
-     * incrémentale, sans retoucher module.json/policy/provider ni la
+     * Régénère uniquement le modèle Eloquent (fillable/casts/relations à jour)
+     * — utilisé par `EvolveContentType` (M3 point 4) après une migration
+     * incrémentale, sans retoucher `module.json`/policy/provider ni la
      * migration de création d'origine. Passe par le même anti-écrasement par
      * checksum que le reste du générateur.
      */
     public function regenerateModel(ContentType $contentType): void
     {
-        $this->writeModel($contentType, $contentType->moduleDir());
+        $this->rewrite($contentType, ["src/Models/{$contentType->key}.php"]);
     }
 
     /**
      * Régénère le fragment `.graphql` et son résolveur généré (M7 point 3) —
-     * même usage qu'`regenerateModel()`. Deux appelants : `EvolveContentType`
-     * après une évolution de blueprint (le fragment doit refléter les
-     * nouveaux champs) et `CompileGraphqlSchema` pour **chaque** type
-     * éligible avant de lire son fragment (un Content Type construit avant
-     * l'introduction de ce point n'a ni l'un ni l'autre sur disque — bug
-     * réel découvert en testant `Book`/`Article`/… en environnement réel,
-     * jamais rencontré dans les tests package qui ne construisent que des
-     * Content Types frais). Écriture protégée par checksum comme tout le
-     * reste du générateur : sans effet si le contenu n'a pas changé.
+     * même usage que `regenerateModel()`. Deux appelants : `EvolveContentType`
+     * après une évolution de blueprint (le fragment doit refléter les nouveaux
+     * champs) et `CompileGraphqlSchema` pour **chaque** type éligible avant de
+     * lire son fragment (un Content Type construit avant l'introduction de ce
+     * point n'a ni l'un ni l'autre sur disque — bug réel découvert en testant
+     * `Book`/`Article`/… en environnement réel, jamais rencontré dans les tests
+     * package qui ne construisent que des Content Types frais). Écriture
+     * protégée par checksum comme tout le reste : sans effet si le contenu n'a
+     * pas changé.
      */
     public function regenerateGraphql(ContentType $contentType): void
     {
         $key = $contentType->key;
-        $namespace = "Modules\\{$key}";
+
+        $this->rewrite($contentType, ["graphql/{$key}.graphql", "src/GraphQL/{$key}Resolver.php"]);
+    }
+
+    /**
+     * Réécrit un sous-ensemble nommé du plan. Le plan est toujours calculé en
+     * entier : c'est lui qui garantit que le modèle régénéré est bien celui que
+     * produirait une génération complète, et non une seconde version dérivée
+     * qui se mettrait à mentir dès qu'un stub change.
+     *
+     * @param  list<string>  $paths
+     */
+    private function rewrite(ContentType $contentType, array $paths): void
+    {
+        $plan = $this->generatorFor($contentType)->plan($this->project($contentType));
         $moduleDir = $contentType->moduleDir();
 
-        $this->checksums->write($moduleDir, "graphql/{$key}.graphql", $this->graphqlFragment($contentType, $namespace));
-
-        $this->checksums->write($moduleDir, "src/GraphQL/{$key}Resolver.php", $this->renderer->render(StubRenderer::stubPath('graphql-resolver'), [
-            'namespace' => $namespace,
-            'key' => $key,
-            'slug' => Str::kebab(Str::plural($key)),
-        ]));
+        foreach ($paths as $path) {
+            if (isset($plan[$path])) {
+                $this->checksums->write($moduleDir, $path, $plan[$path]);
+            }
+        }
     }
 
-    private function writeModel(ContentType $contentType, string $moduleDir): void
+    private function generatorFor(ContentType $contentType): ModuleGenerator
     {
-        $key = $contentType->key;
-        $isSearchable = $contentType->searchableFields() !== [];
-
-        $this->checksums->write($moduleDir, "src/Models/{$key}.php", $this->renderer->render(StubRenderer::stubPath('model'), [
-            'namespace' => "Modules\\{$key}",
-            'key' => $key,
-            'table_name' => $contentType->table_name,
-            'fillable' => $this->fillableList($contentType),
-            'unpublish_at_cast' => $contentType->unpublishAtEnabled()
-                ? "            'unpublish_at' => 'datetime',"
-                : '',
-            'casts' => $this->castsList($contentType),
-            'scout_use' => $isSearchable ? 'use Laravel\\Scout\\Searchable;' : '',
-            'scout_trait' => $isSearchable ? 'SoftDeletes, Searchable' : 'SoftDeletes',
-            'searchable_array' => $isSearchable ? $this->searchableArrayMethod($contentType) : '',
-            'relations' => $this->relationMethods($contentType),
-        ]));
+        return $this->modules->withProfile(new ContentTypeProfile(
+            $contentType,
+            $this->fields,
+            $this->relationDefinitions,
+            $this->relationTargets,
+        ));
     }
 
     /**
-     * Génère `toSearchableArray()` (contrat `Laravel\Scout\Searchable`, spec
-     * 11 §3.1) — jamais écrit à la main par le développeur, patron
-     * `castsList()`. Seuls les champs `searchable` du blueprint y figurent ;
-     * `id`/`status` structurels toujours inclus (utiles à toute source de
-     * recherche pour résoudre l'entrée réelle et son état éditorial). Le
-     * document passe par le filtre `baobab.search.indexing` (spec 11 §4.4,
-     * Pass B) : un module peut modifier le document indexé d'un
-     * enregistrement — le modèle généré dépend déjà du Core (trait Scout
-     * configuré par lui), la façade `Hook` n'ajoute aucun couplage nouveau.
+     * Projette le Content Type en blueprint de module à **une** entité : c'est
+     * là toute la traduction entre les deux formats, et elle tient en une
+     * méthode parce que le socle commun (champs, relations, table) a toujours
+     * eu la même forme des deux côtés — le reste de l'enveloppe de contenu est
+     * lu par le profil, directement sur le `ContentType`.
+     *
+     * Les surfaces sont explicitement coupées : `ContentTypeProfile` le dit
+     * déjà par `generatesSurfaces()`, mais un blueprint qui prétendrait le
+     * contraire serait un piège pour la première personne qui le relira.
      */
-    private function searchableArrayMethod(ContentType $contentType): string
-    {
-        $lines = collect($contentType->searchableFields())
-            ->map(fn (array $field): string => "            '{$field['key']}' => \$this->{$field['key']},")
-            ->implode("\n");
-
-        return "\n    /**\n     * @return array<string, mixed>\n     */\n    public function toSearchableArray(): array\n    {\n        return \\Baobab\\Facades\\Hook::filter('baobab.search.indexing', [\n            'id' => \$this->id,\n            'status' => \$this->status,\n{$lines}\n        ], \$this);\n    }\n";
-    }
-
-    private function moduleJson(ContentType $contentType, string $moduleName, string $namespace, string $permissionPrefix, string $dirSlug): string
+    private function project(ContentType $contentType): ModuleBlueprint
     {
         $key = $contentType->key;
-        $label = $contentType->blueprint['label'] ?? ['singular' => $key, 'plural' => $key];
+        $dirSlug = Str::kebab(Str::plural($key));
 
-        $manifest = [
-            'name' => $moduleName,
-            'title' => $label['plural'],
-            'description' => "Content Type généré : {$label['singular']} / {$label['plural']}.",
-            'version' => '1.0.0',
-            'type' => 'content-type',
-            'provider' => "{$namespace}\\Providers\\{$key}ServiceProvider",
-            'autoload' => [
-                'psr-4' => ["{$namespace}\\" => 'src/'],
+        /** @var array{singular?: string, plural?: string} $label */
+        $label = $contentType->blueprint['label'] ?? [];
+        $singular = (string) ($label['singular'] ?? $key);
+        $plural = (string) ($label['plural'] ?? $key);
+
+        return ModuleBlueprint::fromValidated([
+            'identity' => [
+                'name' => "content-types/{$dirSlug}",
+                'title' => $plural,
+                'description' => "Content Type généré : {$singular} / {$plural}.",
+                'version' => '1.0.0',
             ],
-            'permissions' => [
-                ['key' => "{$permissionPrefix}.view", 'label' => "Voir : {$label['plural']}"],
-                ['key' => "{$permissionPrefix}.create", 'label' => "Créer : {$label['singular']}"],
-                ['key' => "{$permissionPrefix}.update", 'label' => "Modifier (les siens) : {$label['singular']}"],
-                ['key' => "{$permissionPrefix}.update_any", 'label' => "Modifier (tous) : {$label['plural']}"],
-                ['key' => "{$permissionPrefix}.delete", 'label' => "Supprimer (les siens) : {$label['singular']}"],
-                ['key' => "{$permissionPrefix}.delete_any", 'label' => "Supprimer (tous) : {$label['plural']}"],
-                ['key' => "{$permissionPrefix}.publish", 'label' => "Publier (les siens) : {$label['singular']}"],
-                ['key' => "{$permissionPrefix}.publish_any", 'label' => "Publier (tous) : {$label['plural']}"],
-            ],
-            'menus' => [
-                'admin' => [
-                    [
-                        'label' => $label['plural'],
-                        'route' => 'admin.content.index',
-                        'route_params' => ['contentType' => $dirSlug],
-                        'permission' => "{$permissionPrefix}.view",
-                    ],
-                ],
-            ],
-        ];
-
-        return (string) json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    }
-
-    /**
-     * Fragment `.graphql` du Content Type (M7 point 3, spec 08 §3.2) —
-     * `type`/`{Key}Filter`/`{Key}SortField`/`{Key}Order` dérivés du
-     * blueprint, plus l'extension `Query` qui expose la liste paginée et la
-     * lecture unité. Seuls les champs `exposed_in_api` (même filtre que le
-     * REST, `ContentType::apiExposedFields()`) apparaissent — parité stricte
-     * avec `Baobab\Api\Http\Resources\ContentEntryResource`.
-     */
-    private function graphqlFragment(ContentType $contentType, string $namespace): string
-    {
-        $key = $contentType->key;
-        $resolverClass = str_replace('\\', '\\\\', "{$namespace}\\GraphQL\\{$key}Resolver");
-        $label = $contentType->blueprint['label']['singular'] ?? $key;
-
-        return $this->renderer->render(StubRenderer::stubPath('graphql-type'), [
-            'label' => (string) $label,
-            'key' => $key,
-            'fields' => $this->graphqlTypeFields($contentType),
-            'relations' => $this->graphqlRelationFields($contentType),
-            'filter_fields' => $this->graphqlFilterFields($contentType),
-            'sort_values' => $this->graphqlSortValues($contentType),
-            'query_plural' => Str::camel(Str::plural($key)),
-            'query_singular' => Str::camel($key),
-            'resolver_class' => $resolverClass,
+            'entities' => [[
+                'key' => $key,
+                'table' => $contentType->table_name,
+                'fields' => (array) ($contentType->blueprint['fields'] ?? []),
+                'relations' => $this->projectRelations($contentType),
+                'routes' => ['admin' => false, 'front' => false, 'api' => false],
+            ]],
+            'permissions' => ['auto_crud' => false],
         ]);
     }
 
-    private function graphqlTypeFields(ContentType $contentType): string
-    {
-        $fields = $contentType->apiExposedFields();
-        $lines = $contentType->is_addressable ? ['  slug: String!'] : [];
-
-        foreach ($fields as $field) {
-            $graphqlType = $this->fields->resolve($field['type'])->graphqlType($field['options'] ?? []);
-            $lines[] = "  {$field['key']}: {$graphqlType}";
-        }
-
-        return implode("\n", $lines);
-    }
-
-    private function graphqlRelationFields(ContentType $contentType): string
-    {
-        return collect((array) ($contentType->blueprint['relations'] ?? []))
-            ->map(fn (array $relation): string => $this->relationDefinitions->graphqlField(
-                $relation,
-                $this->relationTargets->resolve((string) $relation['target']),
-            ))
-            ->implode("\n");
-    }
-
-    private function graphqlFilterFields(ContentType $contentType): string
-    {
-        $lines = $contentType->is_addressable ? ['  slug: StringFilterInput'] : [];
-
-        foreach ($contentType->apiExposedFields() as $field) {
-            $graphqlType = $this->fields->resolve($field['type'])->graphqlType($field['options'] ?? []);
-            $filterInput = $this->graphqlFilterInputFor($graphqlType);
-
-            if ($filterInput !== null) {
-                $lines[] = "  {$field['key']}: {$filterInput}";
-            }
-        }
-
-        return implode("\n", $lines);
-    }
-
-    private function graphqlSortValues(ContentType $contentType): string
-    {
-        $lines = $contentType->is_addressable ? ['  SLUG @enum(value: "slug")'] : [];
-
-        foreach ($contentType->apiExposedFields() as $field) {
-            $graphqlType = $this->fields->resolve($field['type'])->graphqlType($field['options'] ?? []);
-
-            if ($this->graphqlFilterInputFor($graphqlType) === null) {
-                continue;
-            }
-
-            $enumValue = Str::upper(Str::snake((string) $field['key']));
-            $lines[] = "  {$enumValue} @enum(value: \"{$field['key']}\")";
-        }
-
-        return implode("\n", $lines);
-    }
-
     /**
-     * Types filtrables/triables en GraphQL (M7 point 3) — uniquement les
-     * scalaires comparables par un opérateur simple (`ContentQueryBuilder`) ;
-     * `Media`/`[Media]`/`[String]`/`JSON` restent exposés comme champs mais
-     * sortent du vocabulaire de filtre/tri (un opérateur générique dessus
-     * n'a pas de sens SQL, contrairement aux scalaires).
-     */
-    private function graphqlFilterInputFor(string $graphqlType): ?string
-    {
-        return match ($graphqlType) {
-            'String' => 'StringFilterInput',
-            'Int' => 'IntFilterInput',
-            'Float' => 'FloatFilterInput',
-            'Boolean' => 'BooleanFilterInput',
-            'Date', 'DateTime', 'Time' => 'DateTimeFilterInput',
-            default => null,
-        };
-    }
-
-    private function fieldColumns(ContentType $contentType): string
-    {
-        return collect((array) ($contentType->blueprint['fields'] ?? []))
-            ->map(function (array $field): string {
-                $fieldType = $this->fields->resolve($field['type']);
-
-                return ColumnNullability::apply(
-                    $fieldType->columnDefinition($field['key'], $field['options'] ?? []),
-                    (bool) ($field['required'] ?? false),
-                );
-            })
-            ->filter(fn (string $column): bool => $column !== '')
-            ->map(fn (string $column): string => '            '.$column)
-            ->implode("\n");
-    }
-
-    private function castsList(ContentType $contentType): string
-    {
-        return collect((array) ($contentType->blueprint['fields'] ?? []))
-            ->map(function (array $field): ?string {
-                $fieldType = $this->fields->resolve($field['type']);
-                $cast = $fieldType->cast($field['options'] ?? []);
-
-                return $cast === null ? null : "            '{$field['key']}' => '{$cast}',";
-            })
-            ->filter()
-            ->implode("\n");
-    }
-
-    private function fillableList(ContentType $contentType): string
-    {
-        $columns = ['status', 'published_at', 'author_id'];
-
-        if ($contentType->unpublishAtEnabled()) {
-            $columns[] = 'unpublish_at';
-        }
-
-        if ($contentType->is_addressable) {
-            $columns[] = 'slug';
-        }
-
-        foreach ($contentType->blueprint['fields'] ?? [] as $field) {
-            $fieldType = $this->fields->resolve($field['type']);
-
-            if ($fieldType->columnDefinition($field['key'], $field['options'] ?? []) === '') {
-                continue;
-            }
-
-            $columns[] = $field['key'];
-        }
-
-        foreach ($this->ownColumnRelations($contentType) as $relation) {
-            if ($relation['type'] === 'polymorphic') {
-                $columns[] = "{$relation['key']}_type";
-            }
-
-            $columns[] = "{$relation['key']}_id";
-        }
-
-        return collect($columns)
-            ->map(fn (string $column): string => "        '{$column}',")
-            ->implode("\n");
-    }
-
-    private function relationColumns(ContentType $contentType): string
-    {
-        return collect($this->ownColumnRelations($contentType))
-            ->map(fn (array $relation): string => $this->relationDefinitions->columnsDefinition(
-                $relation,
-                $this->relationTargets->resolve((string) $relation['target']),
-            ))
-            ->implode("\n");
-    }
-
-    private function relationMethods(ContentType $contentType): string
-    {
-        return collect((array) ($contentType->blueprint['relations'] ?? []))
-            ->map(fn (array $relation): string => $this->relationDefinitions->eloquentMethod(
-                $relation,
-                $this->relationTargets->resolve((string) $relation['target']),
-                $contentType,
-            ))
-            ->implode("\n\n");
-    }
-
-    /**
-     * @return list<array{filename: string, contents: string}>
-     */
-    private function pivotMigrations(ContentType $contentType): array
-    {
-        return array_values(array_filter(collect((array) ($contentType->blueprint['relations'] ?? []))
-            ->map(fn (array $relation) => $this->relationDefinitions->pivotMigration(
-                $relation,
-                $contentType,
-                $this->relationTargets->resolve((string) $relation['target']),
-            ))
-            ->all()));
-    }
-
-    /**
-     * Relations qui ajoutent une colonne côté déclarant (tout sauf many_to_many).
+     * Une cible de relation de Content Type est nue (`Brand`, `User`) là où le
+     * blueprint de module la discrimine (`content_type:Brand`, `core:User`).
+     * `StudioRelationTargetResolver` délègue les deux formes préfixées à
+     * `RelationTargetResolver` : la cible résolue est donc rigoureusement la
+     * même qu'avant la fusion, seule son écriture change.
      *
      * @return list<array<string, mixed>>
      */
-    private function ownColumnRelations(ContentType $contentType): array
+    private function projectRelations(ContentType $contentType): array
     {
-        return array_values(array_filter(
+        $coreModels = RelationTargetResolver::coreModelKeys();
+
+        return array_values(array_map(
+            static function (array $relation) use ($coreModels): array {
+                $target = (string) $relation['target'];
+                $prefix = in_array($target, $coreModels, true) ? 'core' : 'content_type';
+
+                return [...$relation, 'target' => "{$prefix}:{$target}"];
+            },
             (array) ($contentType->blueprint['relations'] ?? []),
-            fn (array $relation): bool => $relation['type'] !== 'many_to_many',
         ));
     }
 }
