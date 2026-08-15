@@ -7,8 +7,8 @@ namespace Baobab\Admin\Modules\Http\Controllers;
 use Baobab\Actions\Modules\ActivateModule;
 use Baobab\Actions\Modules\DeactivateModule;
 use Baobab\Actions\Modules\InstallModule;
-use Baobab\Actions\Modules\SyncModuleManifest;
 use Baobab\Actions\Modules\UninstallModule;
+use Baobab\Actions\Modules\UpdateModule;
 use Baobab\Actions\Modules\UploadModuleArchive;
 use Baobab\Mail\Exceptions\InvalidMailTemplateException;
 use Baobab\Modules\Exceptions\IncompatibleModuleException;
@@ -95,11 +95,22 @@ final class ModulesController
      * aussi périmé, et c'est même le seul cas que ni le Studio ni sa CLI ne
      * couvrent.
      *
-     * `force` couvre la seule opération irréversible : retirer une permission
-     * que le manifeste ne déclare plus révoque les droits déjà accordés. Sans
-     * la case, l'Action refuse en les nommant — même parti pris que la purge.
+     * **Depuis le n° 156, l'écran déclenche `UpdateModule` et non
+     * `SyncModuleManifest`** : les migrations en attente d'abord, la
+     * resynchronisation ensuite. La spec §3 en fait deux étapes distinctes et
+     * `module:sync` garde la seconde seule côté terminal, mais l'écran n'offre
+     * que la composée (décision du 14 août 2026, avec l'utilisateur) —
+     * resynchroniser sans migrer est un sous-ensemble strict, et personne ne veut
+     * délibérément rafraîchir les permissions en laissant le schéma périmé. Un
+     * module sans migration en attente reçoit exactement le traitement qu'avait
+     * l'ancien bouton « Resynchroniser » : le geste ne se perd pas, il s'élargit.
+     *
+     * `force` couvre la seule opération irréversible du lot : retirer une
+     * permission que le manifeste ne déclare plus révoque les droits déjà
+     * accordés. Sans la case, l'Action refuse en les nommant — même parti pris
+     * que la purge.
      */
-    public function sync(Request $request, string $vendor, string $slug, SyncModuleManifest $action): RedirectResponse
+    public function update(Request $request, string $vendor, string $slug, UpdateModule $action): RedirectResponse
     {
         $module = Module::where('name', "{$vendor}/{$slug}")->first();
 
@@ -114,7 +125,7 @@ final class ModulesController
 
         return $this->run(
             fn () => $action($module, $request->boolean('force')),
-            'synced',
+            'updated',
         );
     }
 

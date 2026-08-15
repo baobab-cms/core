@@ -117,20 +117,22 @@
                                     </x-baobab::form>
                                 @endif
 
-                                @if (ModuleLifecyclePresenter::canSync($module))
+                                @if (ModuleLifecyclePresenter::canUpdate($module))
                                     {{--
-                                        Le manifeste est capturé à l'installation et jamais relu
-                                        (suivi n° 95) : sans ce geste, un module mis à jour sur
-                                        disque garde indéfiniment les permissions, menus et hooks
-                                        qu'il déclarait le jour de son installation.
+                                        Un seul bouton pour les deux étapes « sur place » de la
+                                        spec §3 : il joue les migrations en attente, puis relit le
+                                        manifeste. L'écran n'offre pas la resynchronisation seule
+                                        — c'est un sous-ensemble strict, et personne ne veut
+                                        rafraîchir les permissions en laissant le schéma périmé.
+                                        `module:sync` la garde côté terminal (suivi n° 156).
                                     --}}
                                     <x-baobab::button
                                         type="button"
                                         variant="secondary"
                                         x-data
-                                        x-on:click="$dispatch('open-modal', 'sync-{{ $module->name }}')"
+                                        x-on:click="$dispatch('open-modal', 'update-{{ $module->name }}')"
                                     >
-                                        {{ __('baobab::admin.modules.sync_action') }}
+                                        {{ __('baobab::admin.modules.update_action') }}
                                     </x-baobab::button>
                                 @endif
 
@@ -204,29 +206,29 @@
                         </x-baobab::modal>
                     @endif
 
-                    @if (ModuleLifecyclePresenter::canSync($module))
+                    @if (ModuleLifecyclePresenter::canUpdate($module))
                         {{--
                             La resynchronisation n'est destructrice que sur un point : une
                             permission que le manifeste ne déclare plus est révoquée partout
                             où elle avait été accordée. La case est cette confirmation ;
                             sans elle, l'Action refuse et nomme les permissions concernées.
                         --}}
-                        <x-baobab::modal name="sync-{{ $module->name }}">
+                        <x-baobab::modal name="update-{{ $module->name }}">
                             <h2 class="font-display text-base font-semibold text-foreground">
-                                {{ __('baobab::admin.modules.sync_confirm_title', ['module' => $module->title]) }}
+                                {{ __('baobab::admin.modules.update_confirm_title', ['module' => $module->title]) }}
                             </h2>
 
                             <p class="mt-2 text-sm text-muted">
-                                {{ __('baobab::admin.modules.sync_confirm_description') }}
+                                {{ __('baobab::admin.modules.update_confirm_description') }}
                             </p>
 
-                            <x-baobab::form method="POST" action="{{ route('admin.modules.sync', $module->routeParams()) }}" class="mt-4">
+                            <x-baobab::form method="POST" action="{{ route('admin.modules.update', $module->routeParams()) }}" class="mt-4">
                                 <label class="flex items-start gap-2 text-sm text-foreground">
                                     <input type="checkbox" name="force" value="1" class="mt-1">
                                     <span>
-                                        {{ __('baobab::admin.modules.sync_force_label') }}
+                                        {{ __('baobab::admin.modules.update_force_label') }}
                                         <span class="mt-1 block text-xs text-danger">
-                                            {{ __('baobab::admin.modules.sync_force_warning') }}
+                                            {{ __('baobab::admin.modules.update_force_warning') }}
                                         </span>
                                     </span>
                                 </label>
@@ -237,7 +239,7 @@
                                     </x-baobab::button>
 
                                     <x-baobab::button type="submit" variant="primary">
-                                        {{ __('baobab::admin.modules.sync_action') }}
+                                        {{ __('baobab::admin.modules.update_action') }}
                                     </x-baobab::button>
                                 </div>
                             </x-baobab::form>

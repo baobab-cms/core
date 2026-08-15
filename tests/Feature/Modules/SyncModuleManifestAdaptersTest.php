@@ -6,11 +6,16 @@ use Baobab\Users\Models\User;
 use Illuminate\Support\Facades\File;
 
 /**
- * Les deux autres appelants de `SyncModuleManifest` (suivi n° 111, Pass B) :
- * la CLI, qui sert le module mis à jour par Composer, et l'écran Modules, qui
- * sert la persona non-technicienne. Adaptateurs minces — on vérifie qu'ils
- * déclenchent l'Action et rapportent ce qu'elle répond, pas qu'ils rejouent sa
- * logique, couverte par `SyncModuleManifestTest`.
+ * `module:sync`, l'appelant terminal de `SyncModuleManifest` (suivi n° 111,
+ * Pass B). Adaptateur mince — on vérifie qu'il déclenche l'Action et rapporte ce
+ * qu'elle répond, pas qu'il rejoue sa logique, couverte par
+ * `SyncModuleManifestTest`.
+ *
+ * **L'écran Modules n'appelle plus cette Action** depuis le n° 156 : il déclenche
+ * `UpdateModule`, qui la compose après les migrations en attente. Ses cas vivent
+ * donc dans `UpdateModuleTest`. La resynchronisation seule reste une étape de la
+ * spec §3 à part entière, mais seul le terminal l'offre — c'est un sous-ensemble
+ * strict de la mise à jour, et l'écran n'a pas à faire choisir.
  */
 beforeEach(function () {
     File::deleteDirectory(generatedModulesPath());
@@ -89,71 +94,4 @@ it('says nothing changed when nothing changed', function () {
 
 it('fails on an unknown module name', function () {
     $this->artisan('module:sync', ['name' => 'garage/nope'])->assertFailed();
-});
-
-it('syncs from the Modules screen', function () {
-    $module = syncInstalledModule();
-    $actor = syncAdapterActor();
-
-    syncWriteManifest(syncManifestArray(['title' => 'Synced Fleet']));
-
-    [$vendor, $slug] = explode('/', $module->name, 2);
-
-    $this->actingAs($actor, 'baobab')
-        ->post(route('admin.modules.sync', ['vendor' => $vendor, 'slug' => $slug]))
-        ->assertRedirect(route('admin.modules.index'))
-        ->assertSessionHas('toast');
-
-    expect($module->fresh()?->title)->toBe('Synced Fleet');
-});
-
-it('shows the refusal message on the Modules screen instead of removing', function () {
-    $module = syncInstalledModule();
-    $actor = syncAdapterActor();
-
-    syncWriteManifest(syncManifestArray(['permissions' => [
-        ['key' => 'synced.car.view', 'label' => 'Voir les voitures'],
-    ]]));
-
-    [$vendor, $slug] = explode('/', $module->name, 2);
-
-    $this->actingAs($actor, 'baobab')
-        ->post(route('admin.modules.sync', ['vendor' => $vendor, 'slug' => $slug]))
-        ->assertRedirect(route('admin.modules.index'));
-
-    // Le message de l'Action est déjà écrit pour un humain : l'écran l'affiche
-    // tel quel, et la permission survit.
-    expect(session('toast')['type'])->toBe('error')
-        ->and(session('toast')['message'])->toContain('synced.car.update')
-        ->and(ModulePermission::where('module_id', $module->id)->count())->toBe(2);
-});
-
-it('applies the removal from the Modules screen when the box is checked', function () {
-    $module = syncInstalledModule();
-    $actor = syncAdapterActor();
-
-    syncWriteManifest(syncManifestArray(['permissions' => [
-        ['key' => 'synced.car.view', 'label' => 'Voir les voitures'],
-    ]]));
-
-    [$vendor, $slug] = explode('/', $module->name, 2);
-
-    $this->actingAs($actor, 'baobab')
-        ->post(route('admin.modules.sync', ['vendor' => $vendor, 'slug' => $slug]), ['force' => '1'])
-        ->assertRedirect(route('admin.modules.index'));
-
-    expect(ModulePermission::where('module_id', $module->id)->count())->toBe(1);
-});
-
-it('guards the sync route behind the modules permission', function () {
-    $module = syncInstalledModule();
-
-    $user = User::create(['name' => 'Sans droits', 'email' => 'sans-droits-sync@example.com', 'password' => 'secret']);
-    app(GrantPermission::class)($user, 'baobab.admin.access');
-
-    [$vendor, $slug] = explode('/', $module->name, 2);
-
-    $this->actingAs($user, 'baobab')
-        ->post(route('admin.modules.sync', ['vendor' => $vendor, 'slug' => $slug]))
-        ->assertForbidden();
 });
