@@ -315,3 +315,112 @@ function evolutionColumnIsNullable(string $table, string $column): bool
 
     throw new RuntimeException("Colonne {$column} introuvable sur {$table}.");
 }
+
+/**
+ * Entité `Car` portant des relations — `evolutionCarEntity()` les fixe à vide,
+ * ce qui est précisément ce qui a laissé passer le n° 165.
+ *
+ * @param  list<array<string, mixed>>  $fields
+ * @param  list<array<string, mixed>>  $relations
+ * @return array<string, mixed>
+ */
+function evolutionCarEntityWithRelations(array $fields, array $relations): array
+{
+    return [...evolutionCarEntity($fields), 'relations' => $relations];
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function evolutionGarageEntity(): array
+{
+    return [
+        'key' => 'Garage',
+        'table' => evolutionTable('garages'),
+        'fields' => [['key' => 'city', 'type' => 'text', 'required' => true]],
+        'relations' => [],
+        'routes' => ['admin' => true, 'front' => false, 'api' => false],
+    ];
+}
+
+/**
+ * Contenu de la migration d'évolution qui vient d'être écrite.
+ *
+ * L'assertion porte sur le **texte généré** et non sur le schéma obtenu, et
+ * c'est délibéré : la suite tourne sur SQLite, qui reconstruit la table sur un
+ * `dropColumn` et ne lève jamais le `1828` de MySQL. Vérifier `Schema::hasColumn`
+ * passerait au vert en laissant le défaut intact sur une vraie base (n° 165).
+ *
+ * @param  array<string, mixed>  $result
+ */
+function evolutionMigrationContents(array $result): string
+{
+    /** @var list<string> $migrations */
+    $migrations = $result['schema']['migrations'];
+
+    expect($migrations)->toHaveCount(1);
+
+    return (string) File::get(evolutionModuleDirectory().'/'.$migrations[0]);
+}
+
+it('releases the foreign key before dropping a relation column', function () {
+    $draft = evolutionInstalledDraft([['key' => 'brand', 'type' => 'text', 'required' => true]]);
+
+    // La relation arrive après l'installation, puis repart : c'est bien sa
+    // suppression qu'on observe, sur une contrainte réellement posée.
+    evolutionRegenerate($draft, evolutionBlueprint([
+        evolutionCarEntityWithRelations(
+            [['key' => 'brand', 'type' => 'text', 'required' => true]],
+            [['key' => 'garage', 'type' => 'one_to_many', 'target' => 'entity:Garage', 'on_delete' => 'restrict']],
+        ),
+        evolutionGarageEntity(),
+    ]));
+
+    expect(Schema::hasColumn(evolutionTable(), 'garage_id'))->toBeTrue();
+
+    $result = evolutionRegenerate($draft, evolutionBlueprint([
+        evolutionCarEntity([['key' => 'brand', 'type' => 'text', 'required' => true]]),
+        evolutionGarageEntity(),
+    ]), confirmDestructive: true);
+
+    $contents = evolutionMigrationContents($result);
+
+    expect($contents)->toContain("\$table->dropForeign(['garage_id']);")
+        ->and($contents)->toContain("\$table->dropColumn('garage_id');");
+
+    // L'ordre est tout le correctif : lâcher la contrainte APRÈS avoir supprimé
+    // la colonne ne vaudrait pas mieux que ne pas la lâcher du tout.
+    expect(strpos($contents, "dropForeign(['garage_id'])"))
+        ->toBeLessThan(strpos($contents, "dropColumn('garage_id')"));
+
+    expect(Schema::hasColumn(evolutionTable(), 'garage_id'))->toBeFalse();
+});
+
+it('drops a polymorphic relation without touching a foreign key it never created', function () {
+    $draft = evolutionInstalledDraft([['key' => 'brand', 'type' => 'text', 'required' => true]]);
+
+    evolutionRegenerate($draft, evolutionBlueprint([
+        evolutionCarEntityWithRelations(
+            [['key' => 'brand', 'type' => 'text', 'required' => true]],
+            [['key' => 'owner', 'type' => 'polymorphic', 'target' => 'core:User', 'on_delete' => 'restrict']],
+        ),
+    ]));
+
+    expect(Schema::hasColumn(evolutionTable(), 'owner_id'))->toBeTrue();
+
+    $result = evolutionRegenerate($draft, evolutionBlueprint([
+        evolutionCarEntity([['key' => 'brand', 'type' => 'text', 'required' => true]]),
+    ]), confirmDestructive: true);
+
+    $contents = evolutionMigrationContents($result);
+
+    // `nullableMorphs()` ne pose aucune contrainte : un dropForeign échouerait
+    // ici sur une contrainte inexistante. Mais il pose un index composite, que
+    // laisser derrière soi fait échouer la suppression des colonnes.
+    expect($contents)->not->toContain('dropForeign')
+        ->and($contents)->toContain("\$table->dropIndex(['owner_type', 'owner_id']);");
+
+    expect(strpos($contents, 'dropIndex'))->toBeLessThan(strpos($contents, "dropColumn('owner_type')"));
+
+    expect(Schema::hasColumn(evolutionTable(), 'owner_id'))->toBeFalse();
+});

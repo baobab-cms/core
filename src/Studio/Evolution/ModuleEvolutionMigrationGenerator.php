@@ -74,6 +74,27 @@ final class ModuleEvolutionMigrationGenerator
             $down[] = $this->line($this->asChange(ColumnNullability::apply($column['definition'], $column['nullable'])));
         }
 
+        // Une colonne de relation ne s'enlève pas seule : elle traîne ce que la
+        // relation avait posé avec elle. Tout est relâché **avant** la première
+        // suppression, en deux passes plutôt qu'une — l'ordre du plan ne dit
+        // rien, et un `_type` supprimé avant l'index composite qu'il partage
+        // avec son `_id` échouerait tout autant que la contrainte oubliée.
+        // Sur le retour, rien à faire : la définition réintroduit colonnes,
+        // contrainte et index d'un seul geste.
+        foreach ($plan['dropped'] as $column) {
+            // MySQL refuse de supprimer une colonne encore référencée par une
+            // clé étrangère (`SQLSTATE[HY000] 1828`).
+            if (self::carriesForeignKey($column['definition'])) {
+                $up[] = $this->line("\$table->dropForeign(['{$column['name']}']);");
+            }
+
+            $morph = self::morphKey($column['definition']);
+
+            if ($morph !== null) {
+                $up[] = $this->line("\$table->dropIndex(['{$morph}_type', '{$morph}_id']);");
+            }
+        }
+
         foreach ($plan['dropped'] as $column) {
             $up[] = $this->line("\$table->dropColumn('{$column['name']}');");
             $down[] = $this->line($column['definition']);
@@ -89,6 +110,44 @@ final class ModuleEvolutionMigrationGenerator
         $this->checksums->write($moduleDir, $filename, $contents, true);
 
         return $filename;
+    }
+
+    /**
+     * Une contrainte de clé étrangère se lit dans la définition elle-même : les
+     * relations `one_to_one` et `one_to_many` posent leur colonne avec
+     * `->constrained(...)`, les seules à le faire.
+     *
+     * La distinction est indispensable et pas seulement une optimisation : une
+     * relation `polymorphic` passe par `nullableMorphs()`, qui ne crée **aucune**
+     * contrainte — lui envoyer un `dropForeign` échouerait sur une contrainte
+     * inexistante, et casserait donc ce qui fonctionne aujourd'hui. Les
+     * `many_to_many` n'empruntent pas ce chemin du tout : leur table pivot est
+     * un objet à part, jamais une colonne de l'entité.
+     */
+    private static function carriesForeignKey(string $definition): bool
+    {
+        return str_contains($definition, '->constrained(');
+    }
+
+    /**
+     * Clé d'une relation `polymorphic`, ou `null` si la définition n'en est pas
+     * une. `nullableMorphs('owner')` pose deux colonnes **et** un index composite
+     * `{table}_owner_type_owner_id_index` : le laisser derrière soi fait échouer
+     * la suppression des colonnes qu'il couvre (« error in index … after drop
+     * column »), sur SQLite comme sur MySQL.
+     *
+     * Aucune contrainte de clé étrangère ici, contrairement aux relations
+     * `->constrained()` — les deux cas sont donc traités séparément, et un
+     * `dropForeign` sur un morphe échouerait sur une contrainte qui n'a jamais
+     * existé.
+     */
+    private static function morphKey(string $definition): ?string
+    {
+        if (preg_match("/->nullableMorphs\('([^']+)'\)/", $definition, $matches) !== 1) {
+            return null;
+        }
+
+        return $matches[1];
     }
 
     /**
