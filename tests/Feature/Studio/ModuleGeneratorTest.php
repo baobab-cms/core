@@ -269,7 +269,7 @@ it('generates a pivot migration (without ct_ prefix) and belongsToMany for a man
     expect($modelContents)->toContain('public function options(): \Illuminate\Database\Eloquent\Relations\BelongsToMany');
 });
 
-it('omits the hooks block entirely from module.json when no hooks are declared', function () {
+it('declares the hooks its own actions emit, even when the blueprint declares none', function () {
     $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson());
 
     app(ModuleGenerator::class)($blueprint);
@@ -277,7 +277,11 @@ it('omits the hooks block entirely from module.json when no hooks are declared',
     /** @var array<string, mixed> $manifest */
     $manifest = json_decode((string) file_get_contents(generatedModulesPath().'/garage-fleet/module.json'), associative: true);
 
-    expect($manifest)->not->toHaveKey('hooks');
+    // Depuis le n° 141, tout module a une couche d'actions, donc émet des hooks.
+    // Ne pas les déclarer les rendrait invisibles de `hook:list` et du catalogue
+    // d'événements des webhooks, qui lisent tous deux ce bloc.
+    expect($manifest['hooks']['emits'])->toBe(['fleet.car.saving', 'fleet.car.saved', 'fleet.car.deleted'])
+        ->and($manifest['hooks'])->not->toHaveKey('listens');
 });
 
 it('generates a hook listener skeleton and writes the hooks block to module.json', function () {
@@ -301,7 +305,13 @@ it('generates a hook listener skeleton and writes the hooks block to module.json
     /** @var array<string, mixed> $manifest */
     $manifest = json_decode((string) file_get_contents(generatedModulesPath().'/garage-fleet/module.json'), associative: true);
 
-    expect($manifest['hooks']['emits'])->toBe(['garage.fleet.car.serviced'])
+    // Ceux du blueprint d'abord, ceux de la couche d'actions ensuite (n° 141).
+    expect($manifest['hooks']['emits'])->toBe([
+        'garage.fleet.car.serviced',
+        'fleet.car.saving',
+        'fleet.car.saved',
+        'fleet.car.deleted',
+    ])
         ->and($manifest['hooks']['listens'])->toBe(['baobab.content.saved' => 'Garage\\Fleet\\Hooks\\NotifyFleetManager']);
 });
 

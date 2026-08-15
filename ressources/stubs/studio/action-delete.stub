@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }}\Actions;
+
+use {{ namespace }}\Models\{{ key }};
+use Baobab\Audit\AuditLogger;
+use Baobab\Facades\Hook;
+
+/**
+ * Supprime un enregistrement {{ key }}.
+ *
+ * Pendant de `Save{{ key }}` : point d'entrée unique de la suppression, appelé
+ * par l'écran d'admin comme par l'API REST. Une suppression qui doit détacher
+ * des fichiers, prévenir un service tiers ou refuser certains états se code
+ * **ici**, une fois, plutôt que dans chaque surface.
+ *
+ * L'autorisation reste dans la policy, interrogée par les contrôleurs.
+ */
+final class Delete{{ key }}
+{
+    public function __construct(private readonly AuditLogger $audit) {}
+
+    public function __invoke({{ key }} ${{ var }}): void
+    {
+        ${{ var }}->delete();
+
+        $this->audit->record('{{ hook_prefix }}.deleted', ${{ var }});
+
+        Hook::action('{{ hook_prefix }}.deleted', ${{ var }});
+    }
+}

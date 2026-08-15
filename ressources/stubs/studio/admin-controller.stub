@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace {{ namespace }}\Http\Controllers\Admin;
 
+use {{ namespace }}\Actions\Delete{{ key }};
+use {{ namespace }}\Actions\Save{{ key }};
 use {{ namespace }}\Http\Requests\{{ key }}Request;
 use {{ namespace }}\Models\{{ key }};
 use Baobab\Users\Models\User;
@@ -12,6 +14,16 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Adaptateur mince : il autorise, il présente, il délègue. Toute écriture passe
+ * par `Save{{ key }}` ou `Delete{{ key }}`, jamais par le modèle en direct — le
+ * contrôleur d'API appelle les mêmes Actions, et une commande ou un import en
+ * masse le feraient aussi.
+ *
+ * Ajoutez votre logique métier dans les Actions, pas ici : ce fichier est
+ * régénéré, et une règle écrite dans un contrôleur reste invisible des autres
+ * surfaces.
+ */
 final class {{ key }}Controller extends Controller
 {
     public function index(): View
@@ -39,7 +51,7 @@ final class {{ key }}Controller extends Controller
     {
         abort_unless($this->actor()->can('create', {{ key }}::class), 403);
 
-        {{ key }}::create($request->validated());
+        app(Save{{ key }}::class)($request->validated());
 
         return redirect()->route('{{ route_name_prefix }}.index');
     }
@@ -60,7 +72,7 @@ final class {{ key }}Controller extends Controller
     {
         abort_unless($this->actor()->can('update', ${{ var }}), 403);
 
-        ${{ var }}->update($request->validated());
+        app(Save{{ key }}::class)($request->validated(), ${{ var }});
 
         return redirect()->route('{{ route_name_prefix }}.index');
     }
@@ -69,7 +81,7 @@ final class {{ key }}Controller extends Controller
     {
         abort_unless($this->actor()->can('delete', ${{ var }}), 403);
 
-        ${{ var }}->delete();
+        app(Delete{{ key }}::class)(${{ var }});
 
         return redirect()->route('{{ route_name_prefix }}.index');
     }

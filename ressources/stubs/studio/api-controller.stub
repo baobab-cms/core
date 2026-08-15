@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace {{ namespace }}\Http\Controllers\Api;
 
+use {{ namespace }}\Actions\Delete{{ key }};
+use {{ namespace }}\Actions\Save{{ key }};
 use {{ namespace }}\Http\Requests\{{ key }}Request;
 use {{ namespace }}\Http\Resources\{{ key }}Resource;
 use {{ namespace }}\Models\{{ key }};
@@ -13,6 +15,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Routing\Controller;
 
+/**
+ * Adaptateur mince, exactement comme le contrôleur d'admin, et appelant les
+ * **mêmes** Actions : une règle métier ajoutée à `Save{{ key }}` vaut pour les
+ * deux surfaces sans être écrite deux fois.
+ */
 final class {{ key }}Controller extends Controller
 {
     public function index(): AnonymousResourceCollection
@@ -33,7 +40,7 @@ final class {{ key }}Controller extends Controller
     {
         abort_unless($this->actor()->can('create', {{ key }}::class), 403);
 
-        ${{ var }} = {{ key }}::create($request->validated());
+        ${{ var }} = app(Save{{ key }}::class)($request->validated());
 
         return (new {{ key }}Resource(${{ var }}))->response()->setStatusCode(201);
     }
@@ -42,16 +49,14 @@ final class {{ key }}Controller extends Controller
     {
         abort_unless($this->actor()->can('update', ${{ var }}), 403);
 
-        ${{ var }}->update($request->validated());
-
-        return new {{ key }}Resource(${{ var }});
+        return new {{ key }}Resource(app(Save{{ key }}::class)($request->validated(), ${{ var }}));
     }
 
     public function destroy({{ key }} ${{ var }}): JsonResponse
     {
         abort_unless($this->actor()->can('delete', ${{ var }}), 403);
 
-        ${{ var }}->delete();
+        app(Delete{{ key }}::class)(${{ var }});
 
         return response()->json(null, 204);
     }

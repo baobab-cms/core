@@ -1,0 +1,51 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }}\Actions;
+
+use {{ namespace }}\Models\{{ key }};
+use Baobab\Audit\AuditLogger;
+use Baobab\Facades\Hook;
+
+/**
+ * Crée ou met à jour un enregistrement {{ key }}.
+ *
+ * C'est **le** point d'entrée d'écriture de cette entité : l'écran d'admin et
+ * l'API REST générés l'appellent tous les deux, et une commande ou un import en
+ * masse doivent l'appeler aussi. Le principe API-first du produit veut qu'une
+ * fonctionnalité vive dans une Action unique, les surfaces n'en étant que des
+ * adaptateurs — sans quoi une règle métier ajoutée d'un côté reste invisible de
+ * l'autre.
+ *
+ * **C'est ici que va votre logique métier**, pas dans le contrôleur : ce fichier
+ * est protégé par checksum comme tout le reste du module, donc une régénération
+ * vous montrera vos modifications au lieu de les écraser.
+ *
+ * L'autorisation n'y figure pas volontairement — elle reste dans la policy, que
+ * les contrôleurs interrogent avant d'appeler cette Action.
+ */
+final class Save{{ key }}
+{
+    public function __construct(private readonly AuditLogger $audit) {}
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function __invoke(array $data, ?{{ key }} ${{ var }} = null): {{ key }}
+    {
+        $isNew = ${{ var }} === null;
+        ${{ var }} ??= new {{ key }};
+
+        Hook::action('{{ hook_prefix }}.saving', ${{ var }}, $data);
+
+        ${{ var }}->fill($data);
+        ${{ var }}->save();
+
+        $this->audit->record($isNew ? '{{ hook_prefix }}.created' : '{{ hook_prefix }}.updated', ${{ var }});
+
+        Hook::action('{{ hook_prefix }}.saved', ${{ var }}, $isNew, $data);
+
+        return ${{ var }};
+    }
+}

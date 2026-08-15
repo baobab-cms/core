@@ -47,6 +47,7 @@ final class ModuleGenerator
         private readonly FieldRegistry $fields,
         private readonly StudioRelationTargetResolver $relationTargets,
         private readonly StudioRelationDefinitionGenerator $relationDefinitions,
+        private readonly EntityActionGenerator $entityActions,
         private readonly AdminCrudGenerator $adminCrud,
         private readonly FrontCrudGenerator $frontCrud,
         private readonly ApiCrudGenerator $apiCrud,
@@ -202,6 +203,7 @@ final class ModuleGenerator
                 ...$this->planMigration($entity, $siblings, $this->moduleDir($name), $ranks),
                 ...$this->planModel($entity, $namespace, $siblings),
                 ...$this->planPolicy($entity, $namespace, $slug, $blueprint),
+                ...$this->planActions($entity, $namespace, $slug),
             ];
 
             $admin = $this->adminCrud->isEnabled($entity);
@@ -256,6 +258,26 @@ final class ModuleGenerator
         ]);
 
         return $files;
+    }
+
+    /**
+     * La couche d'actions de l'entité (suivi n° 141) — générée **quelles que
+     * soient les surfaces activées**, contrairement aux CRUD admin/front/API qui
+     * sont à la carte. Une entité sans aucune route reste écrite par une
+     * commande, un seeder ou un module tiers, et c'est précisément ce que
+     * l'Action leur offre : un point d'entrée qui existe toujours.
+     *
+     * @param  array<string, mixed>  $entity
+     * @return array<string, string>
+     */
+    private function planActions(array $entity, string $namespace, string $slug): array
+    {
+        $key = (string) $entity['key'];
+
+        return [
+            "src/Actions/Save{$key}.php" => $this->entityActions->save($entity, $namespace, $slug),
+            "src/Actions/Delete{$key}.php" => $this->entityActions->delete($entity, $namespace, $slug),
+        ];
     }
 
     /**
@@ -549,7 +571,7 @@ final class ModuleGenerator
                 'psr-4' => ["{$namespace}\\" => 'src/'],
             ],
             'permissions' => $this->permissions($blueprint, $slug),
-            'hooks' => $this->hooksBlock($blueprint, $namespace),
+            'hooks' => $this->hooksBlock($blueprint, $namespace, $slug),
             'menus' => $this->menusBlock($blueprint),
             'widgets' => $this->widgetsBlock($blueprint, $namespace),
         ], static fn (mixed $value): bool => $value !== null);
@@ -597,11 +619,25 @@ final class ModuleGenerator
     }
 
     /**
+     * Aux hooks déclarés au blueprint s'ajoutent ceux que la couche d'actions
+     * générée **émet réellement** (suivi n° 141) — un hook émis mais non déclaré
+     * serait invisible de `hook:list` comme du catalogue d'événements des
+     * webhooks, qui lisent l'un et l'autre `manifest['hooks']['emits']`.
+     *
+     * Ils sont ajoutés après ceux du blueprint et dédoublonnés : un utilisateur
+     * qui aurait déclaré `fleet.car.saved` à la main ne le verra pas en double.
+     *
      * @return array{emits?: list<string>, listens?: array<string, string>}|null
      */
-    private function hooksBlock(ModuleBlueprint $blueprint, string $namespace): ?array
+    private function hooksBlock(ModuleBlueprint $blueprint, string $namespace, string $slug): ?array
     {
         $emits = $blueprint->hooksEmitted();
+
+        foreach ($blueprint->entities() as $entity) {
+            $emits = [...$emits, ...$this->entityActions->emittedHooks($entity, $slug)];
+        }
+
+        $emits = array_values(array_unique($emits));
         $listens = $blueprint->hooksListened();
 
         if ($emits === [] && $listens === []) {
