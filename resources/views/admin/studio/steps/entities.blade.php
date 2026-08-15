@@ -114,165 +114,33 @@
                                     </div>
                                 </fieldset>
 
-                                {{-- Champs --}}
+                                {{--
+                                    Champs et relations : l'éditeur partagé avec le
+                                    formulaire de Content Type (n° 163). Ici la
+                                    collection est celle d'une entité parmi N, et les
+                                    cibles sont préfixées — les deux seules choses qui
+                                    distinguent cet appel de celui du contenu.
+                                --}}
                                 <div class="mt-6">
-                                    <h3 class="mb-1 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.studio.entities.fields') }}</h3>
-                                    <p class="mb-2 text-xs text-muted">{{ __('baobab::admin.studio.entities.field_key_hint') }}</p>
-
-                                    <template x-if="entity.fields.length === 0">
-                                        <p class="mb-2 text-sm text-muted">{{ __('baobab::admin.studio.entities.no_fields') }}</p>
-                                    </template>
-
-                                    <div class="space-y-2">
-                                        <template x-for="(field, fieldIndex) in entity.fields" :key="fieldIndex">
-                                            <div class="rounded-md border border-border bg-surface-subtle p-2">
-                                                <div class="flex flex-wrap items-center gap-2">
-                                                    {{--
-                                                        Une clé de champ devient un nom de colonne : le placeholder
-                                                        montre la forme attendue, sans quoi on y saisit un libellé
-                                                        humain (défaut réel signalé en vérification navigateur).
-                                                    --}}
-                                                    <input
-                                                        type="text"
-                                                        x-model="field.key"
-                                                        placeholder="published_at"
-                                                        aria-label="{{ __('baobab::admin.studio.entities.field_key') }}"
-                                                        title="{{ __('baobab::admin.studio.entities.field_key_hint') }}"
-                                                        class="w-40 rounded-md border border-border px-2 py-1 font-mono text-sm text-foreground"
-                                                    >
-
-                                                    <select
-                                                        x-model="field.type"
-                                                        aria-label="{{ __('baobab::admin.studio.entities.field_type') }}"
-                                                        class="rounded-md border border-border bg-surface px-2 py-1 text-sm text-foreground"
-                                                    >
-                                                        @foreach ($fieldTypes as $type)
-                                                            <option value="{{ $type }}">{{ $type }}</option>
-                                                        @endforeach
-                                                    </select>
-
-                                                    <label class="flex items-center gap-1 text-xs text-muted">
-                                                        <input type="checkbox" x-model="field.required" class="rounded border-border">
-                                                        {{ __('baobab::admin.studio.entities.field_required') }}
-                                                    </label>
-                                                    <label class="flex items-center gap-1 text-xs text-muted">
-                                                        <input type="checkbox" x-model="field.unique" class="rounded border-border">
-                                                        {{ __('baobab::admin.studio.entities.field_unique') }}
-                                                    </label>
-                                                    <label class="flex items-center gap-1 text-xs text-muted">
-                                                        <input type="checkbox" x-model="field.indexed" class="rounded border-border">
-                                                        {{ __('baobab::admin.studio.entities.field_indexed') }}
-                                                    </label>
-
-                                                    <button
-                                                        type="button"
-                                                        class="ml-auto rounded p-1 text-danger hover:bg-surface"
-                                                        x-on:click="entity.fields.splice(fieldIndex, 1)"
-                                                        aria-label="{{ __('baobab::admin.studio.entities.remove_field') }}"
-                                                        title="{{ __('baobab::admin.studio.entities.remove_field') }}"
-                                                    >
-                                                        <x-baobab::icon name="bi-x-lg" class="h-3 w-3" />
-                                                    </button>
-                                                </div>
-
-                                                {{-- `choices` est obligatoire pour select/multiselect/radio --}}
-                                                <div class="mt-2" x-show="needsChoices(field.type)" x-cloak>
-                                                    <label class="mb-1 block text-xs text-muted">{{ __('baobab::admin.studio.entities.field_choices') }}</label>
-                                                    <textarea
-                                                        x-model="field._choicesText"
-                                                        rows="3"
-                                                        class="w-full rounded-md border border-border px-2 py-1 font-mono text-sm text-foreground"
-                                                    ></textarea>
-                                                </div>
-                                            </div>
-                                        </template>
-                                    </div>
-
-                                    <x-baobab::button type="button" variant="secondary" class="mt-2" x-on:click="addField(entity)">
-                                        {{ __('baobab::admin.studio.entities.add_field') }}
-                                    </x-baobab::button>
+                                    <x-baobab::blueprint.field-rows
+                                        collection="entity.fields"
+                                        add-expression="addField(entity)"
+                                        :field-types="$fieldTypes"
+                                    />
                                 </div>
 
-                                {{-- Relations --}}
                                 <div class="mt-6">
-                                    <h3 class="mb-2 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.studio.entities.relations') }}</h3>
-
-                                    <template x-if="entity.relations.length === 0">
-                                        <p class="mb-2 text-sm text-muted">{{ __('baobab::admin.studio.entities.no_relations') }}</p>
-                                    </template>
-
-                                    <div class="space-y-2">
-                                        <template x-for="(relation, relationIndex) in entity.relations" :key="relationIndex">
-                                            <div class="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface-subtle p-2">
-                                                <input
-                                                    type="text"
-                                                    x-model="relation.key"
-                                                    placeholder="{{ __('baobab::admin.studio.entities.relation_key') }}"
-                                                    aria-label="{{ __('baobab::admin.studio.entities.relation_key') }}"
-                                                    class="w-40 rounded-md border border-border px-2 py-1 font-mono text-sm text-foreground"
-                                                >
-
-                                                <select
-                                                    x-model="relation.type"
-                                                    aria-label="{{ __('baobab::admin.studio.entities.relation_type') }}"
-                                                    class="rounded-md border border-border bg-surface px-2 py-1 text-sm text-foreground"
-                                                >
-                                                    @foreach ($relationTypes as $type)
-                                                        <option value="{{ $type }}">{{ $type }}</option>
-                                                    @endforeach
-                                                </select>
-
-                                                <select
-                                                    x-model="relation.target"
-                                                    aria-label="{{ __('baobab::admin.studio.entities.relation_target') }}"
-                                                    class="rounded-md border border-border bg-surface px-2 py-1 font-mono text-sm text-foreground"
-                                                >
-                                                    <option value="">—</option>
-                                                    <optgroup label="{{ __('baobab::admin.studio.entities.target_group_entities') }}">
-                                                        <template x-for="sibling in siblingTargets(entityIndex)" :key="sibling">
-                                                            <option x-bind:value="sibling" x-text="sibling"></option>
-                                                        </template>
-                                                    </optgroup>
-                                                    @if (! empty($contentTypeTargets))
-                                                        <optgroup label="{{ __('baobab::admin.studio.entities.target_group_content_types') }}">
-                                                            @foreach ($contentTypeTargets as $target)
-                                                                <option value="content_type:{{ $target }}">content_type:{{ $target }}</option>
-                                                            @endforeach
-                                                        </optgroup>
-                                                    @endif
-                                                    <optgroup label="{{ __('baobab::admin.studio.entities.target_group_core') }}">
-                                                        @foreach ($coreTargets as $target)
-                                                            <option value="core:{{ $target }}">core:{{ $target }}</option>
-                                                        @endforeach
-                                                    </optgroup>
-                                                </select>
-
-                                                <select
-                                                    x-model="relation.on_delete"
-                                                    aria-label="{{ __('baobab::admin.studio.entities.relation_on_delete') }}"
-                                                    class="rounded-md border border-border bg-surface px-2 py-1 text-sm text-foreground"
-                                                >
-                                                    @foreach ($onDeleteOptions as $option)
-                                                        <option value="{{ $option }}">{{ $option }}</option>
-                                                    @endforeach
-                                                </select>
-
-                                                <button
-                                                    type="button"
-                                                    class="ml-auto rounded p-1 text-danger hover:bg-surface"
-                                                    x-on:click="entity.relations.splice(relationIndex, 1)"
-                                                    aria-label="{{ __('baobab::admin.studio.entities.remove_relation') }}"
-                                                    title="{{ __('baobab::admin.studio.entities.remove_relation') }}"
-                                                >
-                                                    <x-baobab::icon name="bi-x-lg" class="h-3 w-3" />
-                                                </button>
-                                            </div>
-                                        </template>
-                                    </div>
-
-                                    <x-baobab::button type="button" variant="secondary" class="mt-2" x-on:click="addRelation(entity)">
-                                        {{ __('baobab::admin.studio.entities.add_relation') }}
-                                    </x-baobab::button>
+                                    <x-baobab::blueprint.relation-rows
+                                        collection="entity.relations"
+                                        add-expression="addRelation(entity)"
+                                        siblings="siblingTargets(entityIndex)"
+                                        content-type-prefix="content_type:"
+                                        core-prefix="core:"
+                                        :relation-types="$relationTypes"
+                                        :on-delete-options="$onDeleteOptions"
+                                        :core-targets="$coreTargets"
+                                        :content-type-targets="$contentTypeTargets"
+                                    />
                                 </div>
                             </div>
                         </div>

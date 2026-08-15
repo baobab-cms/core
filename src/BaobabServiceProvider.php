@@ -1506,6 +1506,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            if ($user->can('baobab.system.content_types.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -18,
+                    label: __('baobab::admin.sidebar.content_types'),
+                    icon: 'bi-diagram-3',
+                    url: route('admin.content-types.index'),
+                    order: -9,
+                );
+            }
+
             if ($user->can('baobab.system.modules.manage')) {
                 $coreItems[] = new SidebarItem(
                     id: -17,

@@ -10,6 +10,7 @@ use Baobab\Admin\Api\Http\Controllers\ApiSettingsController;
 use Baobab\Admin\Branding\Http\Controllers\BrandingController;
 use Baobab\Admin\Branding\Http\Controllers\FontsController;
 use Baobab\Admin\Content\Http\Controllers\ContentController;
+use Baobab\Admin\Content\Http\Controllers\ContentTypesController;
 use Baobab\Admin\Content\Http\Controllers\TrashController;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
@@ -297,6 +298,24 @@ Route::prefix('media')
 Route::get('trash', [TrashController::class, 'index'])->name('trash.index');
 
 Route::get('review', [ValidationQueueController::class, 'index'])->name('review.index');
+
+// Le Content Type builder (spec 02 §2.1, M8 point 2) — le *schéma*, pas les
+// entrées. Déclaré avant `content/{contentType}` : `content-types` est un
+// segment distinct, mais garder les deux voisins dit qu'il s'agit du même
+// domaine vu à deux étages.
+Route::middleware('can:baobab.system.content_types.manage')
+    ->prefix('content-types')
+    ->name('content-types.')
+    ->group(function (): void {
+        Route::get('/', [ContentTypesController::class, 'index'])->name('index');
+        Route::get('/create', [ContentTypesController::class, 'create'])->name('create');
+        Route::post('/', [ContentTypesController::class, 'store'])->name('store');
+        // Liaison par `key` et non par `id` : c'est la clé technique qui
+        // identifie un type partout ailleurs (URL des entrées, permissions,
+        // nom de table), et elle est unique.
+        Route::get('/{contentType:key}/edit', [ContentTypesController::class, 'edit'])->name('edit');
+        Route::put('/{contentType:key}', [ContentTypesController::class, 'update'])->name('update');
+    });
 
 Route::prefix('content/{contentType}')
     ->name('content.')
