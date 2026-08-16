@@ -160,7 +160,7 @@ it('backs every display component of the catalogue with a real view', function (
 });
 
 it('accepts a blueprint declaring body_field and image_field', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('FieldDisplayEntry', [
         'body_field' => 'description',
         'image_field' => 'photo',
         'fields' => [
@@ -169,11 +169,11 @@ it('accepts a blueprint declaring body_field and image_field', function () {
         ],
     ]));
 
-    expect($blueprint->key())->toBe('Car');
+    expect($blueprint->key())->toBe('FieldDisplayEntry');
 });
 
 it('rejects a designation naming a missing or wrongly typed field', function (string $designation, string $key) {
-    ContentTypeBlueprint::fromJson(carBlueprintJson([
+    ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('FieldDisplayEntry', [
         $designation => $key,
         'fields' => [
             ['key' => 'description', 'type' => 'richtext'],

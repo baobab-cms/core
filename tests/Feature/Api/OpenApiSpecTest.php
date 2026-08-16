@@ -25,33 +25,33 @@ it('serves a valid OpenAPI 3.1 document with the Core error components', functio
 });
 
 it('includes an active Content Type with its exposed fields, excluding internal_note', function () {
-    buildApiCar();
+    buildApiArticle();
 
     $response = test()->getJson('/api/v1/openapi.json');
 
     $response->assertOk()
-        ->assertJsonPath('components.schemas.ApiCar.properties.brand.type', 'string')
-        ->assertJsonPath('components.schemas.ApiCar.properties.brand.maxLength', 255)
-        ->assertJsonPath('components.schemas.ApiCar.required', fn (array $required) => in_array('brand', $required, true))
-        ->assertJsonPath('components.schemas.ApiCar.properties.price.type', 'number')
-        ->assertJsonPath('components.schemas.ApiCar.properties.price.nullable', true)
-        ->assertJsonMissingPath('components.schemas.ApiCar.properties.internal_note')
-        ->assertJsonPath('paths./content/api-cars.get.tags.0', 'ApiCar')
-        ->assertJsonPath('paths./content/api-cars/{entry}.patch.summary', fn (string $summary) => str_contains($summary, 'Voitures'));
+        ->assertJsonPath('components.schemas.ApiArticle.properties.brand.type', 'string')
+        ->assertJsonPath('components.schemas.ApiArticle.properties.brand.maxLength', 255)
+        ->assertJsonPath('components.schemas.ApiArticle.required', fn (array $required) => in_array('brand', $required, true))
+        ->assertJsonPath('components.schemas.ApiArticle.properties.price.type', 'number')
+        ->assertJsonPath('components.schemas.ApiArticle.properties.price.nullable', true)
+        ->assertJsonMissingPath('components.schemas.ApiArticle.properties.internal_note')
+        ->assertJsonPath('paths./content/api-articles.get.tags.0', 'ApiArticle')
+        ->assertJsonPath('paths./content/api-articles/{entry}.patch.summary', fn (string $summary) => str_contains($summary, 'Voitures'));
 });
 
 it('omits a Content Type whose api_enabled is disabled', function () {
-    buildApiCar(['key' => 'ApiCarDisabled', 'api_enabled' => false]);
+    buildApiArticle(['key' => 'ApiArticleDisabled', 'api_enabled' => false]);
 
     $response = test()->getJson('/api/v1/openapi.json');
 
     $response->assertOk()
-        ->assertJsonMissingPath('components.schemas.ApiCarDisabled')
+        ->assertJsonMissingPath('components.schemas.ApiArticleDisabled')
         ->assertJsonMissingPath('paths./content/api-car-disableds');
 });
 
 it('exports the document to storage/app/baobab/openapi/openapi.json', function () {
-    buildApiCar();
+    buildApiArticle();
 
     $path = storage_path('app/baobab/openapi/openapi.json');
     File::delete($path);
@@ -63,7 +63,7 @@ it('exports the document to storage/app/baobab/openapi/openapi.json', function (
     $document = json_decode((string) File::get($path), true);
 
     expect($document['openapi'])->toBe('3.1.0')
-        ->and($document['components']['schemas'])->toHaveKey('ApiCar');
+        ->and($document['components']['schemas'])->toHaveKey('ApiArticle');
 });
 
 it('describes text fields with maxLength, select fields with enum, integer fields with bounds, and gallery as an array', function () {

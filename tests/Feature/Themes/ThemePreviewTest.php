@@ -26,8 +26,7 @@ afterEach(function () {
 
 function buildPreviewCar(): string
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'PreviewCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('PreviewPage', [
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -40,7 +39,7 @@ function buildPreviewCar(): string
     $modelClass = $contentType->modelClass();
     $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'peugeot-208', 'status' => 'published']);
 
-    return 'preview-cars';
+    return 'preview-pages';
 }
 
 it('renders the previewed theme after visiting the signed entry link, without activating it', function () {

@@ -25,8 +25,7 @@ afterEach(function () {
  */
 function buildHomeCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'HomeCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('HomepagePost', [
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -60,7 +59,7 @@ it('renders the chosen static page as the homepage', function () {
     [, $modelClass] = buildHomeCarType();
     $entry = $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'peugeot-208', 'status' => 'published']);
 
-    ReadingSetting::create(['mode' => 'static_page', 'page_content_type_key' => 'HomeCar', 'page_entry_id' => $entry->id]);
+    ReadingSetting::create(['mode' => 'static_page', 'page_content_type_key' => 'HomepagePost', 'page_entry_id' => $entry->id]);
 
     $response = $this->get('/');
 
@@ -71,7 +70,7 @@ it('falls back to the default index when the chosen static page is no longer pub
     [, $modelClass] = buildHomeCarType();
     $entry = $modelClass::create(['brand' => 'Draft', 'slug' => 'draft', 'status' => 'draft']);
 
-    ReadingSetting::create(['mode' => 'static_page', 'page_content_type_key' => 'HomeCar', 'page_entry_id' => $entry->id]);
+    ReadingSetting::create(['mode' => 'static_page', 'page_content_type_key' => 'HomepagePost', 'page_entry_id' => $entry->id]);
 
     $response = $this->get('/');
 
@@ -81,7 +80,7 @@ it('falls back to the default index when the chosen static page is no longer pub
 it('falls back to the default index when the chosen static page no longer exists', function () {
     [, $modelClass] = buildHomeCarType();
 
-    ReadingSetting::create(['mode' => 'static_page', 'page_content_type_key' => 'HomeCar', 'page_entry_id' => 999999]);
+    ReadingSetting::create(['mode' => 'static_page', 'page_content_type_key' => 'HomepagePost', 'page_entry_id' => 999999]);
 
     $response = $this->get('/');
 
@@ -93,7 +92,7 @@ it('renders the latest published entries of the chosen type as the homepage', fu
     $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'peugeot-208', 'status' => 'published']);
     $modelClass::create(['brand' => 'Renault Clio', 'slug' => 'renault-clio', 'status' => 'published']);
 
-    ReadingSetting::create(['mode' => 'latest_posts', 'posts_content_type_key' => 'HomeCar']);
+    ReadingSetting::create(['mode' => 'latest_posts', 'posts_content_type_key' => 'HomepagePost']);
 
     $response = $this->get('/');
 

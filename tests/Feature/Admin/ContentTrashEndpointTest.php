@@ -25,7 +25,7 @@ afterEach(function () {
  */
 function trashEndpointCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('ContentTrashEndpointEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));
 
@@ -65,10 +65,10 @@ it('lists trashed entries via the trashed filter', function () {
     [$type, $modelClass] = trashEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault']);
     app(DeleteContentEntry::class)($type, $entry);
-    $actor = trashEndpointActor(['content.car.view', 'content.car.delete_any']);
+    $actor = trashEndpointActor(['content.content_trash_endpoint_entry.view', 'content.content_trash_endpoint_entry.delete_any']);
 
     $this->actingAs($actor, 'baobab')
-        ->get(route('admin.content.index', ['contentType' => 'cars', 'trashed' => 1]))
+        ->get(route('admin.content.index', ['contentType' => 'content-trash-endpoint-entries', 'trashed' => 1]))
         ->assertOk()
         ->assertSee('Renault', false);
 });
@@ -77,10 +77,10 @@ it('restores a trashed entry through the endpoint', function () {
     [$type, $modelClass] = trashEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault']);
     app(DeleteContentEntry::class)($type, $entry);
-    $actor = trashEndpointActor(['content.car.delete_any']);
+    $actor = trashEndpointActor(['content.content_trash_endpoint_entry.delete_any']);
 
     $this->actingAs($actor, 'baobab')
-        ->post(route('admin.content.restore', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->post(route('admin.content.restore', ['contentType' => 'content-trash-endpoint-entries', 'entry' => $entry->id]))
         ->assertRedirect();
 
     expect($modelClass::find($entry->id))->not->toBeNull();
@@ -90,10 +90,10 @@ it('denies purge without baobab.trash.purge, even for the type owner', function 
     [$type, $modelClass] = trashEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault']);
     app(DeleteContentEntry::class)($type, $entry);
-    $actor = trashEndpointActor(['content.car.delete_any']);
+    $actor = trashEndpointActor(['content.content_trash_endpoint_entry.delete_any']);
 
     $this->actingAs($actor, 'baobab')
-        ->delete(route('admin.content.force-destroy', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->delete(route('admin.content.force-destroy', ['contentType' => 'content-trash-endpoint-entries', 'entry' => $entry->id]))
         ->assertForbidden();
 });
 
@@ -101,10 +101,10 @@ it('purges a trashed entry with baobab.trash.purge', function () {
     [$type, $modelClass] = trashEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault']);
     app(DeleteContentEntry::class)($type, $entry);
-    $actor = trashEndpointActor(['content.car.delete_any', 'baobab.trash.purge']);
+    $actor = trashEndpointActor(['content.content_trash_endpoint_entry.delete_any', 'baobab.trash.purge']);
 
     $this->actingAs($actor, 'baobab')
-        ->delete(route('admin.content.force-destroy', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->delete(route('admin.content.force-destroy', ['contentType' => 'content-trash-endpoint-entries', 'entry' => $entry->id]))
         ->assertRedirect();
 
     expect($modelClass::withTrashed()->find($entry->id))->toBeNull();
@@ -116,10 +116,10 @@ it('bulk restores selected trashed entries', function () {
     $b = $modelClass::create(['brand' => 'B']);
     app(DeleteContentEntry::class)($type, $a);
     app(DeleteContentEntry::class)($type, $b);
-    $actor = trashEndpointActor(['content.car.delete_any']);
+    $actor = trashEndpointActor(['content.content_trash_endpoint_entry.delete_any']);
 
     $this->actingAs($actor, 'baobab')
-        ->post(route('admin.content.bulk-restore', ['contentType' => 'cars']), ['ids' => [$a->id, $b->id]])
+        ->post(route('admin.content.bulk-restore', ['contentType' => 'content-trash-endpoint-entries']), ['ids' => [$a->id, $b->id]])
         ->assertRedirect();
 
     expect($modelClass::whereIn('id', [$a->id, $b->id])->count())->toBe(2);

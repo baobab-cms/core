@@ -32,7 +32,7 @@ afterEach(function () {
  */
 function mediaControllerUsageEntry(string $key, Media $media): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('MediaControllerEntry', [
         'key' => $key,
         'label' => ['singular' => $key, 'plural' => $key.'s'],
         'fields' => [['key' => 'body', 'type' => 'richtext']],

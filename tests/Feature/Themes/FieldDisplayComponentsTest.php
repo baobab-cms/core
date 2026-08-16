@@ -124,8 +124,7 @@ it('renders the gallery display component with every media of the field, in orde
     $first = app(UploadMedia::class)(new UploadedFile(createTestJpeg(40, 20), 'first.jpg', 'image/jpeg', null, true), $actor);
     $second = app(UploadMedia::class)(new UploadedFile(createTestJpeg(41, 21), 'second.jpg', 'image/jpeg', null, true), $actor);
 
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'GalleryDisplayEntry',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('GalleryDisplayEntry', [
         'label' => ['singular' => 'Entrée', 'plural' => 'Entrées'],
         'fields' => [['key' => 'photos', 'type' => 'gallery']],
     ]));
@@ -161,8 +160,7 @@ it('renders nothing for a gallery field with no media attached', function () {
     config(['baobab.content_types.modules_path' => generatedModulesPath()]);
     config(['baobab.modules.paths' => ['local' => [generatedModulesPath().'/*']]]);
 
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'EmptyGalleryEntry',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('EmptyGalleryEntry', [
         'label' => ['singular' => 'Entrée', 'plural' => 'Entrées'],
         'fields' => [['key' => 'photos', 'type' => 'gallery']],
     ]));

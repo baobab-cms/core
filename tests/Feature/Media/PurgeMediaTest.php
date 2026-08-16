@@ -52,8 +52,7 @@ it('deletes the original, the edited version, all conversion files, related usag
 
     expect($conversionPaths)->not->toBeEmpty();
 
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'PurgeArticle',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('PurgeArticle', [
         'label' => ['singular' => 'PurgeArticle', 'plural' => 'PurgeArticles'],
         'fields' => [['key' => 'body', 'type' => 'richtext']],
     ]));

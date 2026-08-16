@@ -27,16 +27,16 @@ it('builds a content type end to end: table created, module active, permissions 
         $received = $contentType;
     });
 
-    $contentType = app(BuildContentType::class)(carBlueprintJson());
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('BuildContentTypeEntry'));
 
     expect($contentType->module_id)->not->toBeNull()
-        ->and(Schema::hasTable('ct_cars'))->toBeTrue();
+        ->and(Schema::hasTable('ct_build_content_type_entries'))->toBeTrue();
 
     $module = Module::findOrFail($contentType->module_id);
     expect($module->status)->toBe('active')
-        ->and($module->name)->toBe('content-types/cars');
+        ->and($module->name)->toBe('content-types/build-content-type-entries');
 
-    expect(Permission::where('name', 'content.car.view')->where('guard_name', 'baobab')->exists())->toBeTrue();
+    expect(Permission::where('name', 'content.build_content_type_entry.view')->where('guard_name', 'baobab')->exists())->toBeTrue();
 
     expect($received)->not->toBeNull();
 
@@ -45,17 +45,16 @@ it('builds a content type end to end: table created, module active, permissions 
     // (ModuleAutoloaderTest.php) : la classe Model générée est chargeable
     // une fois le mapping enregistré, sans avoir été require-ée à la main.
     app(ModuleAutoloader::class)->registerFor($module);
-    expect(class_exists('Modules\\Car\\Models\\Car'))->toBeTrue();
+    expect(class_exists('Modules\\BuildContentTypeEntry\\Models\\BuildContentTypeEntry'))->toBeTrue();
 });
 
 it('runs a migration with real field columns end to end', function () {
-    // Clé distincte de carBlueprintJson()'s "Car" par défaut : une fois
-    // Modules\Car\Models\Car chargée en mémoire par un autre test du même
+    // Clé distincte de celle du test précédent : une fois qu'une classe de
+    // Modules\BuildContentTypeEntry\Models\BuildContentTypeEntry chargée en mémoire par un autre test du même
     // fichier, PHP ne peut plus redéfinir cette classe même si le fichier
     // généré change sur disque (contrainte du langage, pas un bug du
     // générateur) — même piège que le cache négatif de Composer croisé en 1b.
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'SportsCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('BuiltVehicle', [
         'label' => ['singular' => 'Voiture de sport', 'plural' => 'Voitures de sport'],
         'fields' => [
             ['key' => 'brand', 'type' => 'text'],
@@ -63,7 +62,7 @@ it('runs a migration with real field columns end to end', function () {
         ],
     ]));
 
-    expect(Schema::hasColumns('ct_sports_cars', ['brand', 'is_featured']))->toBeTrue();
+    expect(Schema::hasColumns('ct_built_vehicles', ['brand', 'is_featured']))->toBeTrue();
 
     $module = Module::findOrFail($contentType->module_id);
     app(ModuleAutoloader::class)->registerFor($module);
@@ -84,7 +83,7 @@ it('runs a migration with real field columns end to end', function () {
     $car = $car->fresh();
 
     if ($car === null) {
-        throw new RuntimeException('Expected the newly saved SportsCar to be refetchable.');
+        throw new RuntimeException('Expected the newly saved BuiltVehicle to be refetchable.');
     }
 
     expect($car->getAttribute('brand'))->toBe('Peugeot')
@@ -185,8 +184,8 @@ it('runs a real belongsToMany relation end to end via the generated pivot table'
 });
 
 it('refuses to build a content type with a duplicate key', function () {
-    app(BuildContentType::class)(carBlueprintJson());
+    app(BuildContentType::class)(contentTypeBlueprintJson('BuildContentTypeEntry'));
 
-    expect(fn () => app(BuildContentType::class)(carBlueprintJson()))
+    expect(fn () => app(BuildContentType::class)(contentTypeBlueprintJson('BuildContentTypeEntry')))
         ->toThrow(DuplicateContentTypeException::class);
 });

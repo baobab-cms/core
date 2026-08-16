@@ -5,11 +5,11 @@ use Baobab\ContentTypes\Exceptions\InvalidBlueprintException;
 use Baobab\ContentTypes\Models\ContentType;
 
 it('accepts a minimal valid blueprint', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson());
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry'));
 
-    expect($blueprint->key())->toBe('Car')
-        ->and($blueprint->labelSingular())->toBe('Voiture')
-        ->and($blueprint->labelPlural())->toBe('Voitures')
+    expect($blueprint->key())->toBe('ContentTypeBlueprintEntry')
+        ->and($blueprint->labelSingular())->toBe('ContentTypeBlueprintEntry')
+        ->and($blueprint->labelPlural())->toBe('ContentTypeBlueprintEntrys')
         ->and($blueprint->isAddressable())->toBeFalse()
         ->and($blueprint->blueprintVersion())->toBe(1)
         ->and($blueprint->fields())->toBe([])
@@ -17,28 +17,28 @@ it('accepts a minimal valid blueprint', function () {
 });
 
 it('defaults workflow and unpublish_at to their spec-mandated values when undeclared', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson());
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry'));
 
     expect($blueprint->workflowEnabled())->toBeFalse()
         ->and($blueprint->unpublishAtEnabled())->toBeTrue();
 });
 
 it('accepts explicit workflow and unpublish_at overrides', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson(['workflow' => true, 'unpublish_at' => false]));
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', ['workflow' => true, 'unpublish_at' => false]));
 
     expect($blueprint->workflowEnabled())->toBeTrue()
         ->and($blueprint->unpublishAtEnabled())->toBeFalse();
 });
 
 it('defaults revisionsLimit to null (falls back to the global config) and revisionsExcept to an empty list', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson());
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry'));
 
     expect($blueprint->revisionsLimit())->toBeNull()
         ->and($blueprint->revisionsExcept())->toBe([]);
 });
 
 it('accepts an explicit revisions override', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'revisions' => ['limit' => 10, 'except' => ['view_count']],
     ]));
 
@@ -47,7 +47,7 @@ it('accepts an explicit revisions override', function () {
 });
 
 it('accepts a field of a known type and a relation targeting a known core model', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text']],
         'relations' => [['key' => 'reviewer', 'type' => 'one_to_many', 'target' => 'User']],
         'is_addressable' => true,
@@ -61,14 +61,14 @@ it('accepts a field of a known type and a relation targeting a known core model'
 });
 
 it('rejects an addressable content type without title_field', function () {
-    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+    expect(fn () => ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text']],
         'is_addressable' => true,
     ])))->toThrow(InvalidBlueprintException::class);
 });
 
 it('rejects a title_field that does not reference a declared field', function () {
-    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+    expect(fn () => ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text']],
         'is_addressable' => true,
         'title_field' => 'does_not_exist',
@@ -76,7 +76,7 @@ it('rejects a title_field that does not reference a declared field', function ()
 });
 
 it('rejects a title_field pointing at a non-text-ish field type', function () {
-    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+    expect(fn () => ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'is_featured', 'type' => 'boolean']],
         'is_addressable' => true,
         'title_field' => 'is_featured',
@@ -84,31 +84,31 @@ it('rejects a title_field pointing at a non-text-ish field type', function () {
 });
 
 it('rejects a relation of an unknown type', function () {
-    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+    expect(fn () => ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'relations' => [['key' => 'reviewer', 'type' => 'has_many', 'target' => 'User']],
     ])))->toThrow(InvalidBlueprintException::class);
 });
 
 it('rejects a relation targeting an unresolvable target', function () {
-    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+    expect(fn () => ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'relations' => [['key' => 'brand', 'type' => 'one_to_many', 'target' => 'DoesNotExist']],
     ])))->toThrow(InvalidBlueprintException::class);
 });
 
 it('rejects a field of an unknown type', function () {
-    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+    expect(fn () => ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'brand', 'type' => 'does_not_exist']],
     ])))->toThrow(InvalidBlueprintException::class);
 });
 
 it("rejects a field whose options fail its type's optionsRules", function () {
-    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+    expect(fn () => ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'status', 'type' => 'select', 'options' => []]],
     ])))->toThrow(InvalidBlueprintException::class);
 });
 
 it('accepts a field whose options satisfy its type optionsRules', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'status', 'type' => 'select', 'options' => ['choices' => ['draft', 'published']]]],
     ]));
 
@@ -118,12 +118,12 @@ it('accepts a field whose options satisfy its type optionsRules', function () {
 });
 
 it('rejects a key that is not PascalCase', function () {
-    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson(['key' => 'car'])))
+    expect(fn () => ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', ['key' => 'content_type_blueprint_entry'])))
         ->toThrow(InvalidBlueprintException::class);
 });
 
 it('rejects a blueprint without a label', function () {
-    $json = (string) json_encode(['key' => 'Car']);
+    $json = (string) json_encode(['key' => 'ContentTypeBlueprintEntry']);
 
     expect(fn () => ContentTypeBlueprint::fromJson($json))
         ->toThrow(InvalidBlueprintException::class);
@@ -135,17 +135,17 @@ it('rejects malformed JSON', function () {
 });
 
 it('defaults url_prefix to the kebab-plural of the key for an addressable type', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text']],
         'is_addressable' => true,
         'title_field' => 'brand',
     ]));
 
-    expect($blueprint->urlPrefix())->toBe('cars');
+    expect($blueprint->urlPrefix())->toBe('content-type-blueprint-entries');
 });
 
 it('accepts an explicit url_prefix override', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text']],
         'is_addressable' => true,
         'title_field' => 'brand',
@@ -156,7 +156,7 @@ it('accepts an explicit url_prefix override', function () {
 });
 
 it('rejects a url_prefix reserved for the admin path', function () {
-    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+    expect(fn () => ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text']],
         'is_addressable' => true,
         'title_field' => 'brand',
@@ -165,7 +165,7 @@ it('rejects a url_prefix reserved for the admin path', function () {
 });
 
 it('rejects a url_prefix reserved for the sitemap or robots.txt', function (string $prefix) {
-    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+    expect(fn () => ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text']],
         'is_addressable' => true,
         'title_field' => 'brand',
@@ -182,7 +182,7 @@ it('rejects a url_prefix already used by another addressable Content Type', func
         'blueprint' => ['key' => 'Brand', 'label' => ['singular' => 'Marque', 'plural' => 'Marques'], 'is_addressable' => true, 'url_prefix' => 'voitures'],
     ]);
 
-    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+    expect(fn () => ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text']],
         'is_addressable' => true,
         'title_field' => 'brand',
@@ -191,13 +191,13 @@ it('rejects a url_prefix already used by another addressable Content Type', func
 });
 
 it('does not consider a non-addressable url_prefix reserved or unique', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson(['url_prefix' => 'admin']));
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', ['url_prefix' => 'admin']));
 
     expect($blueprint->isAddressable())->toBeFalse();
 });
 
 it('accepts a seo.schema mapping whose tokens reference declared fields or the special title token', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson([
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [
             ['key' => 'brand', 'type' => 'text'],
             ['key' => 'price', 'type' => 'decimal'],
@@ -225,13 +225,13 @@ it('accepts a seo.schema mapping whose tokens reference declared fields or the s
 });
 
 it('defaults seoSchema to null when the blueprint declares none', function () {
-    $blueprint = ContentTypeBlueprint::fromJson(carBlueprintJson());
+    $blueprint = ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry'));
 
     expect($blueprint->seoSchema())->toBeNull();
 });
 
 it('rejects a seo.schema mapping token that references neither a declared field nor title', function () {
-    expect(fn () => ContentTypeBlueprint::fromJson(carBlueprintJson([
+    expect(fn () => ContentTypeBlueprint::fromJson(contentTypeBlueprintJson('ContentTypeBlueprintEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text']],
         'seo' => [
             'schema' => [

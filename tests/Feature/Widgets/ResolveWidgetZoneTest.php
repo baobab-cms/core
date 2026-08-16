@@ -29,8 +29,7 @@ afterEach(function () {
  */
 function buildWidgetCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'WidgetCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('WidgetPost', [
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -135,7 +134,7 @@ it('caches the resolved data and reflects content changes only after invalidatio
     WidgetInstance::create([
         'zone_key' => 'sidebar',
         'widget_key' => RecentContentsWidget::key(),
-        'settings' => ['content_type' => 'WidgetCar', 'limit' => 5, 'show_dates' => false],
+        'settings' => ['content_type' => 'WidgetPost', 'limit' => 5, 'show_dates' => false],
         'order' => 0,
     ]);
 

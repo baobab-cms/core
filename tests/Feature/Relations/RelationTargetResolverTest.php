@@ -18,14 +18,14 @@ afterEach(function () {
 });
 
 it('resolves an already-built content type by key', function () {
-    $contentType = app(BuildContentType::class)(carBlueprintJson());
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('RelationTargetResolverEntry'));
 
-    $resolved = (new RelationTargetResolver)->resolve('Car');
+    $resolved = (new RelationTargetResolver)->resolve('RelationTargetResolverEntry');
 
     expect($resolved)->toBe([
-        'class' => 'Modules\\Car\\Models\\Car',
-        'table' => 'ct_cars',
-        'key' => 'Car',
+        'class' => 'Modules\\RelationTargetResolverEntry\\Models\\RelationTargetResolverEntry',
+        'table' => 'ct_relation_target_resolver_entries',
+        'key' => 'RelationTargetResolverEntry',
     ]);
 });
 

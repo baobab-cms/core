@@ -27,7 +27,7 @@ afterEach(function () {
  */
 function reviewEndpointCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('WorkingDraftReviewEndpointEntry', [
         'workflow' => true,
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));
@@ -66,7 +66,7 @@ function reviewEndpointActor(array $permissions): User
 
 function workingDraftReviewUrl(string $action, string $entry): string
 {
-    return route("admin.content.working-draft.{$action}", ['contentType' => 'cars', 'entry' => $entry]);
+    return route("admin.content.working-draft.{$action}", ['contentType' => 'working-draft-review-endpoint-entries', 'entry' => $entry]);
 }
 
 /**
@@ -77,7 +77,7 @@ function workingDraftReviewUrl(string $action, string $entry): string
 function draftedReviewCar(): array
 {
     [$type, $modelClass] = reviewEndpointCarType();
-    $author = reviewEndpointActor(['content.car.update']);
+    $author = reviewEndpointActor(['content.working_draft_review_endpoint_entry.update']);
 
     $entry = new $modelClass(['brand' => 'Renault']);
     $entry->author_id = $author->id;
@@ -127,7 +127,7 @@ it('allows the own-content author to submit their working draft for review', fun
 it('denies approving a working draft without publish_any', function () {
     [$entry] = submittedReviewCar();
 
-    $actor = reviewEndpointActor(['content.car.publish']);
+    $actor = reviewEndpointActor(['content.working_draft_review_endpoint_entry.publish']);
 
     $this->actingAs($actor, 'baobab')
         ->post(workingDraftReviewUrl('approve', (string) $entry->id))
@@ -137,7 +137,7 @@ it('denies approving a working draft without publish_any', function () {
 it('approves a pending working draft and applies it to the live row', function () {
     [$entry] = submittedReviewCar();
 
-    $reviewer = reviewEndpointActor(['content.car.publish_any']);
+    $reviewer = reviewEndpointActor(['content.working_draft_review_endpoint_entry.publish_any']);
 
     $this->actingAs($reviewer, 'baobab')
         ->post(workingDraftReviewUrl('approve', (string) $entry->id))
@@ -153,7 +153,7 @@ it('approves a pending working draft and applies it to the live row', function (
 it('requires a comment to reject a pending working draft', function () {
     [$entry] = submittedReviewCar();
 
-    $reviewer = reviewEndpointActor(['content.car.publish_any']);
+    $reviewer = reviewEndpointActor(['content.working_draft_review_endpoint_entry.publish_any']);
 
     $this->actingAs($reviewer, 'baobab')
         ->post(workingDraftReviewUrl('reject', (string) $entry->id), [])
@@ -165,7 +165,7 @@ it('requires a comment to reject a pending working draft', function () {
 it('rejects a pending working draft back to an editable state', function () {
     [$entry] = submittedReviewCar();
 
-    $reviewer = reviewEndpointActor(['content.car.publish_any']);
+    $reviewer = reviewEndpointActor(['content.working_draft_review_endpoint_entry.publish_any']);
 
     $this->actingAs($reviewer, 'baobab')
         ->post(workingDraftReviewUrl('reject', (string) $entry->id), ['comment' => 'Photo manquante.'])

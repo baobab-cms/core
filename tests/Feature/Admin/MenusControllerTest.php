@@ -28,8 +28,7 @@ afterEach(function () {
  */
 function buildMenuSearchCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'MenuSearchCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('MenuSearchPage', [
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],

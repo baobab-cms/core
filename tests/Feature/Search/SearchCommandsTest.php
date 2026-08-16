@@ -13,8 +13,8 @@ afterEach(function () {
 });
 
 it('baobab:search:reindex runs without error for a searchable Content Type', function () {
-    buildApiCar([
-        'key' => 'SearchableCar',
+    buildApiArticle([
+        'key' => 'SearchableArticle',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true, 'searchable' => true]],
     ]);
 
@@ -26,8 +26,8 @@ it('baobab:search:reindex reports failure for an unknown --source', function () 
 });
 
 it('baobab:search:status reports the active driver and per-type volume', function () {
-    [, $carClass] = buildApiCar([
-        'key' => 'SearchableCar',
+    [, $carClass] = buildApiArticle([
+        'key' => 'SearchableArticle',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true, 'searchable' => true]],
     ]);
     $carClass::create(['brand' => 'Peugeot', 'slug' => 'peugeot', 'status' => 'published']);

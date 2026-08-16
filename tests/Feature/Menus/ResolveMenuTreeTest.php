@@ -36,8 +36,7 @@ function setCurrentPath(string $path): void
  */
 function buildMenuCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'MenuCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('MenuTargetPage', [
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -75,7 +74,7 @@ it('resolves a content item to the entry URL and title', function () {
 
     expect($tree)->toHaveCount(1)
         ->and($tree[0]['label'])->toBe('Peugeot 208')
-        ->and($tree[0]['url'])->toBe('/menu-cars/peugeot-208');
+        ->and($tree[0]['url'])->toBe('/menu-target-pages/peugeot-208');
 });
 
 it('honors a label override for a content item', function () {
@@ -114,7 +113,7 @@ it('resolves an archive item to the type archive URL', function () {
 
     $tree = app(ResolveMenuTree::class)('primary');
 
-    expect($tree[0]['url'])->toBe('/menu-cars');
+    expect($tree[0]['url'])->toBe('/menu-target-pages');
 });
 
 it('resolves a custom link item as-is', function () {

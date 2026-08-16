@@ -26,8 +26,7 @@ afterEach(function () {
  */
 function buildMetaboxCar(array $overrides = []): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson(array_replace([
-        'key' => 'MetaboxCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('MetaboxArticle', array_replace([
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -67,20 +66,20 @@ function metaboxActor(array $permissions): User
 
 it('shows the SEO metabox on the create form of an addressable content type', function () {
     buildMetaboxCar();
-    $user = metaboxActor(['content.metabox_car.view', 'content.metabox_car.create']);
+    $user = metaboxActor(['content.metabox_article.view', 'content.metabox_article.create']);
 
     $this->actingAs($user, 'baobab')
-        ->get(route('admin.content.create', ['contentType' => 'metabox-cars']))
+        ->get(route('admin.content.create', ['contentType' => 'metabox-articles']))
         ->assertOk()
         ->assertSee('seo[meta_title]', false);
 });
 
 it('saves the metabox fields alongside the content entry on creation', function () {
     buildMetaboxCar();
-    $user = metaboxActor(['content.metabox_car.view', 'content.metabox_car.create']);
+    $user = metaboxActor(['content.metabox_article.view', 'content.metabox_article.create']);
 
     $this->actingAs($user, 'baobab')
-        ->post(route('admin.content.store', ['contentType' => 'metabox-cars']), [
+        ->post(route('admin.content.store', ['contentType' => 'metabox-articles']), [
             'brand' => 'Peugeot 208',
             'slug' => 'peugeot-208',
             'seo' => [
@@ -89,10 +88,10 @@ it('saves the metabox fields alongside the content entry on creation', function 
                 'robots_noindex' => '1',
             ],
         ])
-        ->assertRedirect(route('admin.content.index', ['contentType' => 'metabox-cars']));
+        ->assertRedirect(route('admin.content.index', ['contentType' => 'metabox-articles']));
 
     /** @var class-string<Model> $modelClass */
-    $modelClass = ContentType::where('key', 'MetaboxCar')->firstOrFail()->modelClass();
+    $modelClass = ContentType::where('key', 'MetaboxArticle')->firstOrFail()->modelClass();
     $entry = $modelClass::where('slug', 'peugeot-208')->firstOrFail();
     $meta = SeoMeta::forEntry($entry);
 
@@ -105,17 +104,17 @@ it('saves the metabox fields alongside the content entry on creation', function 
 
 it('updates the existing metabox row on a subsequent save rather than duplicating it', function () {
     [$type, $modelClass] = buildMetaboxCar();
-    $owner = metaboxActor(['content.metabox_car.view', 'content.metabox_car.create', 'content.metabox_car.update']);
+    $owner = metaboxActor(['content.metabox_article.view', 'content.metabox_article.create', 'content.metabox_article.update']);
     $entry = $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'peugeot-208', 'status' => 'draft', 'author_id' => $owner->id]);
     SeoMeta::forEntry($entry)->fill(['meta_title' => 'Old title'])->save();
 
     $this->actingAs($owner, 'baobab')
-        ->put(route('admin.content.update', ['contentType' => 'metabox-cars', 'entry' => $entry->getKey()]), [
+        ->put(route('admin.content.update', ['contentType' => 'metabox-articles', 'entry' => $entry->getKey()]), [
             'brand' => 'Peugeot 208',
             'slug' => 'peugeot-208',
             'seo' => ['meta_title' => 'New title'],
         ])
-        ->assertRedirect(route('admin.content.index', ['contentType' => 'metabox-cars']));
+        ->assertRedirect(route('admin.content.index', ['contentType' => 'metabox-articles']));
 
     expect(SeoMeta::query()->count())->toBe(1)
         ->and(SeoMeta::forEntry($entry->fresh() ?? $entry)->meta_title)->toBe('New title');
@@ -123,18 +122,18 @@ it('updates the existing metabox row on a subsequent save rather than duplicatin
 
 it('does not fail the content save when the submitted SEO fields are invalid', function () {
     buildMetaboxCar();
-    $user = metaboxActor(['content.metabox_car.view', 'content.metabox_car.create']);
+    $user = metaboxActor(['content.metabox_article.view', 'content.metabox_article.create']);
 
     $this->actingAs($user, 'baobab')
-        ->post(route('admin.content.store', ['contentType' => 'metabox-cars']), [
+        ->post(route('admin.content.store', ['contentType' => 'metabox-articles']), [
             'brand' => 'Peugeot 208',
             'slug' => 'peugeot-208',
             'seo' => ['canonical_url' => 'not-a-url'],
         ])
-        ->assertRedirect(route('admin.content.index', ['contentType' => 'metabox-cars']));
+        ->assertRedirect(route('admin.content.index', ['contentType' => 'metabox-articles']));
 
     /** @var class-string<Model> $modelClass */
-    $modelClass = ContentType::where('key', 'MetaboxCar')->firstOrFail()->modelClass();
+    $modelClass = ContentType::where('key', 'MetaboxArticle')->firstOrFail()->modelClass();
     expect($modelClass::where('slug', 'peugeot-208')->exists())->toBeTrue()
         ->and(SeoMeta::query()->count())->toBe(0);
 });

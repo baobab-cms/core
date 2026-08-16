@@ -49,8 +49,7 @@ function readingActor(array $permissions): User
  */
 function buildReadingCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'ReadingCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('ReadingPage', [
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -89,7 +88,7 @@ it('saves the static page mode and audits the change', function () {
     $this->actingAs($actor, 'baobab')
         ->post(route('admin.reading.update'), [
             'mode' => 'static_page',
-            'page_content_type_key' => 'ReadingCar',
+            'page_content_type_key' => 'ReadingPage',
             'page_entry_id' => $entry->id,
         ])
         ->assertRedirect(route('admin.reading.index'))
@@ -107,18 +106,18 @@ it('saves the latest posts mode', function () {
     $this->actingAs($actor, 'baobab')
         ->post(route('admin.reading.update'), [
             'mode' => 'latest_posts',
-            'posts_content_type_key' => 'ReadingCar',
+            'posts_content_type_key' => 'ReadingPage',
         ])
         ->assertRedirect(route('admin.reading.index'));
 
     expect(ReadingSetting::current()->mode)->toBe('latest_posts')
-        ->and(ReadingSetting::current()->posts_content_type_key)->toBe('ReadingCar');
+        ->and(ReadingSetting::current()->posts_content_type_key)->toBe('ReadingPage');
 });
 
 it('resets to the theme default when the mode is cleared', function () {
     buildReadingCarType();
     $actor = readingActor(['baobab.system.reading.manage']);
-    ReadingSetting::create(['mode' => 'latest_posts', 'posts_content_type_key' => 'ReadingCar']);
+    ReadingSetting::create(['mode' => 'latest_posts', 'posts_content_type_key' => 'ReadingPage']);
 
     $this->actingAs($actor, 'baobab')
         ->post(route('admin.reading.update'), ['mode' => ''])
@@ -136,7 +135,7 @@ it('rejects a static page pointing at an unpublished entry', function () {
     $this->actingAs($actor, 'baobab')
         ->post(route('admin.reading.update'), [
             'mode' => 'static_page',
-            'page_content_type_key' => 'ReadingCar',
+            'page_content_type_key' => 'ReadingPage',
             'page_entry_id' => $entry->id,
         ])
         ->assertSessionHasErrors('page_entry_id');

@@ -26,7 +26,7 @@ afterEach(function () {
  */
 function revisionsEndpointCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('ContentRevisionsEndpointEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));
 
@@ -64,7 +64,7 @@ function revisionsEndpointActor(array $permissions): User
 
 it('lists the revision history and computes a diff when from/to are given', function () {
     [$type] = revisionsEndpointCarType();
-    $actor = revisionsEndpointActor(['content.car.update']);
+    $actor = revisionsEndpointActor(['content.content_revisions_endpoint_entry.update']);
 
     $entry = app(SaveContentEntry::class)($type, ['brand' => 'v1'], $actor);
     app(SaveContentEntry::class)($type, ['brand' => 'v2'], $actor, $entry);
@@ -73,7 +73,7 @@ it('lists the revision history and computes a diff when from/to are given', func
 
     $response = $this->actingAs($actor, 'baobab')
         ->get(route('admin.content.revisions', [
-            'contentType' => 'cars',
+            'contentType' => 'content-revisions-endpoint-entries',
             'entry' => $entry->id,
             'from' => $revisions[0]->id,
             'to' => $revisions[1]->id,
@@ -85,14 +85,14 @@ it('lists the revision history and computes a diff when from/to are given', func
 
 it('restores a revision through the endpoint', function () {
     [$type] = revisionsEndpointCarType();
-    $actor = revisionsEndpointActor(['content.car.update']);
+    $actor = revisionsEndpointActor(['content.content_revisions_endpoint_entry.update']);
 
     $entry = app(SaveContentEntry::class)($type, ['brand' => 'v1'], $actor);
     app(SaveContentEntry::class)($type, ['brand' => 'v2'], $actor, $entry);
     $first = Revision::where('revisionable_id', $entry->id)->orderBy('id')->first();
 
     $this->actingAs($actor, 'baobab')
-        ->post(route('admin.content.revisions.restore', ['contentType' => 'cars', 'entry' => $entry->id, 'revision' => $first->id]))
+        ->post(route('admin.content.revisions.restore', ['contentType' => 'content-revisions-endpoint-entries', 'entry' => $entry->id, 'revision' => $first->id]))
         ->assertRedirect();
 
     expect($entry->fresh()->brand)->toBe('v1');
@@ -104,6 +104,6 @@ it('denies the revisions screen without the update permission', function () {
     $actor = revisionsEndpointActor([]);
 
     $this->actingAs($actor, 'baobab')
-        ->get(route('admin.content.revisions', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->get(route('admin.content.revisions', ['contentType' => 'content-revisions-endpoint-entries', 'entry' => $entry->id]))
         ->assertForbidden();
 });

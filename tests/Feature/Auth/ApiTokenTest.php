@@ -17,66 +17,66 @@ afterEach(function () {
 });
 
 it('lets a Bearer token with the right ability perform a REST write', function () {
-    buildApiCar();
-    $actor = apiActor(['content.api_car.create']);
+    buildApiArticle();
+    $actor = apiActor(['content.api_article.create']);
 
-    $token = app(CreateApiToken::class)($actor, 'ci', ['content.api_car.create']);
+    $token = app(CreateApiToken::class)($actor, 'ci', ['content.api_article.create']);
 
     $this->withHeader('Authorization', "Bearer {$token->plainTextToken}")
-        ->postJson('/api/v1/content/api-cars', ['brand' => 'Peugeot', 'price' => 1000, 'internal_note' => 'n/a', 'slug' => 'peugeot'])
+        ->postJson('/api/v1/content/api-articles', ['brand' => 'Peugeot', 'price' => 1000, 'internal_note' => 'n/a', 'slug' => 'peugeot'])
         ->assertCreated();
 });
 
 it('denies a Bearer token missing the required ability even though the user holds the permission', function () {
-    [, $carClass] = buildApiCar();
-    $actor = apiActor(['content.api_car.create', 'content.api_car.publish']);
+    [, $carClass] = buildApiArticle();
+    $actor = apiActor(['content.api_article.create', 'content.api_article.publish']);
     $entry = $carClass::create([
         'brand' => 'Peugeot', 'price' => 1000, 'internal_note' => 'n/a', 'slug' => 'peugeot',
         'status' => 'draft', 'author_id' => $actor->id,
     ]);
 
-    $token = app(CreateApiToken::class)($actor, 'ci', ['content.api_car.create']);
+    $token = app(CreateApiToken::class)($actor, 'ci', ['content.api_article.create']);
 
     $this->withHeader('Authorization', "Bearer {$token->plainTextToken}")
-        ->postJson("/api/v1/content/api-cars/{$entry->getKey()}/publish")
+        ->postJson("/api/v1/content/api-articles/{$entry->getKey()}/publish")
         ->assertStatus(403);
 });
 
 it('denies a Bearer token once the creator loses the underlying permission', function () {
-    buildApiCar();
-    $actor = apiActor(['content.api_car.create']);
+    buildApiArticle();
+    $actor = apiActor(['content.api_article.create']);
 
-    $token = app(CreateApiToken::class)($actor, 'ci', ['content.api_car.create']);
+    $token = app(CreateApiToken::class)($actor, 'ci', ['content.api_article.create']);
 
-    app(RevokePermission::class)($actor, 'content.api_car.create');
+    app(RevokePermission::class)($actor, 'content.api_article.create');
 
     $this->withHeader('Authorization', "Bearer {$token->plainTextToken}")
-        ->postJson('/api/v1/content/api-cars', ['brand' => 'Peugeot', 'price' => 1000, 'internal_note' => 'n/a', 'slug' => 'peugeot'])
+        ->postJson('/api/v1/content/api-articles', ['brand' => 'Peugeot', 'price' => 1000, 'internal_note' => 'n/a', 'slug' => 'peugeot'])
         ->assertStatus(403);
 });
 
 it('rejects a Bearer token without any Authorization header the same as before (401)', function () {
-    buildApiCar();
+    buildApiArticle();
 
-    $this->postJson('/api/v1/content/api-cars', ['brand' => 'Peugeot', 'slug' => 'peugeot'])
+    $this->postJson('/api/v1/content/api-articles', ['brand' => 'Peugeot', 'slug' => 'peugeot'])
         ->assertStatus(401);
 });
 
 it('CreateApiToken rejects an ability outside the actor\'s current permissions', function () {
-    $actor = apiActor(['content.api_car.create']);
+    $actor = apiActor(['content.api_article.create']);
 
-    expect(fn () => app(CreateApiToken::class)($actor, 'ci', ['content.api_car.publish']))
+    expect(fn () => app(CreateApiToken::class)($actor, 'ci', ['content.api_article.publish']))
         ->toThrow(InvalidTokenAbilityException::class);
 });
 
 it('records the token identity on an audited API write', function () {
-    buildApiCar();
-    $actor = apiActor(['content.api_car.create']);
+    buildApiArticle();
+    $actor = apiActor(['content.api_article.create']);
 
-    $token = app(CreateApiToken::class)($actor, 'front headless', ['content.api_car.create']);
+    $token = app(CreateApiToken::class)($actor, 'front headless', ['content.api_article.create']);
 
     $this->withHeader('Authorization', "Bearer {$token->plainTextToken}")
-        ->postJson('/api/v1/content/api-cars', ['brand' => 'Peugeot', 'price' => 1000, 'internal_note' => 'n/a', 'slug' => 'peugeot'])
+        ->postJson('/api/v1/content/api-articles', ['brand' => 'Peugeot', 'price' => 1000, 'internal_note' => 'n/a', 'slug' => 'peugeot'])
         ->assertCreated();
 
     $entry = AuditEntry::where('action', 'content.created')->latest('id')->first();
@@ -87,18 +87,18 @@ it('records the token identity on an audited API write', function () {
 });
 
 it('creates, lists and revokes a token from the self-service screen, only offering the actor\'s own permissions', function () {
-    $actor = apiActor(['baobab.admin.access', 'content.api_car.create']);
+    $actor = apiActor(['baobab.admin.access', 'content.api_article.create']);
 
     $this->actingAs($actor, 'baobab')
         ->get(route('admin.account.api-tokens.index'))
         ->assertOk()
-        ->assertSee('content.api_car.create')
-        ->assertDontSee('content.api_car.publish');
+        ->assertSee('content.api_article.create')
+        ->assertDontSee('content.api_article.publish');
 
     $this->actingAs($actor, 'baobab')
         ->post(route('admin.account.api-tokens.store'), [
             'name' => 'my token',
-            'abilities' => ['content.api_car.create'],
+            'abilities' => ['content.api_article.create'],
         ])
         ->assertRedirect(route('admin.account.api-tokens.index'));
 
@@ -117,12 +117,12 @@ it('creates, lists and revokes a token from the self-service screen, only offeri
 });
 
 it('rejects creating a token with an ability the actor does not hold via the self-service form', function () {
-    $actor = apiActor(['baobab.admin.access', 'content.api_car.create']);
+    $actor = apiActor(['baobab.admin.access', 'content.api_article.create']);
 
     $this->actingAs($actor, 'baobab')
         ->post(route('admin.account.api-tokens.store'), [
             'name' => 'my token',
-            'abilities' => ['content.api_car.publish'],
+            'abilities' => ['content.api_article.publish'],
         ])
         ->assertSessionHasErrors('abilities');
 });

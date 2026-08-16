@@ -20,15 +20,15 @@ afterEach(function () {
 });
 
 /**
- * Clé distincte d'ApiCar (utilisée par de nombreux autres tests
+ * Clé distincte d'ApiArticle (utilisée par de nombreux autres tests
  * REST/GraphQL/OpenAPI sans champ `searchable`) : une classe PHP déjà
  * chargée en mémoire dans ce process ne peut pas être redéclarée avec un
  * fillable/trait différent, même après régénération du fichier sur disque.
  */
 function buildSearchableCar(): array
 {
-    return buildApiCar([
-        'key' => 'SearchableCar',
+    return buildApiArticle([
+        'key' => 'SearchableArticle',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true, 'searchable' => true]],
     ]);
 }
@@ -69,7 +69,7 @@ it('ContentsSearchSource shows a non-published entry to an actor with viewAny', 
     $carClass::create(['brand' => 'Draft Clio', 'slug' => 'draft-clio', 'status' => 'draft']);
 
     $actor = User::create(['name' => 'Editor', 'email' => 'search-editor@example.com', 'password' => 'secret']);
-    app(GrantPermission::class)($actor, 'content.searchable_car.view');
+    app(GrantPermission::class)($actor, 'content.searchable_article.view');
 
     $results = app(ContentsSearchSource::class)->query('Clio', $actor);
 

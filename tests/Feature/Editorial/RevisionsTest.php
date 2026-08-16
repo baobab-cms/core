@@ -32,7 +32,7 @@ function buildRevisionCar(?int $revisionsLimit = null): array
         $overrides['revisions'] = ['limit' => $revisionsLimit];
     }
 
-    $contentType = app(BuildContentType::class)(carBlueprintJson($overrides));
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('RevisionEntry', $overrides));
 
     $module = Module::findOrFail($contentType->module_id);
     app(ModuleAutoloader::class)->registerFor($module);
@@ -92,13 +92,12 @@ it('captures a manual revision when a publication transition fires', function ()
 });
 
 it('excludes blueprint-declared fields from the snapshot', function () {
-    // Clé distincte de carBlueprintJson() par défaut ('Car') : ce type déclare
+    // Clé distincte de contentTypeBlueprintJson('RevisionsEntry') par défaut ('Car') : ce type déclare
     // un champ en plus (view_count) — réutiliser 'Car' collisionnerait avec
     // la classe Modules\Car\Models\Car déjà chargée en mémoire par un autre
     // test de ce fichier (PHP ne recharge jamais une classe déjà définie,
     // même si le fichier généré sur disque change entre deux tests).
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'Truck',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('Truck', [
         'label' => ['singular' => 'Camion', 'plural' => 'Camions'],
         'fields' => [
             ['key' => 'brand', 'type' => 'text', 'required' => true],

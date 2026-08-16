@@ -26,7 +26,7 @@ afterEach(function () {
  */
 function reviewHistoryCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('ContentReviewHistoryEntry', [
         'workflow' => true,
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));
@@ -65,7 +65,7 @@ function reviewHistoryActor(array $permissions): User
 
 it('shows the reject comment in the content form\'s review history thread', function () {
     [$type, $modelClass] = reviewHistoryCarType();
-    $actor = reviewHistoryActor(['content.car.update']);
+    $actor = reviewHistoryActor(['content.content_review_history_entry.update']);
     $entry = new $modelClass(['brand' => 'Renault']);
     $entry->author_id = $actor->id;
     $entry->save();
@@ -75,20 +75,20 @@ it('shows the reject comment in the content form\'s review history thread', func
     app(RejectContentEntry::class)($type, $entry, 'Photo manquante.');
 
     $this->actingAs($actor, 'baobab')
-        ->get(route('admin.content.edit', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->get(route('admin.content.edit', ['contentType' => 'content-review-history-entries', 'entry' => $entry->id]))
         ->assertOk()
         ->assertSee('Photo manquante.', false);
 });
 
 it('hides the review history section when there is no history yet', function () {
     [, $modelClass] = reviewHistoryCarType();
-    $actor = reviewHistoryActor(['content.car.update']);
+    $actor = reviewHistoryActor(['content.content_review_history_entry.update']);
     $entry = new $modelClass(['brand' => 'Renault']);
     $entry->author_id = $actor->id;
     $entry->save();
 
     $this->actingAs($actor, 'baobab')
-        ->get(route('admin.content.edit', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->get(route('admin.content.edit', ['contentType' => 'content-review-history-entries', 'entry' => $entry->id]))
         ->assertOk()
         ->assertDontSee('Photo manquante.', false);
 });

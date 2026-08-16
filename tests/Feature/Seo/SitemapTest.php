@@ -32,8 +32,7 @@ afterEach(function () {
  */
 function buildSitemapCar(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'SitemapCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('SitemapPage', [
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [
@@ -66,9 +65,9 @@ it('lists a published entry with its lastmod date', function () {
     [, $modelClass] = buildSitemapCar();
     $entry = $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'peugeot-208', 'status' => 'published']);
 
-    $xml = $this->get('/sitemaps/sitemap-cars.xml')->assertOk()->getContent();
+    $xml = $this->get('/sitemaps/sitemap-pages.xml')->assertOk()->getContent();
 
-    expect($xml)->toContain(url('/sitemap-cars/peugeot-208'))
+    expect($xml)->toContain(url('/sitemap-pages/peugeot-208'))
         ->and($xml)->toContain($entry->updated_at->format('Y-m-d'));
 });
 
@@ -76,7 +75,7 @@ it('excludes a draft entry', function () {
     [, $modelClass] = buildSitemapCar();
     $modelClass::create(['brand' => 'Draft', 'slug' => 'draft-car', 'status' => 'draft']);
 
-    $xml = $this->get('/sitemaps/sitemap-cars.xml')->assertOk()->getContent();
+    $xml = $this->get('/sitemaps/sitemap-pages.xml')->assertOk()->getContent();
 
     expect($xml)->not->toContain('draft-car');
 });
@@ -86,7 +85,7 @@ it('excludes an entry flagged noindex on its SEO metabox', function () {
     $entry = $modelClass::create(['brand' => 'Hidden', 'slug' => 'hidden-car', 'status' => 'published']);
     SeoMeta::forEntry($entry)->fill(['robots_noindex' => true])->save();
 
-    $xml = $this->get('/sitemaps/sitemap-cars.xml')->assertOk()->getContent();
+    $xml = $this->get('/sitemaps/sitemap-pages.xml')->assertOk()->getContent();
 
     expect($xml)->not->toContain('hidden-car');
 });
@@ -96,7 +95,7 @@ it('includes the main image field as an image:image tag', function () {
     $media = sitemapTestMedia();
     $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'peugeot-208', 'status' => 'published', 'photo' => $media->id]);
 
-    $xml = $this->get('/sitemaps/sitemap-cars.xml')->assertOk()->getContent();
+    $xml = $this->get('/sitemaps/sitemap-pages.xml')->assertOk()->getContent();
 
     expect($xml)->toContain('image:image')->and($xml)->toContain($media->url());
 });
@@ -106,7 +105,7 @@ it('lists the type in the sitemap index', function () {
 
     $xml = $this->get('/sitemap.xml')->assertOk()->getContent();
 
-    expect($xml)->toContain(url('/sitemaps/sitemap-cars.xml'));
+    expect($xml)->toContain(url('/sitemaps/sitemap-pages.xml'));
 });
 
 it('excludes a content type flagged exclude_from_sitemap from the index and 404s its own sitemap', function () {
@@ -114,9 +113,9 @@ it('excludes a content type flagged exclude_from_sitemap from the index and 404s
     SeoContentTypeSetting::forContentType($type)->fill(['exclude_from_sitemap' => true])->save();
 
     $indexXml = $this->get('/sitemap.xml')->assertOk()->getContent();
-    expect($indexXml)->not->toContain('sitemap-cars.xml');
+    expect($indexXml)->not->toContain('sitemap-pages.xml');
 
-    $this->get('/sitemaps/sitemap-cars.xml')->assertNotFound();
+    $this->get('/sitemaps/sitemap-pages.xml')->assertNotFound();
 });
 
 it('returns 404 for an unknown type sitemap', function () {
@@ -136,33 +135,33 @@ it('lets a module extend the sitemap index via baobab.seo.sitemap.sources', func
 it('invalidates only the affected type\'s cache when one of its entries is saved', function () {
     [$type] = buildSitemapCar();
     $this->get('/sitemap.xml');
-    $this->get('/sitemaps/sitemap-cars.xml');
+    $this->get('/sitemaps/sitemap-pages.xml');
 
     expect(Cache::has(RenderSitemapIndex::CACHE_KEY))->toBeTrue()
-        ->and(Cache::has(RenderContentTypeSitemap::cacheKey('SitemapCar')))->toBeTrue();
+        ->and(Cache::has(RenderContentTypeSitemap::cacheKey('SitemapPage')))->toBeTrue();
 
     $actor = User::create(['name' => 'Actor', 'email' => 'sitemap-actor-'.uniqid().'@example.com', 'password' => 'secret']);
     app(SaveContentEntry::class)($type, ['brand' => 'New', 'slug' => 'new-car', 'status' => 'published'], $actor);
 
-    expect(Cache::has(RenderContentTypeSitemap::cacheKey('SitemapCar')))->toBeFalse()
+    expect(Cache::has(RenderContentTypeSitemap::cacheKey('SitemapPage')))->toBeFalse()
         ->and(Cache::has(RenderSitemapIndex::CACHE_KEY))->toBeTrue();
 });
 
 it('invalidates the whole sitemap cache when a type toggles exclude_from_sitemap via admin/seo', function () {
     buildSitemapCar();
     $this->get('/sitemap.xml');
-    $this->get('/sitemaps/sitemap-cars.xml');
+    $this->get('/sitemaps/sitemap-pages.xml');
 
     expect(Cache::has(RenderSitemapIndex::CACHE_KEY))->toBeTrue()
-        ->and(Cache::has(RenderContentTypeSitemap::cacheKey('SitemapCar')))->toBeTrue();
+        ->and(Cache::has(RenderContentTypeSitemap::cacheKey('SitemapPage')))->toBeTrue();
 
     app(UpdateSeoSettings::class)(
         ['title_separator' => '—'],
-        ['SitemapCar' => ['exclude_from_sitemap' => true]],
+        ['SitemapPage' => ['exclude_from_sitemap' => true]],
     );
 
     expect(Cache::has(RenderSitemapIndex::CACHE_KEY))->toBeFalse()
-        ->and(Cache::has(RenderContentTypeSitemap::cacheKey('SitemapCar')))->toBeFalse();
+        ->and(Cache::has(RenderContentTypeSitemap::cacheKey('SitemapPage')))->toBeFalse();
 });
 
 it('regenerates and warms the sitemap cache via the seo:sitemap command', function () {
@@ -171,5 +170,5 @@ it('regenerates and warms the sitemap cache via the seo:sitemap command', functi
     $this->artisan('seo:sitemap')->assertSuccessful();
 
     expect(Cache::has(RenderSitemapIndex::CACHE_KEY))->toBeTrue()
-        ->and(Cache::has(RenderContentTypeSitemap::cacheKey('SitemapCar')))->toBeTrue();
+        ->and(Cache::has(RenderContentTypeSitemap::cacheKey('SitemapPage')))->toBeTrue();
 });

@@ -24,7 +24,7 @@ afterEach(function () {
  */
 function endpointCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('ContentTransitionEndpointEntry', [
         'workflow' => true,
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));
@@ -63,7 +63,7 @@ function transitionActor(array $permissions): User
 
 function transitionUrl(string $entry, string $transition): string
 {
-    return route('admin.content.transition', ['contentType' => 'cars', 'entry' => $entry, 'transition' => $transition]);
+    return route('admin.content.transition', ['contentType' => 'content-transition-endpoint-entries', 'entry' => $entry, 'transition' => $transition]);
 }
 
 it('denies submit without the update permission', function () {
@@ -76,9 +76,9 @@ it('denies submit without the update permission', function () {
         ->assertForbidden();
 });
 
-it('allows submit for the own-content author with content.car.update', function () {
+it('allows submit for the own-content author with content.content_transition_endpoint_entry.update', function () {
     [, $modelClass] = endpointCarType();
-    $actor = transitionActor(['content.car.update']);
+    $actor = transitionActor(['content.content_transition_endpoint_entry.update']);
     $entry = new $modelClass(['brand' => 'Renault']);
     $entry->author_id = $actor->id;
     $entry->save();
@@ -93,7 +93,7 @@ it('allows submit for the own-content author with content.car.update', function 
 it('denies approve/reject without publish_any, even with plain publish', function () {
     [, $modelClass] = endpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault', 'status' => 'pending']);
-    $actor = transitionActor(['content.car.publish']);
+    $actor = transitionActor(['content.content_transition_endpoint_entry.publish']);
 
     $this->actingAs($actor, 'baobab')
         ->post(transitionUrl((string) $entry->id, 'approve'))
@@ -103,7 +103,7 @@ it('denies approve/reject without publish_any, even with plain publish', functio
 it('requires a comment to reject', function () {
     [, $modelClass] = endpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault', 'status' => 'pending']);
-    $actor = transitionActor(['content.car.publish_any']);
+    $actor = transitionActor(['content.content_transition_endpoint_entry.publish_any']);
 
     $this->actingAs($actor, 'baobab')
         ->post(transitionUrl((string) $entry->id, 'reject'), [])
@@ -114,7 +114,7 @@ it('requires a comment to reject', function () {
 
 it('refuses to schedule in the past', function () {
     [, $modelClass] = endpointCarType();
-    $actor = transitionActor(['content.car.publish']);
+    $actor = transitionActor(['content.content_transition_endpoint_entry.publish']);
     $entry = new $modelClass(['brand' => 'Renault']);
     $entry->author_id = $actor->id;
     $entry->save();
@@ -126,7 +126,7 @@ it('refuses to schedule in the past', function () {
 
 it('publishes and flashes a success toast', function () {
     [, $modelClass] = endpointCarType();
-    $actor = transitionActor(['content.car.publish']);
+    $actor = transitionActor(['content.content_transition_endpoint_entry.publish']);
     $entry = new $modelClass(['brand' => 'Renault']);
     $entry->author_id = $actor->id;
     $entry->save();
@@ -141,7 +141,7 @@ it('publishes and flashes a success toast', function () {
 
 it('flashes an error toast instead of a 500 on an illegal transition', function () {
     [, $modelClass] = endpointCarType();
-    $actor = transitionActor(['content.car.publish']);
+    $actor = transitionActor(['content.content_transition_endpoint_entry.publish']);
     $entry = new $modelClass(['brand' => 'Renault', 'status' => 'archived']);
     $entry->author_id = $actor->id;
     $entry->save();

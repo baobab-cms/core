@@ -201,16 +201,16 @@ it('accepts a relation targeting a known core model', function () {
 });
 
 it('accepts a relation targeting an already-built content type', function () {
-    app(BuildContentType::class)(carBlueprintJson());
+    app(BuildContentType::class)(contentTypeBlueprintJson('BlueprintRelationTarget'));
 
     $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson([
         'entities' => [['key' => 'Fleet', 'table' => 'fleets', 'relations' => [
-            ['key' => 'featured', 'type' => 'one_to_many', 'target' => 'content_type:Car'],
+            ['key' => 'featured', 'type' => 'one_to_many', 'target' => 'content_type:BlueprintRelationTarget'],
         ]]],
     ]));
 
     expect($blueprint->entity('Fleet')['relations'])->toBe([
-        ['key' => 'featured', 'type' => 'one_to_many', 'target' => 'content_type:Car'],
+        ['key' => 'featured', 'type' => 'one_to_many', 'target' => 'content_type:BlueprintRelationTarget'],
     ]);
 });
 

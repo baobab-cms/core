@@ -26,7 +26,7 @@ afterEach(function () {
  */
 function lockEndpointCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('ContentLockEndpointEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));
 
@@ -66,13 +66,13 @@ it('shows the edit form in read-only mode when another user holds the lock', fun
     [, $modelClass] = lockEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault']);
 
-    $holder = lockEndpointActor(['content.car.update_any']);
+    $holder = lockEndpointActor(['content.content_lock_endpoint_entry.update_any']);
     app(AcquireOrRefreshContentLock::class)($entry, $holder);
 
-    $viewer = lockEndpointActor(['content.car.update_any']);
+    $viewer = lockEndpointActor(['content.content_lock_endpoint_entry.update_any']);
 
     $response = $this->actingAs($viewer, 'baobab')
-        ->get(route('admin.content.edit', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->get(route('admin.content.edit', ['contentType' => 'content-lock-endpoint-entries', 'entry' => $entry->id]))
         ->assertOk();
 
     $response->assertSee($holder->name, false);
@@ -81,10 +81,10 @@ it('shows the edit form in read-only mode when another user holds the lock', fun
 it('acquires the lock for the first visitor on edit', function () {
     [, $modelClass] = lockEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault']);
-    $actor = lockEndpointActor(['content.car.update_any']);
+    $actor = lockEndpointActor(['content.content_lock_endpoint_entry.update_any']);
 
     $this->actingAs($actor, 'baobab')
-        ->get(route('admin.content.edit', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->get(route('admin.content.edit', ['contentType' => 'content-lock-endpoint-entries', 'entry' => $entry->id]))
         ->assertOk();
 
     expect(ContentLock::sole()->user_id)->toBe($actor->id);
@@ -93,12 +93,12 @@ it('acquires the lock for the first visitor on edit', function () {
 it('reports locked:false on heartbeat for the current holder', function () {
     [, $modelClass] = lockEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault']);
-    $actor = lockEndpointActor(['content.car.update_any']);
+    $actor = lockEndpointActor(['content.content_lock_endpoint_entry.update_any']);
 
     app(AcquireOrRefreshContentLock::class)($entry, $actor);
 
     $this->actingAs($actor, 'baobab')
-        ->postJson(route('admin.content.lock.heartbeat', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->postJson(route('admin.content.lock.heartbeat', ['contentType' => 'content-lock-endpoint-entries', 'entry' => $entry->id]))
         ->assertOk()
         ->assertJson(['locked' => false]);
 });
@@ -106,17 +106,17 @@ it('reports locked:false on heartbeat for the current holder', function () {
 it('reports locked:true on heartbeat once evicted by a take-over', function () {
     [, $modelClass] = lockEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault']);
-    $original = lockEndpointActor(['content.car.update_any']);
-    $other = lockEndpointActor(['content.car.update_any']);
+    $original = lockEndpointActor(['content.content_lock_endpoint_entry.update_any']);
+    $other = lockEndpointActor(['content.content_lock_endpoint_entry.update_any']);
 
     app(AcquireOrRefreshContentLock::class)($entry, $original);
 
     $this->actingAs($other, 'baobab')
-        ->post(route('admin.content.lock.take-over', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->post(route('admin.content.lock.take-over', ['contentType' => 'content-lock-endpoint-entries', 'entry' => $entry->id]))
         ->assertRedirect();
 
     $this->actingAs($original, 'baobab')
-        ->postJson(route('admin.content.lock.heartbeat', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->postJson(route('admin.content.lock.heartbeat', ['contentType' => 'content-lock-endpoint-entries', 'entry' => $entry->id]))
         ->assertOk()
         ->assertJson(['locked' => true]);
 });
@@ -124,25 +124,25 @@ it('reports locked:true on heartbeat once evicted by a take-over', function () {
 it('denies take-over without update_any', function () {
     [, $modelClass] = lockEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault']);
-    $holder = lockEndpointActor(['content.car.update_any']);
-    $bystander = lockEndpointActor(['content.car.update']);
+    $holder = lockEndpointActor(['content.content_lock_endpoint_entry.update_any']);
+    $bystander = lockEndpointActor(['content.content_lock_endpoint_entry.update']);
 
     app(AcquireOrRefreshContentLock::class)($entry, $holder);
 
     $this->actingAs($bystander, 'baobab')
-        ->post(route('admin.content.lock.take-over', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->post(route('admin.content.lock.take-over', ['contentType' => 'content-lock-endpoint-entries', 'entry' => $entry->id]))
         ->assertForbidden();
 });
 
 it('releases the lock on demand', function () {
     [, $modelClass] = lockEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault']);
-    $actor = lockEndpointActor(['content.car.update_any']);
+    $actor = lockEndpointActor(['content.content_lock_endpoint_entry.update_any']);
 
     app(AcquireOrRefreshContentLock::class)($entry, $actor);
 
     $this->actingAs($actor, 'baobab')
-        ->postJson(route('admin.content.lock.release', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->postJson(route('admin.content.lock.release', ['contentType' => 'content-lock-endpoint-entries', 'entry' => $entry->id]))
         ->assertOk()
         ->assertJson(['released' => true]);
 

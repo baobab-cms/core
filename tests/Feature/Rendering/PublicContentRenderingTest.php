@@ -19,7 +19,7 @@ afterEach(function () {
 
 /**
  * Clé dédiée (pas la « Car » partagée par ~30 autres fichiers de test via
- * carBlueprintJson()) : la classe Eloquent générée est déclarée une seule
+ * contentTypeBlueprintJson('PublicContentRenderingEntry')) : la classe Eloquent générée est déclarée une seule
  * fois par processus PHP — en exécution séquentielle (hors --parallel), un
  * autre fichier ayant déjà bâti « Car » avec un blueprint différent (sans
  * is_addressable/slug) laisserait ce test écrire sur une classe figée sans
@@ -29,8 +29,7 @@ afterEach(function () {
  */
 function buildAddressableCar(array $overrides = []): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson(array_replace([
-        'key' => 'RenderCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('RenderedPage', array_replace([
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -49,7 +48,7 @@ it('renders a published entry at /{prefix}/{slug}', function () {
     [$type, $modelClass] = buildAddressableCar();
     $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'peugeot-208', 'status' => 'published']);
 
-    $response = $this->get('/render-cars/peugeot-208');
+    $response = $this->get('/rendered-pages/peugeot-208');
 
     $response->assertOk()->assertSee('Peugeot 208');
 });
@@ -57,7 +56,7 @@ it('renders a published entry at /{prefix}/{slug}', function () {
 it('returns 404 for an unknown slug', function () {
     buildAddressableCar();
 
-    $response = $this->get('/render-cars/does-not-exist');
+    $response = $this->get('/rendered-pages/does-not-exist');
 
     $response->assertNotFound();
 });
@@ -66,7 +65,7 @@ it('returns 404 for a slug that exists but is not published', function () {
     [$type, $modelClass] = buildAddressableCar();
     $modelClass::create(['brand' => 'Draft Car', 'slug' => 'draft-car', 'status' => 'draft']);
 
-    $response = $this->get('/render-cars/draft-car');
+    $response = $this->get('/rendered-pages/draft-car');
 
     $response->assertNotFound();
 });
@@ -76,7 +75,7 @@ it('lists published entries on the archive route', function () {
     $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'peugeot-208', 'status' => 'published']);
     $modelClass::create(['brand' => 'Draft Car', 'slug' => 'draft-car', 'status' => 'draft']);
 
-    $response = $this->get('/render-cars');
+    $response = $this->get('/rendered-pages');
 
     $response->assertOk()->assertSee('peugeot-208')->assertDontSee('draft-car');
 });
@@ -102,7 +101,7 @@ it('honors a url_prefix override from the blueprint', function () {
     $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'peugeot-208', 'status' => 'published']);
 
     $this->get('/voitures/peugeot-208')->assertOk()->assertSee('Peugeot 208');
-    $this->get('/render-cars/peugeot-208')->assertNotFound();
+    $this->get('/rendered-pages/peugeot-208')->assertNotFound();
 });
 
 it('cancels the render and falls back to 404 when baobab.render.data returns null', function () {
@@ -111,7 +110,7 @@ it('cancels the render and falls back to 404 when baobab.render.data returns nul
 
     Hook::modify('baobab.render.data', fn () => null, priority: 5);
 
-    $this->get('/render-cars/peugeot-208')->assertNotFound();
+    $this->get('/rendered-pages/peugeot-208')->assertNotFound();
 });
 
 it('lets a module transform the final HTML via baobab.content.render', function () {
@@ -120,5 +119,5 @@ it('lets a module transform the final HTML via baobab.content.render', function 
 
     Hook::modify('baobab.content.render', fn (string $html) => $html.'<!-- marker -->', priority: 5);
 
-    $this->get('/render-cars/peugeot-208')->assertOk()->assertSee('<!-- marker -->', false);
+    $this->get('/rendered-pages/peugeot-208')->assertOk()->assertSee('<!-- marker -->', false);
 });

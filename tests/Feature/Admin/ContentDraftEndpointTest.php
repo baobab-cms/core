@@ -26,7 +26,7 @@ afterEach(function () {
  */
 function draftEndpointCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('ContentDraftEndpointEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));
 
@@ -66,14 +66,14 @@ it('saves a working draft instead of updating the live row when intent=draft on 
     [$type, $modelClass] = draftEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault'])->fresh();
     app(PublishContentEntry::class)($type, $entry);
-    $actor = draftEndpointActor(['content.car.update_any']);
+    $actor = draftEndpointActor(['content.content_draft_endpoint_entry.update_any']);
 
     $this->actingAs($actor, 'baobab')
-        ->put(route('admin.content.update', ['contentType' => 'cars', 'entry' => $entry->id]), [
+        ->put(route('admin.content.update', ['contentType' => 'content-draft-endpoint-entries', 'entry' => $entry->id]), [
             'brand' => 'Renault Draft',
             'intent' => 'draft',
         ])
-        ->assertRedirect(route('admin.content.edit', ['contentType' => 'cars', 'entry' => $entry->id]));
+        ->assertRedirect(route('admin.content.edit', ['contentType' => 'content-draft-endpoint-entries', 'entry' => $entry->id]));
 
     expect($entry->fresh()->brand)->toBe('Renault')
         ->and(Revision::where('type', 'working_draft')->count())->toBe(1);
@@ -83,11 +83,11 @@ it('updates the live row directly when intent is the default (not draft)', funct
     [$type, $modelClass] = draftEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault'])->fresh();
     app(PublishContentEntry::class)($type, $entry);
-    $actor = draftEndpointActor(['content.car.update_any']);
+    $actor = draftEndpointActor(['content.content_draft_endpoint_entry.update_any']);
 
     $this->actingAs($actor, 'baobab')
-        ->put(route('admin.content.update', ['contentType' => 'cars', 'entry' => $entry->id]), ['brand' => 'Renault v2'])
-        ->assertRedirect(route('admin.content.index', ['contentType' => 'cars']));
+        ->put(route('admin.content.update', ['contentType' => 'content-draft-endpoint-entries', 'entry' => $entry->id]), ['brand' => 'Renault v2'])
+        ->assertRedirect(route('admin.content.index', ['contentType' => 'content-draft-endpoint-entries']));
 
     expect($entry->fresh()->brand)->toBe('Renault v2');
 });
@@ -96,16 +96,16 @@ it('publishes a working draft through the endpoint', function () {
     [$type, $modelClass] = draftEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault'])->fresh();
     app(PublishContentEntry::class)($type, $entry);
-    $actor = draftEndpointActor(['content.car.update_any', 'content.car.publish_any']);
+    $actor = draftEndpointActor(['content.content_draft_endpoint_entry.update_any', 'content.content_draft_endpoint_entry.publish_any']);
 
     $this->actingAs($actor, 'baobab')
-        ->put(route('admin.content.update', ['contentType' => 'cars', 'entry' => $entry->id]), [
+        ->put(route('admin.content.update', ['contentType' => 'content-draft-endpoint-entries', 'entry' => $entry->id]), [
             'brand' => 'Renault Draft',
             'intent' => 'draft',
         ]);
 
     $this->actingAs($actor, 'baobab')
-        ->post(route('admin.content.working-draft.publish', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->post(route('admin.content.working-draft.publish', ['contentType' => 'content-draft-endpoint-entries', 'entry' => $entry->id]))
         ->assertRedirect();
 
     expect($entry->fresh()->brand)->toBe('Renault Draft')
@@ -116,16 +116,16 @@ it('discards a working draft through the endpoint', function () {
     [$type, $modelClass] = draftEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault'])->fresh();
     app(PublishContentEntry::class)($type, $entry);
-    $actor = draftEndpointActor(['content.car.update_any']);
+    $actor = draftEndpointActor(['content.content_draft_endpoint_entry.update_any']);
 
     $this->actingAs($actor, 'baobab')
-        ->put(route('admin.content.update', ['contentType' => 'cars', 'entry' => $entry->id]), [
+        ->put(route('admin.content.update', ['contentType' => 'content-draft-endpoint-entries', 'entry' => $entry->id]), [
             'brand' => 'Renault Draft',
             'intent' => 'draft',
         ]);
 
     $this->actingAs($actor, 'baobab')
-        ->post(route('admin.content.working-draft.discard', ['contentType' => 'cars', 'entry' => $entry->id]))
+        ->post(route('admin.content.working-draft.discard', ['contentType' => 'content-draft-endpoint-entries', 'entry' => $entry->id]))
         ->assertRedirect();
 
     expect(Revision::where('type', 'working_draft')->count())->toBe(0)
@@ -135,10 +135,10 @@ it('discards a working draft through the endpoint', function () {
 it('accepts an autosave without validating required fields', function () {
     [$type, $modelClass] = draftEndpointCarType();
     $entry = $modelClass::create(['brand' => 'Renault']);
-    $actor = draftEndpointActor(['content.car.update_any']);
+    $actor = draftEndpointActor(['content.content_draft_endpoint_entry.update_any']);
 
     $this->actingAs($actor, 'baobab')
-        ->postJson(route('admin.content.autosave', ['contentType' => 'cars', 'entry' => $entry->id]), ['brand' => ''])
+        ->postJson(route('admin.content.autosave', ['contentType' => 'content-draft-endpoint-entries', 'entry' => $entry->id]), ['brand' => ''])
         ->assertOk()
         ->assertJson(['saved' => true]);
 

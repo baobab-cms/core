@@ -14,8 +14,7 @@ beforeEach(function () {
     config(['baobab.content_types.modules_path' => generatedModulesPath()]);
     config(['baobab.modules.paths' => ['local' => [generatedModulesPath().'/*']]]);
 
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'StagingCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('StagingPage', [
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -33,7 +32,7 @@ afterEach(function () {
 });
 
 it('forces the noindex meta tag and X-Robots-Tag header outside production', function () {
-    $response = $this->get('/staging-cars/peugeot-208');
+    $response = $this->get('/staging-pages/peugeot-208');
 
     $response->assertOk()
         ->assertSee('<meta name="robots" content="noindex,follow">', false)
@@ -43,7 +42,7 @@ it('forces the noindex meta tag and X-Robots-Tag header outside production', fun
 it('stops forcing noindex in production', function () {
     $this->app['env'] = 'production';
 
-    $response = $this->get('/staging-cars/peugeot-208');
+    $response = $this->get('/staging-pages/peugeot-208');
 
     $response->assertDontSee('name="robots"', false)
         ->assertHeaderMissing('X-Robots-Tag');
@@ -52,7 +51,7 @@ it('stops forcing noindex in production', function () {
 it('stops forcing noindex outside production when force_index_on_staging is enabled', function () {
     SeoSetting::current()->fill(['force_index_on_staging' => true])->save();
 
-    $response = $this->get('/staging-cars/peugeot-208');
+    $response = $this->get('/staging-pages/peugeot-208');
 
     $response->assertDontSee('name="robots"', false)
         ->assertHeaderMissing('X-Robots-Tag');

@@ -31,8 +31,7 @@ afterEach(function () {
  */
 function buildCoreWidgetCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'CoreWidgetCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('CoreWidgetPost', [
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -53,13 +52,13 @@ it('RecentContentsWidget lists only published entries, most recent first, up to 
     $modelClass::create(['brand' => 'Old', 'slug' => 'old', 'status' => 'published', 'published_at' => now()->subDays(2)]);
     $modelClass::create(['brand' => 'New', 'slug' => 'new', 'status' => 'published', 'published_at' => now()]);
 
-    $instance = new WidgetInstance(['settings' => ['content_type' => 'CoreWidgetCar', 'limit' => 1, 'show_dates' => true]]);
+    $instance = new WidgetInstance(['settings' => ['content_type' => 'CoreWidgetPost', 'limit' => 1, 'show_dates' => true]]);
 
     $data = app(RecentContentsWidget::class)->data($instance);
 
     expect($data['items'])->toHaveCount(1)
         ->and($data['items'][0]['label'])->toBe('New')
-        ->and($data['items'][0]['url'])->toBe('/core-widget-cars/new');
+        ->and($data['items'][0]['url'])->toBe('/core-widget-posts/new');
 });
 
 it('RecentContentsWidget settingsSchema only lists addressable content types', function () {
@@ -68,7 +67,7 @@ it('RecentContentsWidget settingsSchema only lists addressable content types', f
     $schema = app(RecentContentsWidget::class)->settingsSchema();
     $contentTypeField = collect($schema)->firstWhere('key', 'content_type');
 
-    expect($contentTypeField['choice_options'])->toHaveKey('CoreWidgetCar');
+    expect($contentTypeField['choice_options'])->toHaveKey('CoreWidgetPost');
 });
 
 it('MenuWidget delegates to ResolveMenuTree for the configured location', function () {

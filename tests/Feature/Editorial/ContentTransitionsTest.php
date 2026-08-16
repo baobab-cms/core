@@ -34,7 +34,7 @@ afterEach(function () {
  */
 function buildEditorialCar(bool $workflow = true): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('ContentTransitionsEntry', [
         'workflow' => $workflow,
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));
@@ -171,7 +171,7 @@ it('fires the generic baobab.content.transitioned hook with contentType/entry/fr
 
     app(PublishContentEntry::class)($type, $entry, $actor);
 
-    expect($captured)->toBe(['Car', $entry->id, 'draft', 'published', $actor->id]);
+    expect($captured)->toBe(['ContentTransitionsEntry', $entry->id, 'draft', 'published', $actor->id]);
 });
 
 it('rejects submit when the type has not opted into the workflow', function () {

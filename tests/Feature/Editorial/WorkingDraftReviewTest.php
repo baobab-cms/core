@@ -32,7 +32,7 @@ afterEach(function () {
  */
 function buildReviewableCar(bool $workflow = true): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('WorkingDraftReviewEntry', [
         'workflow' => $workflow,
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));

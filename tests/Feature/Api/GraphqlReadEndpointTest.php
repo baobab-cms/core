@@ -14,13 +14,13 @@ afterEach(function () {
 });
 
 it('lists a paginated, filtered and sorted GraphQL query mirroring REST semantics', function () {
-    [, $carClass] = buildApiCar();
+    [, $carClass] = buildApiArticle();
     $carClass::create(['brand' => 'Peugeot', 'price' => 10000, 'internal_note' => '', 'slug' => 'peugeot', 'status' => 'published']);
     $carClass::create(['brand' => 'Renault', 'price' => 20000, 'internal_note' => '', 'slug' => 'renault', 'status' => 'published']);
 
     $response = graphqlQuery(<<<'GRAPHQL'
         query {
-          apiCars(filter: { price: { gte: 15000 } }, orderBy: [{ field: PRICE, direction: DESC }]) {
+          apiArticles(filter: { price: { gte: 15000 } }, orderBy: [{ field: PRICE, direction: DESC }]) {
             data { id brand price }
             paginatorInfo { total }
           }
@@ -28,89 +28,89 @@ it('lists a paginated, filtered and sorted GraphQL query mirroring REST semantic
         GRAPHQL);
 
     $response->assertOk()->assertJsonMissingPath('errors');
-    expect($response->json('data.apiCars.data.0.brand'))->toBe('Renault')
-        ->and($response->json('data.apiCars.paginatorInfo.total'))->toBe(1);
+    expect($response->json('data.apiArticles.data.0.brand'))->toBe('Renault')
+        ->and($response->json('data.apiArticles.paginatorInfo.total'))->toBe(1);
 });
 
 it('never exposes a field not marked exposed_in_api in the GraphQL schema', function () {
-    buildApiCar();
+    buildApiArticle();
 
-    $response = graphqlQuery('query { apiCars { data { internalNote } } }');
+    $response = graphqlQuery('query { apiArticles { data { internalNote } } }');
 
     $response->assertOk()->assertJsonPath('errors.0.message', fn (string $message) => str_contains($message, 'internalNote'));
 });
 
 it('resolves a single entry by id through the find query', function () {
-    [, $carClass] = buildApiCar();
+    [, $carClass] = buildApiArticle();
     $car = $carClass::create(['brand' => 'Peugeot', 'price' => 25000, 'internal_note' => '', 'slug' => 'peugeot', 'status' => 'published']);
 
-    $response = graphqlQuery('query($id: ID) { apiCar(id: $id) { brand slug } }', ['id' => $car->getKey()]);
+    $response = graphqlQuery('query($id: ID) { apiArticle(id: $id) { brand slug } }', ['id' => $car->getKey()]);
 
     $response->assertOk()
-        ->assertJsonPath('data.apiCar.brand', 'Peugeot')
-        ->assertJsonPath('data.apiCar.slug', 'peugeot');
+        ->assertJsonPath('data.apiArticle.brand', 'Peugeot')
+        ->assertJsonPath('data.apiArticle.slug', 'peugeot');
 });
 
 it('restricts a public list to published entries and errors without authentication for a draft-only request context', function () {
-    [, $carClass] = buildApiCar();
+    [, $carClass] = buildApiArticle();
     $carClass::create(['brand' => 'Peugeot', 'price' => 25000, 'internal_note' => '', 'slug' => 'peugeot', 'status' => 'published']);
     $carClass::create(['brand' => 'Renault', 'price' => 25000, 'internal_note' => '', 'slug' => 'renault', 'status' => 'draft']);
 
-    $response = graphqlQuery('query { apiCars { data { brand } } }');
+    $response = graphqlQuery('query { apiArticles { data { brand } } }');
 
     $response->assertOk();
-    expect($response->json('data.apiCars.data'))->toHaveCount(1);
+    expect($response->json('data.apiArticles.data'))->toHaveCount(1);
 });
 
 it('denies a list entirely via a GraphQL authentication error when public_api_read is disabled', function () {
-    buildApiCar(['public_api_read' => false]);
+    buildApiArticle(['public_api_read' => false]);
 
-    $response = graphqlQuery('query { apiCars { data { brand } } }');
+    $response = graphqlQuery('query { apiArticles { data { brand } } }');
 
     $response->assertOk();
-    expect($response->json('data.apiCars'))->toBeNull()
+    expect($response->json('data.apiArticles'))->toBeNull()
         ->and($response->json('errors.0.message'))->toBe('Unauthenticated.');
 });
 
 it('lets an authenticated actor with viewAny read a type with public_api_read disabled', function () {
-    [, $carClass] = buildApiCar(['public_api_read' => false]);
+    [, $carClass] = buildApiArticle(['public_api_read' => false]);
     $carClass::create(['brand' => 'Peugeot', 'price' => 25000, 'internal_note' => '', 'slug' => 'peugeot', 'status' => 'published']);
-    $actor = apiActor(['content.api_car.view']);
+    $actor = apiActor(['content.api_article.view']);
 
     $response = $this->actingAs($actor, 'baobab')
-        ->postJson('/graphql', ['query' => 'query { apiCars { data { brand } } }']);
+        ->postJson('/graphql', ['query' => 'query { apiArticles { data { brand } } }']);
 
     $response->assertOk();
-    expect($response->json('data.apiCars.data'))->toHaveCount(1);
+    expect($response->json('data.apiArticles.data'))->toHaveCount(1);
 });
 
 it('drops a Content Type from the compiled schema when api_enabled is disabled', function () {
-    buildApiCar(['api_enabled' => false]);
+    buildApiArticle(['api_enabled' => false]);
 
-    $response = graphqlQuery('query { apiCars { data { brand } } }');
+    $response = graphqlQuery('query { apiArticles { data { brand } } }');
 
-    $response->assertOk()->assertJsonPath('errors.0.message', fn (string $message) => str_contains($message, 'apiCars'));
+    $response->assertOk()->assertJsonPath('errors.0.message', fn (string $message) => str_contains($message, 'apiArticles'));
 });
 
 it('self-heals a Content Type built before the GraphQL fragment/resolver existed', function () {
-    [$contentType, $carClass] = buildApiCar();
+    [$contentType, $carClass] = buildApiArticle();
     $carClass::create(['brand' => 'Peugeot', 'price' => 10000, 'internal_note' => '', 'slug' => 'peugeot', 'status' => 'published']);
 
     // Simule un Content Type construit avant M7 point 3 : ni fragment ni
     // résolveur sur disque, seul le module.json/modèle/policy existent.
-    File::delete($contentType->moduleDir().'/graphql/ApiCar.graphql');
+    File::delete($contentType->moduleDir().'/graphql/ApiArticle.graphql');
     File::deleteDirectory($contentType->moduleDir().'/src/GraphQL');
 
     // Recompiler (ex. `baobab:graphql:compile` sur un site existant après
     // mise à jour) doit régénérer le fragment/résolveur manquants avant de
-    // les lire, pas simplement échouer à trouver `apiCars` dans le schéma.
+    // les lire, pas simplement échouer à trouver `apiArticles` dans le schéma.
     app(CompileGraphqlSchema::class)();
 
-    expect(File::exists($contentType->moduleDir().'/graphql/ApiCar.graphql'))->toBeTrue()
-        ->and(File::exists($contentType->moduleDir().'/src/GraphQL/ApiCarResolver.php'))->toBeTrue();
+    expect(File::exists($contentType->moduleDir().'/graphql/ApiArticle.graphql'))->toBeTrue()
+        ->and(File::exists($contentType->moduleDir().'/src/GraphQL/ApiArticleResolver.php'))->toBeTrue();
 
-    $response = graphqlQuery('query { apiCars { data { brand } } }');
+    $response = graphqlQuery('query { apiArticles { data { brand } } }');
 
     $response->assertOk()->assertJsonMissingPath('errors');
-    expect($response->json('data.apiCars.data.0.brand'))->toBe('Peugeot');
+    expect($response->json('data.apiArticles.data.0.brand'))->toBe('Peugeot');
 });

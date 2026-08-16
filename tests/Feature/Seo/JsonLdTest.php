@@ -29,8 +29,7 @@ afterEach(function () {
  */
 function buildJsonLdCar(array $overrides = []): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson(array_replace([
-        'key' => 'JsonLdCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('JsonLdArticle', array_replace([
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [
@@ -114,8 +113,8 @@ it('builds a 3-level BreadcrumbList (home, archive, entry) for an entry page', f
 
     expect($items)->toHaveCount(3)
         ->and($items[0]['item'])->toBe(url('/'))
-        ->and($items[1]['item'])->toBe(url('/json-ld-cars'))
-        ->and($items[2]['item'])->toBe(url('/json-ld-cars/peugeot-208'))
+        ->and($items[1]['item'])->toBe(url('/json-ld-articles'))
+        ->and($items[2]['item'])->toBe(url('/json-ld-articles/peugeot-208'))
         ->and($items[2]['name'])->toBe('Peugeot 208')
         ->and($items[0]['position'])->toBe(1)
         ->and($items[2]['position'])->toBe(3);

@@ -30,7 +30,7 @@ afterEach(function () {
  */
 function buildTrashCar(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('ContentTrashEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));
 

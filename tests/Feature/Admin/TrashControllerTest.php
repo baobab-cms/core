@@ -25,7 +25,7 @@ afterEach(function () {
  */
 function globalTrashCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('TrashControllerEntry', [
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));
 
@@ -66,7 +66,7 @@ it('shows trashed entries across content types the actor can delete', function (
     $entry = $modelClass::create(['brand' => 'Renault']);
     app(DeleteContentEntry::class)($type, $entry);
 
-    $actor = globalTrashActor(['content.car.view', 'content.car.delete_any']);
+    $actor = globalTrashActor(['content.trash_controller_entry.view', 'content.trash_controller_entry.delete_any']);
 
     $this->actingAs($actor, 'baobab')
         ->get(route('admin.trash.index'))
@@ -79,7 +79,7 @@ it('hides a type\'s trashed entries from an actor without delete rights on it', 
     $entry = $modelClass::create(['brand' => 'Renault']);
     app(DeleteContentEntry::class)($type, $entry);
 
-    $actor = globalTrashActor(['content.car.view']);
+    $actor = globalTrashActor(['content.trash_controller_entry.view']);
 
     $this->actingAs($actor, 'baobab')
         ->get(route('admin.trash.index'))

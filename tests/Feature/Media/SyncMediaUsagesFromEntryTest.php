@@ -47,7 +47,7 @@ function syncUsagesActor(): User
  */
 function buildRichTextContentType(string $key = 'ArticleUsage'): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('SyncMediaUsagesFromEntryEntry', [
         'key' => $key,
         'label' => ['singular' => $key, 'plural' => $key.'s'],
         'fields' => [
@@ -112,7 +112,7 @@ it('replaces usages for a field instead of accumulating them when content change
  */
 function buildGalleryContentType(string $key = 'PhotoAlbum'): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('SyncMediaUsagesFromEntryEntry', [
         'key' => $key,
         'label' => ['singular' => $key, 'plural' => $key.'s'],
         'fields' => [

@@ -13,8 +13,7 @@ beforeEach(function () {
     config(['baobab.content_types.modules_path' => generatedModulesPath()]);
     config(['baobab.modules.paths' => ['local' => [generatedModulesPath().'/*']]]);
 
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'NormalizeCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('NormalizedPage', [
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -32,9 +31,9 @@ afterEach(function () {
 });
 
 it('redirects an uppercase path to its lowercase canonical form', function () {
-    $this->get('/Normalize-Cars/Peugeot-208')
+    $this->get('/Normalized-Pages/Peugeot-208')
         ->assertStatus(301)
-        ->assertHeader('Location', url('/normalize-cars/peugeot-208'));
+        ->assertHeader('Location', url('/normalized-pages/peugeot-208'));
 });
 
 it('strips a trailing slash by default', function () {
@@ -44,30 +43,30 @@ it('strips a trailing slash by default', function () {
     // directly against the middleware instead, with a hand-built Request
     // whose PATH_INFO keeps it (unlike Request::path(), which also trims
     // it — see the middleware's own docblock).
-    $request = Request::create('/normalize-cars/peugeot-208/', 'GET');
+    $request = Request::create('/normalized-pages/peugeot-208/', 'GET');
 
     $response = (new NormalizePublicUrl)->handle($request, fn () => response('should not be reached'));
 
     expect($response->getStatusCode())->toBe(301)
-        ->and($response->headers->get('Location'))->toBe(url('/normalize-cars/peugeot-208'));
+        ->and($response->headers->get('Location'))->toBe(url('/normalized-pages/peugeot-208'));
 });
 
 it('appends a trailing slash when configured to do so', function () {
     config(['baobab.redirects.trailing_slash' => 'append']);
 
-    $this->get('/normalize-cars/peugeot-208')
+    $this->get('/normalized-pages/peugeot-208')
         ->assertStatus(301)
-        ->assertHeader('Location', url('/normalize-cars/peugeot-208/'));
+        ->assertHeader('Location', url('/normalized-pages/peugeot-208/'));
 });
 
 it('leaves an already-canonical URL untouched', function () {
-    $this->get('/normalize-cars/peugeot-208')
+    $this->get('/normalized-pages/peugeot-208')
         ->assertOk()
         ->assertSee('Peugeot 208');
 });
 
 it('preserves the query string when redirecting to the canonical form', function () {
-    $this->get('/Normalize-Cars/Peugeot-208?preview=1')
+    $this->get('/Normalized-Pages/Peugeot-208?preview=1')
         ->assertStatus(301)
-        ->assertHeader('Location', url('/normalize-cars/peugeot-208?preview=1'));
+        ->assertHeader('Location', url('/normalized-pages/peugeot-208?preview=1'));
 });

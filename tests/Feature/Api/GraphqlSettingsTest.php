@@ -16,7 +16,7 @@ afterEach(function () {
 });
 
 it('serves GraphQL normally while graphql_enabled is true (the default)', function () {
-    buildApiCar();
+    buildApiArticle();
 
     graphqlQuery('query { __typename }')->assertOk()->assertJsonMissingPath('errors');
 });
@@ -30,7 +30,7 @@ it('responds 404 to GraphQL once graphql_enabled is turned off, independently of
 });
 
 it('keeps GraphQL available when only rest_enabled is turned off', function () {
-    buildApiCar();
+    buildApiArticle();
 
     ApiSetting::current()->fill(['rest_enabled' => false])->save();
 
@@ -38,12 +38,12 @@ it('keeps GraphQL available when only rest_enabled is turned off', function () {
 });
 
 it('keeps REST available when only graphql_enabled is turned off', function () {
-    [, $carClass] = buildApiCar();
+    [, $carClass] = buildApiArticle();
     $carClass::create(['brand' => 'Peugeot', 'price' => 25000, 'internal_note' => '', 'slug' => 'peugeot', 'status' => 'published']);
 
     ApiSetting::current()->fill(['graphql_enabled' => false])->save();
 
-    test()->getJson('/api/v1/content/api-cars')->assertOk();
+    test()->getJson('/api/v1/content/api-articles')->assertOk();
 });
 
 it('sets CORS headers on GraphQL responses only when the request Origin is in the configured allow-list', function () {

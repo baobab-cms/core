@@ -26,8 +26,7 @@ afterEach(function () {
  */
 function buildSeoHeadCar(array $overrides = []): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson(array_replace([
-        'key' => 'SeoHeadCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('SeoHeadArticle', array_replace([
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -50,7 +49,7 @@ it('renders resolved SEO tags in the <head> of a public entry page', function ()
         'meta_description' => 'Tout savoir sur la Peugeot 208.',
     ])->save();
 
-    $response = $this->get('/seo-head-cars/peugeot-208');
+    $response = $this->get('/seo-head-articles/peugeot-208');
 
     $response->assertOk()
         ->assertSee('<title>Peugeot 208 — Essai complet</title>', false)
@@ -63,7 +62,7 @@ it('renders a noindex robots meta tag when the entry is flagged noindex', functi
     $entry = $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'peugeot-208', 'status' => 'published']);
     SeoMeta::forEntry($entry)->fill(['robots_noindex' => true])->save();
 
-    $this->get('/seo-head-cars/peugeot-208')
+    $this->get('/seo-head-articles/peugeot-208')
         ->assertSee('<meta name="robots" content="noindex,follow">', false);
 });
 
@@ -76,7 +75,7 @@ it('omits the robots meta tag entirely when no directive is set', function () {
     [, $modelClass] = buildSeoHeadCar();
     $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'peugeot-208', 'status' => 'published']);
 
-    $this->get('/seo-head-cars/peugeot-208')->assertDontSee('name="robots"', false);
+    $this->get('/seo-head-articles/peugeot-208')->assertDontSee('name="robots"', false);
 });
 
 it('renders website og:type on the archive page', function () {

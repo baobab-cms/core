@@ -24,14 +24,14 @@ afterEach(function () {
 });
 
 /**
- * Construit un Content Type "Car" (champs brand [text, requis] et
+ * Construit un Content Type « AdminCrudEntry » (champs brand [text, requis] et
  * is_featured [boolean]) et rend son modèle généré chargeable, comme
  * BuildContentTypeTest.php.
  */
 function buildCarForAdminCrud(): ContentType
 {
     $contentType = app(BuildContentType::class)((string) json_encode([
-        'key' => 'Car',
+        'key' => 'AdminCrudEntry',
         'label' => ['singular' => 'Voiture', 'plural' => 'Voitures'],
         'fields' => [
             ['key' => 'brand', 'type' => 'text', 'required' => true],
@@ -45,7 +45,7 @@ function buildCarForAdminCrud(): ContentType
     $fresh = $contentType->fresh();
 
     if ($fresh === null) {
-        throw new RuntimeException('Expected the newly built Car content type to be refetchable.');
+        throw new RuntimeException('Expected the newly built AdminCrudEntry content type to be refetchable.');
     }
 
     return $fresh;
@@ -74,35 +74,35 @@ function contentCrudActor(array $permissions): User
     return $user;
 }
 
-it('lists content entries for a user with content.car.view', function () {
+it('lists content entries for a user with content.admin_crud_entry.view', function () {
     $contentType = buildCarForAdminCrud();
 
     /** @var class-string<Model> $carClass */
     $carClass = $contentType->modelClass();
-    $owner = contentCrudActor(['content.car.view']);
+    $owner = contentCrudActor(['content.admin_crud_entry.view']);
     (new $carClass(['brand' => 'Peugeot', 'author_id' => $owner->id]))->save();
 
     $this->actingAs($owner, 'baobab')
-        ->get(route('admin.content.index', ['contentType' => 'cars']))
+        ->get(route('admin.content.index', ['contentType' => 'admin-crud-entries']))
         ->assertOk()
         ->assertSee('Peugeot');
 });
 
-it('denies the index without content.car.view', function () {
+it('denies the index without content.admin_crud_entry.view', function () {
     buildCarForAdminCrud();
     $user = contentCrudActor([]);
 
     $this->actingAs($user, 'baobab')
-        ->get(route('admin.content.index', ['contentType' => 'cars']))
+        ->get(route('admin.content.index', ['contentType' => 'admin-crud-entries']))
         ->assertForbidden();
 });
 
-it('shows the create form to a user with content.car.create', function () {
+it('shows the create form to a user with content.admin_crud_entry.create', function () {
     buildCarForAdminCrud();
-    $user = contentCrudActor(['content.car.view', 'content.car.create']);
+    $user = contentCrudActor(['content.admin_crud_entry.view', 'content.admin_crud_entry.create']);
 
     $this->actingAs($user, 'baobab')
-        ->get(route('admin.content.create', ['contentType' => 'cars']))
+        ->get(route('admin.content.create', ['contentType' => 'admin-crud-entries']))
         ->assertOk()
         ->assertSee('Brand');
 });
@@ -154,14 +154,14 @@ it('wires the title field to auto-fill the slug field on an addressable content 
 
 it('creates a content entry and sets author_id to the acting user', function () {
     $contentType = buildCarForAdminCrud();
-    $user = contentCrudActor(['content.car.view', 'content.car.create']);
+    $user = contentCrudActor(['content.admin_crud_entry.view', 'content.admin_crud_entry.create']);
 
     $this->actingAs($user, 'baobab')
-        ->post(route('admin.content.store', ['contentType' => 'cars']), [
+        ->post(route('admin.content.store', ['contentType' => 'admin-crud-entries']), [
             'brand' => 'Renault',
             'is_featured' => '1',
         ])
-        ->assertRedirect(route('admin.content.index', ['contentType' => 'cars']));
+        ->assertRedirect(route('admin.content.index', ['contentType' => 'admin-crud-entries']));
 
     /** @var class-string<Model> $carClass */
     $carClass = $contentType->modelClass();
@@ -175,10 +175,10 @@ it('creates a content entry and sets author_id to the acting user', function () 
 
 it('rejects an invalid submission per the declared field rules', function () {
     buildCarForAdminCrud();
-    $user = contentCrudActor(['content.car.view', 'content.car.create']);
+    $user = contentCrudActor(['content.admin_crud_entry.view', 'content.admin_crud_entry.create']);
 
     $this->actingAs($user, 'baobab')
-        ->post(route('admin.content.store', ['contentType' => 'cars']), ['brand' => ''])
+        ->post(route('admin.content.store', ['contentType' => 'admin-crud-entries']), ['brand' => ''])
         ->assertSessionHasErrors('brand');
 });
 
@@ -277,9 +277,9 @@ it('keeps the same slug when updating an entry without changing it', function ()
         ->and($post->fresh()?->getAttribute('title'))->toBe('Hello, updated');
 });
 
-it('lets the owner update their own entry with content.car.update', function () {
+it('lets the owner update their own entry with content.admin_crud_entry.update', function () {
     $contentType = buildCarForAdminCrud();
-    $owner = contentCrudActor(['content.car.view', 'content.car.update']);
+    $owner = contentCrudActor(['content.admin_crud_entry.view', 'content.admin_crud_entry.update']);
 
     /** @var class-string<Model> $carClass */
     $carClass = $contentType->modelClass();
@@ -287,18 +287,18 @@ it('lets the owner update their own entry with content.car.update', function () 
     $car->save();
 
     $this->actingAs($owner, 'baobab')
-        ->put(route('admin.content.update', ['contentType' => 'cars', 'entry' => $car->getKey()]), [
+        ->put(route('admin.content.update', ['contentType' => 'admin-crud-entries', 'entry' => $car->getKey()]), [
             'brand' => 'Peugeot 208',
         ])
-        ->assertRedirect(route('admin.content.index', ['contentType' => 'cars']));
+        ->assertRedirect(route('admin.content.index', ['contentType' => 'admin-crud-entries']));
 
     expect($car->fresh()?->getAttribute('brand'))->toBe('Peugeot 208');
 });
 
 it('forbids updating another user\'s entry without update_any', function () {
     $contentType = buildCarForAdminCrud();
-    $owner = contentCrudActor(['content.car.view']);
-    $other = contentCrudActor(['content.car.view', 'content.car.update']);
+    $owner = contentCrudActor(['content.admin_crud_entry.view']);
+    $other = contentCrudActor(['content.admin_crud_entry.view', 'content.admin_crud_entry.update']);
 
     /** @var class-string<Model> $carClass */
     $carClass = $contentType->modelClass();
@@ -306,7 +306,7 @@ it('forbids updating another user\'s entry without update_any', function () {
     $car->save();
 
     $this->actingAs($other, 'baobab')
-        ->put(route('admin.content.update', ['contentType' => 'cars', 'entry' => $car->getKey()]), [
+        ->put(route('admin.content.update', ['contentType' => 'admin-crud-entries', 'entry' => $car->getKey()]), [
             'brand' => 'Hacked',
         ])
         ->assertForbidden();
@@ -316,8 +316,8 @@ it('forbids updating another user\'s entry without update_any', function () {
 
 it('allows updating another user\'s entry with update_any', function () {
     $contentType = buildCarForAdminCrud();
-    $owner = contentCrudActor(['content.car.view']);
-    $manager = contentCrudActor(['content.car.view', 'content.car.update_any']);
+    $owner = contentCrudActor(['content.admin_crud_entry.view']);
+    $manager = contentCrudActor(['content.admin_crud_entry.view', 'content.admin_crud_entry.update_any']);
 
     /** @var class-string<Model> $carClass */
     $carClass = $contentType->modelClass();
@@ -325,17 +325,17 @@ it('allows updating another user\'s entry with update_any', function () {
     $car->save();
 
     $this->actingAs($manager, 'baobab')
-        ->put(route('admin.content.update', ['contentType' => 'cars', 'entry' => $car->getKey()]), [
+        ->put(route('admin.content.update', ['contentType' => 'admin-crud-entries', 'entry' => $car->getKey()]), [
             'brand' => 'Peugeot 3008',
         ])
-        ->assertRedirect(route('admin.content.index', ['contentType' => 'cars']));
+        ->assertRedirect(route('admin.content.index', ['contentType' => 'admin-crud-entries']));
 
     expect($car->fresh()?->getAttribute('brand'))->toBe('Peugeot 3008');
 });
 
 it('soft deletes an entry on destroy', function () {
     $contentType = buildCarForAdminCrud();
-    $owner = contentCrudActor(['content.car.view', 'content.car.delete']);
+    $owner = contentCrudActor(['content.admin_crud_entry.view', 'content.admin_crud_entry.delete']);
 
     /** @var class-string<Model> $carClass */
     $carClass = $contentType->modelClass();
@@ -344,8 +344,8 @@ it('soft deletes an entry on destroy', function () {
     $carId = $car->getKey();
 
     $this->actingAs($owner, 'baobab')
-        ->delete(route('admin.content.destroy', ['contentType' => 'cars', 'entry' => $carId]))
-        ->assertRedirect(route('admin.content.index', ['contentType' => 'cars']));
+        ->delete(route('admin.content.destroy', ['contentType' => 'admin-crud-entries', 'entry' => $carId]))
+        ->assertRedirect(route('admin.content.index', ['contentType' => 'admin-crud-entries']));
 
     expect($carClass::query()->find($carId))->toBeNull();
 

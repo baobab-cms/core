@@ -24,7 +24,7 @@ afterEach(function () {
 });
 
 /**
- * Clé dédiée (« SeoCar »), même raison que buildAddressableCar() dans
+ * Clé dédiée (« SeoArticle »), même raison que buildAddressableCar() dans
  * PublicContentRenderingTest.php : éviter la classe Eloquent « Car » figée
  * par un autre fichier de test en exécution séquentielle.
  *
@@ -33,8 +33,7 @@ afterEach(function () {
  */
 function buildSeoCar(array $overrides = []): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson(array_replace([
-        'key' => 'SeoCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('SeoArticle', array_replace([
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [

@@ -36,7 +36,7 @@ afterEach(function () {
  */
 function buildNotifiedCar(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('WorkflowNotificationsEntry', [
         'workflow' => true,
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));
@@ -68,7 +68,7 @@ it('notifies publish_any holders on submission, on both channels', function () {
 
     [$type, $modelClass] = buildNotifiedCar();
     $reviewer = workflowNotifiedActor();
-    app(GrantPermission::class)($reviewer, 'content.car.publish_any');
+    app(GrantPermission::class)($reviewer, 'content.workflow_notifications_entry.publish_any');
     $bystander = workflowNotifiedActor(); // pas de publish_any, ne doit rien recevoir
 
     $entry = $modelClass::create(['brand' => 'Renault'])->fresh();
@@ -132,7 +132,7 @@ it('notifies reviewers when a working draft is submitted for review', function (
 
     [$type, $modelClass] = buildNotifiedCar();
     $reviewer = workflowNotifiedActor();
-    app(GrantPermission::class)($reviewer, 'content.car.publish_any');
+    app(GrantPermission::class)($reviewer, 'content.workflow_notifications_entry.publish_any');
     $author = workflowNotifiedActor();
 
     $entry = $modelClass::create(['brand' => 'Renault'])->fresh();

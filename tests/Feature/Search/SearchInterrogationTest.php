@@ -24,8 +24,8 @@ afterEach(function () {
  */
 function buildInterrogationCar(): array
 {
-    return buildApiCar([
-        'key' => 'SearchableCar',
+    return buildApiArticle([
+        'key' => 'SearchableArticle',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true, 'searchable' => true]],
     ]);
 }
@@ -121,7 +121,7 @@ it('restricts the search to one content type via ?type=', function () {
     [, $carClass] = buildInterrogationCar();
     $carClass::create(['brand' => 'Renault Clio', 'slug' => 'clio', 'status' => 'published']);
 
-    test()->getJson('/api/v1/search?q=Clio&type=SearchableCar')->assertOk()->assertJsonCount(1, 'data');
+    test()->getJson('/api/v1/search?q=Clio&type=SearchableArticle')->assertOk()->assertJsonCount(1, 'data');
     test()->getJson('/api/v1/search?q=Clio&type=Nonexistent')->assertOk()->assertJsonCount(0, 'data');
 });
 
@@ -129,7 +129,7 @@ it('rejects a non-filterable field with a 422', function () {
     [, $carClass] = buildInterrogationCar();
     $carClass::create(['brand' => 'Renault Clio', 'slug' => 'clio', 'status' => 'published']);
 
-    test()->getJson('/api/v1/search?q=Clio&type=SearchableCar&filter[secret_field]=x')
+    test()->getJson('/api/v1/search?q=Clio&type=SearchableArticle&filter[secret_field]=x')
         ->assertStatus(422);
 });
 
@@ -172,7 +172,7 @@ it('exposes baobab_search() returning front groups', function () {
     $groups = baobab_search('Clio');
 
     expect($groups)->toHaveKey('core.contents')
-        ->and($groups['core.contents']['results']->items[0]->url)->toContain('/searchable-cars/clio');
+        ->and($groups['core.contents']['results']->items[0]->url)->toContain('/searchable-articles/clio');
 });
 
 // ── Écran admin/search ──────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ it('shows driver, sources and index state to an authorized actor', function () {
         ->assertOk()
         ->assertSee('database')
         ->assertSee('core.contents')
-        ->assertSee('SearchableCar');
+        ->assertSee('SearchableArticle');
 });
 
 it('blocks the search settings screen during an impersonation', function () {

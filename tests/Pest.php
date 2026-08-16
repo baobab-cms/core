@@ -170,16 +170,32 @@ function baobabLogPath(): string
 }
 
 /**
- * A minimal valid Content Type blueprint (JSON), key "Car" by default.
- * Used by ContentTypeBlueprintTest.php and CreateContentTypeTest.php.
+ * Blueprint de Content Type minimal et valide (JSON).
  *
+ * **La clé est un paramètre obligatoire, et c'est tout l'intérêt** (suivi
+ * n° 167). Elle valait auparavant « Car » par défaut, si bien que des dizaines
+ * de tests construisaient le même nom avec des champs différents. Or une
+ * classe Eloquent générée ne se déclare qu'**une fois par processus**, tandis
+ * que chaque test recrée sa table : le premier test fixait le modèle pour tous
+ * les suivants, qui écrivaient alors dans une table ne lui correspondant pas.
+ * L'équilibre ne tenait que par accident, et le n° 160 l'a vu céder.
+ *
+ * Rendre la clé obligatoire ne documente pas la règle « un nom, un schéma » :
+ * elle la rend **inatteignable autrement**. On ne peut plus hériter d'un nom
+ * sans l'avoir choisi.
+ *
+ * Le nom choisi dit ce que le test exerce (`SlugRedirectPage`, `SitemapEntry`),
+ * jamais un exemple générique : c'est ce qui rend une collision visible à
+ * l'écriture plutôt qu'au débogage.
+ *
+ * @param  string  $key  Clé du type, propre au test — anglais singulier PascalCase.
  * @param  array<string, mixed>  $overrides
  */
-function carBlueprintJson(array $overrides = []): string
+function contentTypeBlueprintJson(string $key, array $overrides = []): string
 {
     return (string) json_encode(array_replace([
-        'key' => 'Car',
-        'label' => ['singular' => 'Voiture', 'plural' => 'Voitures'],
+        'key' => $key,
+        'label' => ['singular' => $key, 'plural' => $key.'s'],
     ], $overrides));
 }
 
@@ -313,17 +329,17 @@ function createTestJpegWithExif(int $orientation, int $width = 20, int $height =
 }
 
 /**
- * Content Type "ApiCar" (addressable, brand/price/internal_note dont
+ * Content Type "ApiArticle" (addressable, brand/price/internal_note dont
  * internal_note n'est pas exposé en API) utilisé par les tests REST
  * (lecture et écriture, `tests/Feature/Api/`).
  *
  * @param  array<string, mixed>  $overrides
  * @return array{0: ContentType, 1: class-string<Model>}
  */
-function buildApiCar(array $overrides = []): array
+function buildApiArticle(array $overrides = []): array
 {
     $contentType = app(BuildContentType::class)((string) json_encode(array_replace([
-        'key' => 'ApiCar',
+        'key' => 'ApiArticle',
         'label' => ['singular' => 'Voiture', 'plural' => 'Voitures'],
         'is_addressable' => true,
         'title_field' => 'brand',
@@ -343,7 +359,7 @@ function buildApiCar(array $overrides = []): array
     $fresh = $contentType->fresh();
 
     if ($fresh === null) {
-        throw new RuntimeException('Expected the newly built ApiCar content type to be refetchable.');
+        throw new RuntimeException('Expected the newly built ApiArticle content type to be refetchable.');
     }
 
     return [$fresh, $modelClass];

@@ -29,7 +29,7 @@ afterEach(function () {
  */
 function queueCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('ValidationQueueControllerEntry', [
         'workflow' => true,
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));
@@ -71,7 +71,7 @@ it('lists native pending submissions for an actor with publish_any', function ()
     $entry = $modelClass::create(['brand' => 'Renault'])->fresh();
     app(SubmitContentEntry::class)($type, $entry);
 
-    $actor = queueActor(['content.car.publish_any']);
+    $actor = queueActor(['content.validation_queue_controller_entry.publish_any']);
 
     $this->actingAs($actor, 'baobab')
         ->get(route('admin.review.index'))
@@ -83,11 +83,11 @@ it('lists pending working drafts of already published content', function () {
     [$type, $modelClass] = queueCarType();
     $entry = $modelClass::create(['brand' => 'Renault'])->fresh();
     app(PublishContentEntry::class)($type, $entry);
-    $author = queueActor(['content.car.update']);
+    $author = queueActor(['content.validation_queue_controller_entry.update']);
     app(SaveWorkingDraftEntry::class)($type, $entry, ['brand' => 'Renault Draft'], $author);
     app(SubmitWorkingDraftForReview::class)($type, Revision::where('type', 'working_draft')->sole());
 
-    $reviewer = queueActor(['content.car.publish_any']);
+    $reviewer = queueActor(['content.validation_queue_controller_entry.publish_any']);
 
     $this->actingAs($reviewer, 'baobab')
         ->get(route('admin.review.index'))
@@ -100,7 +100,7 @@ it('hides a type\'s pending queue from an actor without publish_any on it', func
     $entry = $modelClass::create(['brand' => 'Renault'])->fresh();
     app(SubmitContentEntry::class)($type, $entry);
 
-    $actor = queueActor(['content.car.update']);
+    $actor = queueActor(['content.validation_queue_controller_entry.update']);
 
     $this->actingAs($actor, 'baobab')
         ->get(route('admin.review.index'))
@@ -113,7 +113,7 @@ it('filters the queue by content type', function () {
     $entry = $modelClass::create(['brand' => 'Renault'])->fresh();
     app(SubmitContentEntry::class)($type, $entry);
 
-    $actor = queueActor(['content.car.publish_any']);
+    $actor = queueActor(['content.validation_queue_controller_entry.publish_any']);
 
     $this->actingAs($actor, 'baobab')
         ->get(route('admin.review.index', ['type' => 'bikes']))

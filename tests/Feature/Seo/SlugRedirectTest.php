@@ -25,8 +25,7 @@ afterEach(function () {
  */
 function buildSlugRedirectCar(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'SlugRedirectCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('RedirectedPage', [
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -53,16 +52,16 @@ it('creates an automatic 301 redirect when a published entry\'s slug changes', f
 
     app(SaveContentEntry::class)($type, ['slug' => 'peugeot-208-new'], $actor, $entry);
 
-    $redirect = Redirect::where('source', '/slug-redirect-cars/peugeot-208')->first();
+    $redirect = Redirect::where('source', '/redirected-pages/peugeot-208')->first();
 
     expect($redirect)->not->toBeNull()
-        ->and($redirect->target)->toBe('/slug-redirect-cars/peugeot-208-new')
+        ->and($redirect->target)->toBe('/redirected-pages/peugeot-208-new')
         ->and($redirect->status_code)->toBe(301)
         ->and($redirect->source_kind)->toBe('auto');
 
-    $this->get('/slug-redirect-cars/peugeot-208')
+    $this->get('/redirected-pages/peugeot-208')
         ->assertStatus(301)
-        ->assertHeader('Location', url('/slug-redirect-cars/peugeot-208-new'));
+        ->assertHeader('Location', url('/redirected-pages/peugeot-208-new'));
 });
 
 it('removes the stale forward redirect when a slug is renamed back to a previous value, avoiding a loop', function () {
@@ -71,7 +70,7 @@ it('removes the stale forward redirect when a slug is renamed back to a previous
     $entry = $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'a', 'status' => 'published']);
 
     app(SaveContentEntry::class)($type, ['slug' => 'b'], $actor, $entry);
-    expect(Redirect::where('source', '/slug-redirect-cars/a')->first()?->target)->toBe('/slug-redirect-cars/b');
+    expect(Redirect::where('source', '/redirected-pages/a')->first()?->target)->toBe('/redirected-pages/b');
 
     // Renaming back to "a": without cleanup, both /a -> /b and /b -> /a
     // would exist at once (a two-hop loop for anything that follows
@@ -79,20 +78,20 @@ it('removes the stale forward redirect when a slug is renamed back to a previous
     // is live again and no longer needs a redirect away from it.
     app(SaveContentEntry::class)($type, ['slug' => 'a'], $actor, $entry->fresh());
 
-    expect(Redirect::where('source', '/slug-redirect-cars/a')->exists())->toBeFalse()
-        ->and(Redirect::where('source', '/slug-redirect-cars/b')->first()?->target)->toBe('/slug-redirect-cars/a')
+    expect(Redirect::where('source', '/redirected-pages/a')->exists())->toBeFalse()
+        ->and(Redirect::where('source', '/redirected-pages/b')->first()?->target)->toBe('/redirected-pages/a')
         ->and(Redirect::query()->count())->toBe(1);
 });
 
 it('never removes a manually created redirect even if a slug rename would otherwise consider it stale', function () {
     [$type, $modelClass] = buildSlugRedirectCar();
     $actor = slugRedirectActor();
-    Redirect::create(['source' => '/slug-redirect-cars/b', 'target' => '/kept-on-purpose', 'status_code' => 301, 'source_kind' => 'manual']);
+    Redirect::create(['source' => '/redirected-pages/b', 'target' => '/kept-on-purpose', 'status_code' => 301, 'source_kind' => 'manual']);
     $entry = $modelClass::create(['brand' => 'Peugeot 208', 'slug' => 'a', 'status' => 'published']);
 
     app(SaveContentEntry::class)($type, ['slug' => 'b'], $actor, $entry);
 
-    expect(Redirect::where('source', '/slug-redirect-cars/b')->first()?->target)->toBe('/kept-on-purpose');
+    expect(Redirect::where('source', '/redirected-pages/b')->first()?->target)->toBe('/kept-on-purpose');
 });
 
 it('does not create a redirect when creating a new entry', function () {

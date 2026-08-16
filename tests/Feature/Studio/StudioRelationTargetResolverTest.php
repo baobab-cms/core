@@ -21,7 +21,7 @@ it('resolves a sibling entity declared in the same blueprint', function () {
     $resolver = new StudioRelationTargetResolver(new RelationTargetResolver);
 
     $resolved = $resolver->resolve('entity:Driver', [
-        ['key' => 'Car', 'table' => 'cars'],
+        ['key' => 'StudioRelationTarget', 'table' => 'cars'],
         ['key' => 'Driver', 'table' => 'drivers'],
     ]);
 
@@ -37,16 +37,16 @@ it('refuses an entity target absent from the current blueprint', function () {
 });
 
 it('delegates content_type: targets to the already-built Content Type resolver', function () {
-    app(BuildContentType::class)(carBlueprintJson());
+    app(BuildContentType::class)(contentTypeBlueprintJson('StudioRelationTarget'));
 
     $resolver = new StudioRelationTargetResolver(new RelationTargetResolver);
 
-    $resolved = $resolver->resolve('content_type:Car', []);
+    $resolved = $resolver->resolve('content_type:StudioRelationTarget', []);
 
     expect($resolved)->toBe([
-        'class' => 'Modules\\Car\\Models\\Car',
-        'table' => 'ct_cars',
-        'key' => 'Car',
+        'class' => 'Modules\\StudioRelationTarget\\Models\\StudioRelationTarget',
+        'table' => 'ct_studio_relation_targets',
+        'key' => 'StudioRelationTarget',
     ]);
 });
 

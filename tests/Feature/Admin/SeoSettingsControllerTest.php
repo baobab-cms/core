@@ -49,8 +49,7 @@ function seoSettingsActor(array $permissions): User
  */
 function buildSeoSettingsCarType(): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'SeoSettingsCar',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('SeoSettingsPage', [
         'is_addressable' => true,
         'title_field' => 'brand',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
@@ -106,7 +105,7 @@ it('saves a title template for a specific content type', function () {
         ->post(route('admin.seo.update'), [
             'title_separator' => '—',
             'title_templates' => [
-                'SeoSettingsCar' => '{title} — {site_name}',
+                'SeoSettingsPage' => '{title} — {site_name}',
             ],
         ])
         ->assertRedirect(route('admin.seo.index'));
@@ -193,7 +192,7 @@ it('excludes a content type from the sitemap', function () {
     $this->actingAs($user, 'baobab')
         ->post(route('admin.seo.update'), [
             'title_separator' => '—',
-            'exclude_from_sitemap' => ['SeoSettingsCar' => '1'],
+            'exclude_from_sitemap' => ['SeoSettingsPage' => '1'],
         ])
         ->assertRedirect(route('admin.seo.index'));
 

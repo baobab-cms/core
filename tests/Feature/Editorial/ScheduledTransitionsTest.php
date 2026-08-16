@@ -25,7 +25,7 @@ afterEach(function () {
  */
 function buildScheduledCar(bool $unpublishAt = true): array
 {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('ScheduledTransitionsEntry', [
         'unpublish_at' => $unpublishAt,
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true]],
     ]));

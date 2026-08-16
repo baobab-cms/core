@@ -61,8 +61,7 @@ it('refuses to delete a media referenced by a media usage', function () {
         deleteMediaActor(),
     );
 
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'DeleteGuardArticle',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('DeleteGuardArticle', [
         'label' => ['singular' => 'DeleteGuardArticle', 'plural' => 'DeleteGuardArticles'],
         'fields' => [['key' => 'body', 'type' => 'richtext']],
     ]));
@@ -88,8 +87,7 @@ it('deletes a used media anyway when force is true', function () {
         deleteMediaActor(),
     );
 
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'DeleteForceArticle',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('DeleteForceArticle', [
         'label' => ['singular' => 'DeleteForceArticle', 'plural' => 'DeleteForceArticles'],
         'fields' => [['key' => 'body', 'type' => 'richtext']],
     ]));

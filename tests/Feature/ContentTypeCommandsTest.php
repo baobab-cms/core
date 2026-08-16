@@ -24,13 +24,13 @@ function blueprintFixturePath(): string
 // ── content-type:build ──────────────────────────────────────────────────────────
 
 it('content-type:build constructs a content type from a blueprint file', function () {
-    File::put(blueprintFixturePath(), carBlueprintJson());
+    File::put(blueprintFixturePath(), contentTypeBlueprintJson('ContentTypeCommandsEntry'));
 
     $exitCode = Artisan::call('content-type:build', ['path' => blueprintFixturePath()]);
 
     expect($exitCode)->toBe(0)
-        ->and(ContentType::where('key', 'Car')->exists())->toBeTrue()
-        ->and(Schema::hasTable('ct_cars'))->toBeTrue();
+        ->and(ContentType::where('key', 'ContentTypeCommandsEntry')->exists())->toBeTrue()
+        ->and(Schema::hasTable('ct_content_type_commands_entries'))->toBeTrue();
 
     File::delete(blueprintFixturePath());
 });
@@ -44,7 +44,7 @@ it('content-type:build fails cleanly when the file does not exist', function () 
 });
 
 it('content-type:build fails cleanly on an invalid blueprint', function () {
-    File::put(blueprintFixturePath(), (string) json_encode(['key' => 'car']));
+    File::put(blueprintFixturePath(), (string) json_encode(['key' => 'content_type_commands_entry']));
 
     $exitCode = Artisan::call('content-type:build', ['path' => blueprintFixturePath()]);
     $output = Artisan::output();
@@ -157,9 +157,9 @@ it('content-type:make aborts cleanly when the final confirmation is refused', fu
 });
 
 it('content-type:make fails cleanly on a duplicate key', function () {
-    app(BuildContentType::class)(carBlueprintJson());
+    app(BuildContentType::class)(contentTypeBlueprintJson('ContentTypeCommandsEntry'));
 
-    $this->artisan('content-type:make', ['key' => 'Car'])
+    $this->artisan('content-type:make', ['key' => 'ContentTypeCommandsEntry'])
         ->expectsQuestion('Libellé singulier', 'Voiture')
         ->expectsQuestion('Libellé pluriel', 'Voitures')
         ->expectsConfirmation('Ce type a-t-il des pages publiques (adressable) ?', 'no')

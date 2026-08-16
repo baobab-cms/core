@@ -124,8 +124,7 @@ it('refuses to overwrite a generated file that was hand-edited', function () {
 });
 
 it('generates a single template with a field block per declared field, driven by content_types', function () {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'Article',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('Article', [
         'label' => ['singular' => 'Article', 'plural' => 'Articles'],
         'is_addressable' => true,
         'title_field' => 'title',
@@ -180,8 +179,7 @@ it('does not generate a search template when "search" is not declared', function
 });
 
 it('generates an archive template with image/excerpt markup, driven by content_types', function () {
-    $contentType = app(BuildContentType::class)(carBlueprintJson([
-        'key' => 'Article',
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('Article', [
         'label' => ['singular' => 'Article', 'plural' => 'Articles'],
         'is_addressable' => true,
         'title_field' => 'title',

@@ -14,13 +14,13 @@ afterEach(function () {
 });
 
 it('defaults searchableFields() to empty (opt-in, unlike exposed_in_api)', function () {
-    [$contentType] = buildApiCar();
+    [$contentType] = buildApiArticle();
 
     expect($contentType->searchableFields())->toBe([]);
 });
 
 it('returns only fields explicitly marked searchable, with their declared weight', function () {
-    [$contentType] = buildApiCar([
+    [$contentType] = buildApiArticle([
         'fields' => [
             ['key' => 'brand', 'type' => 'text', 'required' => true, 'searchable' => true, 'weight' => 5],
             ['key' => 'price', 'type' => 'decimal'],
@@ -42,8 +42,8 @@ it('generates the Searchable trait and toSearchableArray() only when a field is 
     // redéclarée avec un fillable différent, même après régénération du
     // fichier sur disque — toute divergence de forme sur une clé partagée
     // entre fichiers de test casse silencieusement l'un des deux côtés.
-    [, $carClass] = buildApiCar([
-        'key' => 'SearchableCar',
+    [, $carClass] = buildApiArticle([
+        'key' => 'SearchableArticle',
         'fields' => [['key' => 'brand', 'type' => 'text', 'required' => true, 'searchable' => true]],
     ]);
 
@@ -60,7 +60,7 @@ it('generates the Searchable trait and toSearchableArray() only when a field is 
 });
 
 it('does not add Searchable/toSearchableArray() to a Content Type with no searchable field', function () {
-    [, $carClass] = buildApiCar();
+    [, $carClass] = buildApiArticle();
 
     expect(class_uses_recursive($carClass))->not->toHaveKey(Searchable::class)
         ->and(method_exists($carClass, 'toSearchableArray'))->toBeFalse();
