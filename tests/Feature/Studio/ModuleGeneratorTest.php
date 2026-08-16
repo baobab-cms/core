@@ -127,7 +127,7 @@ it('enables SoftDeletes when the entity option is set', function () {
         ->and($modelContents)->toContain('use SoftDeletes;');
 });
 
-it('switches to a UUID primary key when the entity option is set', function () {
+it('adds a public uuid beside the integer key when the entity option is set', function () {
     $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson([
         'entities' => [['key' => 'Car', 'table' => 'cars', 'options' => ['uuid' => true]]],
     ]));
@@ -135,14 +135,40 @@ it('switches to a UUID primary key when the entity option is set', function () {
     app(ModuleGenerator::class)($blueprint);
 
     $moduleDir = generatedModulesPath().'/garage-fleet';
-    $migrationFiles = File::glob($moduleDir.'/database/migrations/*.php');
+    $migration = (string) file_get_contents(File::glob($moduleDir.'/database/migrations/*.php')[0]);
 
-    expect(file_get_contents($migrationFiles[0]))->toContain("\$table->uuid('id')->primary();")
-        ->and(file_get_contents($migrationFiles[0]))->not->toContain('$table->id();');
+    // Les deux, et dans cet ordre : la clé primaire reste entière — sans quoi
+    // l'entité serait invisible aux tables polymorphiques du Core (n° 166).
+    expect($migration)->toContain('$table->id();')
+        ->and($migration)->toContain("\$table->uuid('uuid')->unique();")
+        ->and($migration)->not->toContain("\$table->uuid('id')->primary();");
 
     $modelContents = (string) file_get_contents($moduleDir.'/src/Models/Car.php');
+
     expect($modelContents)->toContain('use Illuminate\\Database\\Eloquent\\Concerns\\HasUuids;')
-        ->and($modelContents)->toContain('use HasUuids;');
+        ->and($modelContents)->toContain('use HasUuids;')
+        // `uniqueIds()` ne doit surtout PAS nommer la clé primaire : c'est ce
+        // qui laisse `getKeyType()`/`getIncrementing()` intacts.
+        ->and($modelContents)->toContain("return ['uuid'];")
+        // Et sans clé de route, la colonne existerait sans rien protéger.
+        ->and($modelContents)->toContain("return 'uuid';");
+});
+
+it('leaves the integer key alone when the uuid option is absent', function () {
+    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson([
+        'entities' => [['key' => 'Car', 'table' => 'cars']],
+    ]));
+
+    app(ModuleGenerator::class)($blueprint);
+
+    $moduleDir = generatedModulesPath().'/garage-fleet';
+    $migration = (string) file_get_contents(File::glob($moduleDir.'/database/migrations/*.php')[0]);
+    $modelContents = (string) file_get_contents($moduleDir.'/src/Models/Car.php');
+
+    expect($migration)->toContain('$table->id();')
+        ->and($migration)->not->toContain('$table->uuid(')
+        ->and($modelContents)->not->toContain('HasUuids')
+        ->and($modelContents)->not->toContain('getRouteKeyName');
 });
 
 it('omits timestamps from the migration when disabled', function () {

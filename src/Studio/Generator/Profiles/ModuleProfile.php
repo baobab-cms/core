@@ -68,9 +68,16 @@ class ModuleProfile implements GenerationProfile
     {
         $options = $entity['options'] ?? [];
 
-        return (bool) ($options['uuid'] ?? false)
-            ? "            \$table->uuid('id')->primary();"
-            : '            $table->id();';
+        // L'option n'a jamais fait de la clé primaire un UUID depuis le
+        // n° 166 : elle ajoute un identifiant **public** à côté d'elle. Une
+        // clé primaire UUID rendrait l'entité invisible aux huit tables
+        // polymorphiques du Core, dont les `*_id` sont numériques.
+        return implode("\n", array_filter([
+            '            $table->id();',
+            (bool) ($options['uuid'] ?? false)
+                ? "            \$table->uuid('uuid')->unique();"
+                : null,
+        ]));
     }
 
     public function trailingColumns(array $entity): string
@@ -115,9 +122,40 @@ class ModuleProfile implements GenerationProfile
         return [];
     }
 
+    /**
+     * Les deux méthodes qui font de l'`uuid` un identifiant **public** et non
+     * une simple colonne (n° 166) :
+     *
+     * - `uniqueIds()` dit à `HasUuids` quelle colonne remplir. Retourner
+     *   `['uuid']` plutôt que la clé primaire est exactement ce qui laisse
+     *   `getKeyType()` et `getIncrementing()` intacts — le trait ne les
+     *   bascule que si la clé primaire y figure (`HasUniqueStringIds`).
+     * - `getRouteKeyName()` fait sortir l'`uuid` sur les routes plutôt que
+     *   l'entier. Sans elle, la colonne existerait sans rien protéger.
+     */
     public function modelMethods(array $entity): string
     {
-        return '';
+        $options = $entity['options'] ?? [];
+
+        if (! (bool) ($options['uuid'] ?? false)) {
+            return '';
+        }
+
+        return <<<'PHP'
+
+                /**
+                 * @return list<string>
+                 */
+                public function uniqueIds(): array
+                {
+                    return ['uuid'];
+                }
+
+                public function getRouteKeyName(): string
+                {
+                    return 'uuid';
+                }
+            PHP;
     }
 
     public function policy(array $entity, string $namespace, string $permissionPrefix, ModuleBlueprint $blueprint): string

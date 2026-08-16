@@ -3,7 +3,9 @@
 use Baobab\Access\Actions\GrantPermission;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Users\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Le Content Type builder (M8 point 2, Pass B) — l'écran, pas le pipeline.
