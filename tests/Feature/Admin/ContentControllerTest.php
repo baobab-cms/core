@@ -543,3 +543,70 @@ it('renders the existing gallery selection in order on the edit screen', functio
         ->and($html)->toContain('first.jpg')
         ->and(strpos($html, 'second.jpg'))->toBeLessThan(strpos($html, 'first.jpg'));
 });
+
+/**
+ * L'autre moitié du n° 140 : la fiche de Content Type ne savait pas davantage
+ * saisir une relation — ni son gabarit ni son contrôleur ne contenaient la
+ * moindre occurrence de « relation », alors que les Content Types en portent
+ * depuis M3. Les deux chemins partagent désormais le même composant.
+ */
+it('renders a relation as a select of the target entries on the content form', function () {
+    app(BuildContentType::class)((string) json_encode([
+        'key' => 'RelationTargetBrand',
+        'label' => ['singular' => 'Marque', 'plural' => 'Marques'],
+        'fields' => [['key' => 'name', 'type' => 'text', 'required' => true]],
+    ]));
+
+    $brandType = ContentType::where('key', 'RelationTargetBrand')->firstOrFail();
+    app(ModuleAutoloader::class)->registerFor(Module::findOrFail($brandType->module_id));
+
+    /** @var class-string<Model> $brandClass */
+    $brandClass = $brandType->modelClass();
+    $brand = $brandClass::create(['name' => 'Peugeot', 'status' => 'published']);
+
+    $type = app(BuildContentType::class)((string) json_encode([
+        'key' => 'RelationOwningCar',
+        'label' => ['singular' => 'Voiture', 'plural' => 'Voitures'],
+        'fields' => [['key' => 'model', 'type' => 'text', 'required' => true]],
+        'relations' => [['key' => 'brand', 'type' => 'one_to_many', 'target' => 'RelationTargetBrand']],
+    ]));
+
+    app(ModuleAutoloader::class)->registerFor(Module::findOrFail($type->module_id));
+
+    $actor = contentCrudActor(['content.relation_owning_car.create']);
+
+    $this->actingAs($actor, 'baobab')
+        ->get(route('admin.content.create', ['contentType' => 'relation-owning-cars']))
+        ->assertOk()
+        ->assertSee('name="brand_id"', false)
+        // Le libellé vient de la relation, et l'option de la cible réelle — pas
+        // un identifiant nu.
+        ->assertSee('Brand', false)
+        ->assertSee('value="'.$brand->getKey().'"', false)
+        ->assertSee('Peugeot', false);
+});
+
+it('refuses a relation pointing at an entry that does not exist', function () {
+    app(BuildContentType::class)((string) json_encode([
+        'key' => 'RelationCheckedBrand',
+        'label' => ['singular' => 'Marque', 'plural' => 'Marques'],
+        'fields' => [['key' => 'name', 'type' => 'text', 'required' => true]],
+    ]));
+
+    $type = app(BuildContentType::class)((string) json_encode([
+        'key' => 'RelationCheckedCar',
+        'label' => ['singular' => 'Voiture', 'plural' => 'Voitures'],
+        'fields' => [['key' => 'model', 'type' => 'text', 'required' => true]],
+        'relations' => [['key' => 'brand', 'type' => 'one_to_many', 'target' => 'RelationCheckedBrand']],
+    ]));
+
+    app(ModuleAutoloader::class)->registerFor(Module::findOrFail($type->module_id));
+
+    $actor = contentCrudActor(['content.relation_checked_car.create']);
+
+    // La colonne était `fillable` sans être validée : une clé étrangère
+    // inventée n'échouait qu'en base, en 500.
+    $this->actingAs($actor, 'baobab')
+        ->post(route('admin.content.store', ['contentType' => 'relation-checked-cars']), ['model' => 'e-208', 'brand_id' => 999999])
+        ->assertSessionHasErrors('brand_id');
+});

@@ -409,3 +409,63 @@ it('refuses to overwrite a generated file that was hand-edited', function () {
     expect(fn () => app(ModuleGenerator::class)($blueprint))
         ->toThrow(GeneratedFileConflictException::class);
 });
+
+/**
+ * La Pass C du point 2 (n° 140) : jusqu'ici la relation obtenait sa colonne et
+ * sa méthode Eloquent, mais aucune **saisie** — l'écran généré ignorait son
+ * existence, et le lien ne se renseignait qu'en base.
+ */
+it('gives a belongs-to relation its input in the generated admin form', function () {
+    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson([
+        'entities' => [
+            ['key' => 'Car', 'table' => 'cars', 'relations' => [
+                ['key' => 'brand', 'type' => 'one_to_many', 'target' => 'entity:Brand'],
+            ]],
+            ['key' => 'Brand', 'table' => 'brands'],
+        ],
+    ]));
+
+    app(ModuleGenerator::class)($blueprint);
+
+    $moduleDir = generatedModulesPath().'/garage-fleet';
+    $controller = (string) file_get_contents($moduleDir.'/src/Http/Controllers/Admin/CarController.php');
+
+    // Le libellé se dérive de la relation et non de la colonne : « Brand », pas
+    // « Brand Id », qui laisserait fuiter le schéma dans l'interface.
+    expect($controller)->toContain("'key' => 'brand_id'")
+        ->and($controller)->toContain("'label' => 'Brand'")
+        ->and($controller)->toContain("'component' => 'baobab::field.relation'")
+        // Les options ne peuvent pas être un littéral : elles dépendent du
+        // contenu de la table cible au moment de l'affichage.
+        ->and($controller)->toContain('RelationOptions::for(\Garage\Fleet\Models\Brand::class)');
+
+    // Et la colonne, `fillable` depuis toujours, est enfin validée.
+    $request = (string) file_get_contents($moduleDir.'/src/Http/Requests/CarRequest.php');
+    // Les antislashs sont doublés dans le fichier généré : la chaîne y est
+    // écrite entre apostrophes, et c'est à l'exécution qu'elle redevient le nom
+    // de classe que Laravel résout en table.
+    expect($request)->toContain("'brand_id' => ['nullable', 'integer', 'exists:Garage\\\\Fleet\\\\Models\\\\Brand,id']");
+});
+
+it('leaves many-to-many and polymorphic relations out of the generated form', function () {
+    $blueprint = ModuleBlueprint::fromJson(moduleBlueprintJson([
+        'entities' => [
+            ['key' => 'Car', 'table' => 'cars', 'relations' => [
+                ['key' => 'options', 'type' => 'many_to_many', 'target' => 'entity:Option'],
+                ['key' => 'attachable', 'type' => 'polymorphic', 'target' => 'entity:Option'],
+            ]],
+            ['key' => 'Option', 'table' => 'options'],
+        ],
+    ]));
+
+    app(ModuleGenerator::class)($blueprint);
+
+    $moduleDir = generatedModulesPath().'/garage-fleet';
+    $controller = (string) file_get_contents($moduleDir.'/src/Http/Controllers/Admin/CarController.php');
+
+    // Hors périmètre de la Pass C, et c'est délibéré (n° 169) : le pivot
+    // suppose un sync() dans les deux chemins de sauvegarde, le polymorphique
+    // un couple type/id. Aucun des deux ne doit produire de champ à moitié
+    // fonctionnel en attendant.
+    expect($controller)->not->toContain('baobab::field.relation');
+});

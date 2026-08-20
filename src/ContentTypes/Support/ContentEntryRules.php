@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Baobab\ContentTypes\Support;
 
+use Baobab\ContentTypes\Exceptions\UnknownRelationTargetException;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Models\ContentType;
+use Baobab\ContentTypes\Relations\BelongsToRelations;
+use Baobab\ContentTypes\Relations\RelationTargetResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -20,7 +23,10 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class ContentEntryRules
 {
-    public function __construct(private readonly FieldRegistry $fields) {}
+    public function __construct(
+        private readonly FieldRegistry $fields,
+        private readonly RelationTargetResolver $targets,
+    ) {}
 
     /**
      * @return array<string, array<int, mixed>>
@@ -53,6 +59,24 @@ final class ContentEntryRules
             if ($field['type'] === 'gallery') {
                 $rules["{$field['key']}.*"] = ['integer', 'exists:media,id'];
             }
+        }
+
+        // Les relations `belongsTo` écrivent une colonne comme les autres, mais
+        // vivent dans `relations[]` : sans cette boucle, la colonne était
+        // `fillable` sans jamais être validée (n° 140). `exists` sur la table
+        // réelle de la cible — une clé étrangère inventée doit être refusée par
+        // le formulaire, pas par la base.
+        foreach (BelongsToRelations::from((array) $type->blueprint) as $relation) {
+            try {
+                $target = $this->targets->resolve($relation['target']);
+            } catch (UnknownRelationTargetException) {
+                continue;
+            }
+
+            $rules[$relation['column']] = array_merge(
+                $relation['required'] ? ($partial ? ['sometimes', 'required'] : ['required']) : ['nullable'],
+                ['integer', "exists:{$target['table']},id"],
+            );
         }
 
         return $rules;

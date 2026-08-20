@@ -225,6 +225,15 @@
                                 <x-baobab::field.checkbox :name="$field['key']" :label="$field['label']" :checked="(bool) $field['value']" />
                                 @break
 
+                            @case('relation')
+                                <x-baobab::field.relation
+                                    :name="$field['key']"
+                                    :label="$field['label']"
+                                    :options="$field['relation_options']"
+                                    :value="$field['value']"
+                                />
+                                @break
+
                             @case('select')
                             @case('radio')
                                 <x-baobab::field.select

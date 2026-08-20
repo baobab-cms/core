@@ -33,7 +33,11 @@ use Baobab\ContentTypes\Editorial\Models\Revision;
 use Baobab\ContentTypes\Editorial\Support\RevisionDiffer;
 use Baobab\ContentTypes\Exceptions\ContentLockedException;
 use Baobab\ContentTypes\Exceptions\InvalidContentTransitionException;
+use Baobab\ContentTypes\Exceptions\UnknownRelationTargetException;
 use Baobab\ContentTypes\Models\ContentType;
+use Baobab\ContentTypes\Relations\BelongsToRelations;
+use Baobab\ContentTypes\Relations\RelationOptions;
+use Baobab\ContentTypes\Relations\RelationTargetResolver;
 use Baobab\ContentTypes\Support\ContentEntryRules;
 use Baobab\ContentTypes\Support\ContentTrash;
 use Baobab\ContentTypes\Support\FieldDisplay;
@@ -807,6 +811,20 @@ final class ContentController
             $fields[] = ['key' => 'unpublish_at', 'type' => 'unpublish_at', 'required' => false];
         }
 
+        // Les relations `belongsTo` sont des voisines de `fields[]` dans le
+        // blueprint, jamais des membres : elles n'apparaissaient donc dans aucun
+        // formulaire (n° 140). Elles rejoignent la liste ici, avant le filtre,
+        // pour qu'un module puisse les traiter comme les autres champs.
+        foreach (BelongsToRelations::from((array) $type->blueprint) as $relation) {
+            $fields[] = [
+                'key' => $relation['column'],
+                'type' => 'relation',
+                'label' => $relation['label'],
+                'target' => $relation['target'],
+                'required' => $relation['required'],
+            ];
+        }
+
         /** @var list<array<string, mixed>> $filtered */
         $filtered = Hook::filter('baobab.content.form.fields', $fields, $type);
 
@@ -912,6 +930,9 @@ final class ContentController
                 'gallery_items' => $field['type'] === 'gallery'
                     ? $this->galleryItems($entry, $name)
                     : [],
+                'relation_options' => $field['type'] === 'relation'
+                    ? $this->relationOptions((string) ($field['target'] ?? ''))
+                    : [],
                 'html_type' => match ($field['type']) {
                     'integer', 'decimal' => 'number',
                     'date' => 'date',
@@ -924,6 +945,39 @@ final class ContentController
                     : '',
             ];
         }, $this->formFields($type));
+    }
+
+    /**
+     * Entrées proposées pour une relation, prêtes pour le composant. Le libellé
+     * suit la règle déjà en vigueur ailleurs dans l'admin (corbeille, file de
+     * validation) : `title_field` si la cible en déclare un, sinon son premier
+     * champ, sinon l'identifiant.
+     *
+     * Une cible inconnue ne fait pas tomber l'écran d'édition : elle rend une
+     * liste vide, et le blueprint est de toute façon refusé à la validation —
+     * `RelationTargetResolver` lève sur une cible qui n'existe pas.
+     *
+     * @return array<int|string, string>
+     */
+    private function relationOptions(string $target): array
+    {
+        if ($target === '') {
+            return [];
+        }
+
+        try {
+            $resolved = app(RelationTargetResolver::class)->resolve($target);
+        } catch (UnknownRelationTargetException) {
+            return [];
+        }
+
+        $targetType = ContentType::where('key', $target)->first();
+
+        $labelColumn = $targetType instanceof ContentType
+            ? ($targetType->blueprint['title_field'] ?? $targetType->blueprint['fields'][0]['key'] ?? null)
+            : 'name';
+
+        return RelationOptions::for($resolved['class'], is_string($labelColumn) ? $labelColumn : null);
     }
 
     /**

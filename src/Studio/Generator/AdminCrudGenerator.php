@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Baobab\Studio\Generator;
 
+use Baobab\ContentTypes\Exceptions\UnknownRelationTargetException;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Generator\StubRenderer;
+use Baobab\ContentTypes\Relations\BelongsToRelations;
+use Baobab\ContentTypes\Relations\RelationOptions;
+use Baobab\ContentTypes\Relations\RelationTargetResolver;
 use Baobab\Studio\Generator\Support\EntityFields;
 use Illuminate\Support\Str;
 
@@ -30,7 +34,10 @@ use Illuminate\Support\Str;
  */
 final class AdminCrudGenerator
 {
-    public function __construct(private readonly FieldRegistry $fields) {}
+    public function __construct(
+        private readonly FieldRegistry $fields,
+        private readonly RelationTargetResolver $coreTargets,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $entity
@@ -55,7 +62,10 @@ final class AdminCrudGenerator
             'view_namespace' => $slug,
             'view_prefix' => EntityFields::viewPrefix($entity),
             'route_name_prefix' => $this->routeNamePrefix($entity, $slug),
-            'form_fields' => $this->formFieldsLiteral($entity, $var),
+            'form_fields' => self::joinLines([
+                $this->formFieldsLiteral($entity, $var),
+                $this->relationFieldsLiteral($entity, $var, $namespace),
+            ]),
         ]);
     }
 
@@ -67,7 +77,7 @@ final class AdminCrudGenerator
         return (new StubRenderer)->render(StudioStubs::path('admin-request'), [
             'namespace' => $namespace,
             'key' => (string) $entity['key'],
-            'rules' => $this->rulesLiteral($entity),
+            'rules' => $this->rulesLiteral($entity, $namespace),
             'json_fields' => EntityFields::keysLiteral($entity, 'json'),
             'boolean_fields' => EntityFields::keysLiteral($entity, 'boolean'),
             'time_fields' => EntityFields::keysLiteral($entity, 'time'),
@@ -124,6 +134,17 @@ final class AdminCrudGenerator
     }
 
     /**
+     * Assemble des blocs de lignes en ignorant les vides — une entité sans
+     * relation ne doit pas produire de ligne blanche au milieu du littéral.
+     *
+     * @param  list<string>  $blocks
+     */
+    private static function joinLines(array $blocks): string
+    {
+        return implode("\n", array_filter($blocks, static fn (string $block): bool => trim($block) !== ''));
+    }
+
+    /**
      * @param  array<string, mixed>  $entity
      */
     private function formFieldsLiteral(array $entity, string $var): string
@@ -150,11 +171,107 @@ final class AdminCrudGenerator
     }
 
     /**
+     * Les lignes de saisie des relations `belongsTo`, ajoutées après les champs
+     * (n° 140). Deux différences avec un champ ordinaire, et elles expliquent
+     * pourquoi ce n'est pas la même boucle :
+     *
+     * - la valeur courante se lit sur la **colonne** `{clé}_id`, pas sur la
+     *   relation, qui chargerait le modèle lié pour n'en tirer qu'un entier ;
+     * - les options ne peuvent pas être un littéral — elles dépendent du contenu
+     *   de la table cible au moment de l'affichage. Seule la classe du modèle
+     *   est figée ici ; la requête et le choix de la colonne de libellé restent
+     *   à l'exécution, dans `RelationOptions`.
+     *
      * @param  array<string, mixed>  $entity
      */
-    private function rulesLiteral(array $entity): string
+    private function relationFieldsLiteral(array $entity, string $var, string $namespace): string
     {
-        return EntityFields::validationRulesLiteral($entity, $this->fields);
+        return collect(BelongsToRelations::from($entity))
+            ->map(function (array $relation) use ($var, $namespace): ?string {
+                $class = $this->relationModelClass($relation['target'], $namespace);
+
+                if ($class === null) {
+                    return null;
+                }
+
+                return sprintf(
+                    "            ['key' => '%s', 'label' => '%s', 'component' => 'baobab::field.relation', 'value' => \$%s->%s, 'options' => \\%s::for(\\%s::class)],",
+                    $relation['column'],
+                    addslashes($relation['label']),
+                    $var,
+                    $relation['column'],
+                    RelationOptions::class,
+                    $class,
+                );
+            })
+            ->filter()
+            ->implode("\n");
+    }
+
+    /**
+     * @param  array<string, mixed>  $entity
+     */
+    private function rulesLiteral(array $entity, string $namespace): string
+    {
+        // Les relations `belongsTo` étaient `fillable` sans être validées
+        // (n° 140) : une clé étrangère inventée n'échouait qu'au niveau de la
+        // base, en 500, au lieu d'être refusée par le formulaire.
+        //
+        // `exists:` reçoit la **classe du modèle** et non un nom de table :
+        // Laravel la résout lui-même (`ValidatesAttributes::parseTable()`), ce
+        // qui évite de recalculer ici un nom de table dont la cible est seule
+        // à connaître la forme.
+        $relationRules = collect(BelongsToRelations::from($entity))
+            ->map(function (array $relation) use ($namespace): ?string {
+                $class = $this->relationModelClass($relation['target'], $namespace);
+
+                if ($class === null) {
+                    return null;
+                }
+
+                $presence = $relation['required'] ? 'required' : 'nullable';
+                $escaped = str_replace('\\', '\\\\', $class);
+
+                return "            '{$relation['column']}' => ['{$presence}', 'integer', 'exists:{$escaped},id'],";
+            })
+            ->filter()
+            ->implode("\n");
+
+        return self::joinLines([
+            EntityFields::validationRulesLiteral($entity, $this->fields),
+            $relationRules,
+        ]);
+    }
+
+    /**
+     * Classe du modèle visé par une relation du Studio. Les cibles y sont
+     * **préfixées** (`StudioRelationTargetResolver`), et les deux familles ne se
+     * résolvent pas au même moment :
+     *
+     * - `entity:{Clé}` désigne une entité sœur du même module — sa classe
+     *   n'existe qu'à la génération, elle se déduit du namespace ;
+     * - `content_type:{Clé}` et `core:{Modèle}` désignent quelque chose de déjà
+     *   construit, que le résolveur du Core sait nommer.
+     *
+     * `null` si la cible est introuvable : la génération ne doit pas échouer
+     * ici — le blueprint est validé en amont, et un formulaire sans ce champ
+     * vaut mieux qu'un module qui ne se génère plus.
+     */
+    private function relationModelClass(string $target, string $namespace): ?string
+    {
+        if (Str::startsWith($target, 'entity:')) {
+            return "{$namespace}\\Models\\".Str::after($target, 'entity:');
+        }
+
+        if (! Str::startsWith($target, ['content_type:', 'core:'])) {
+            return null;
+        }
+
+        try {
+            return $this->coreTargets->resolve(Str::after($target, ':'))['class'];
+        } catch (UnknownRelationTargetException) {
+            return null;
+        }
     }
 
     /**
