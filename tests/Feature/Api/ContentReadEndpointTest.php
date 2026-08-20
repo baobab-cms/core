@@ -3,6 +3,7 @@
 use Baobab\ContentTypes\Actions\BuildContentType;
 use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\File;
 
 beforeEach(function () {
@@ -100,7 +101,7 @@ it('shows a single published entry with the full envelope', function () {
     [, $carClass] = buildApiArticle();
     $car = $carClass::create(['brand' => 'Peugeot', 'price' => 25000, 'internal_note' => '', 'slug' => 'peugeot', 'status' => 'published']);
 
-    $this->getJson("/api/v1/content/api-articles/{$car->getKey()}")
+    $this->getJson("/api/v1/content/api-articles/{$car->getRouteKey()}")
         ->assertOk()
         ->assertJsonPath('data.brand', 'Peugeot')
         ->assertJsonPath('data.slug', 'peugeot');
@@ -110,16 +111,16 @@ it('denies showing a draft entry without a session and allows it with permission
     [, $carClass] = buildApiArticle();
     $car = $carClass::create(['brand' => 'Peugeot', 'price' => 25000, 'internal_note' => '', 'slug' => 'peugeot', 'status' => 'draft']);
 
-    $this->getJson("/api/v1/content/api-articles/{$car->getKey()}")->assertStatus(401);
+    $this->getJson("/api/v1/content/api-articles/{$car->getRouteKey()}")->assertStatus(401);
 
     $noPermission = apiActor([]);
     $this->actingAs($noPermission, 'baobab')
-        ->getJson("/api/v1/content/api-articles/{$car->getKey()}")
+        ->getJson("/api/v1/content/api-articles/{$car->getRouteKey()}")
         ->assertStatus(403);
 
     $withPermission = apiActor(['content.api_article.view']);
     $this->actingAs($withPermission, 'baobab')
-        ->getJson("/api/v1/content/api-articles/{$car->getKey()}")
+        ->getJson("/api/v1/content/api-articles/{$car->getRouteKey()}")
         ->assertOk();
 });
 
@@ -225,4 +226,65 @@ it('paginates by cursor without a total/current_page in the envelope', function 
     $response->assertJsonPath('meta.pagination.per_page', 2)
         ->assertJsonMissingPath('meta.pagination.total')
         ->assertJsonMissingPath('meta.pagination.current_page');
+});
+
+/**
+ * La bascule du n° 166 : les six routes `{entry}` se résolvent sur
+ * l'identifiant public et **plus du tout** sur la clé primaire entière. Garder
+ * un repli sur l'entier laisserait le catalogue énumérable — c'est-à-dire
+ * exactement le défaut que la règle corrige.
+ */
+it('resolves an addressable entry by its slug and no longer by its integer key', function () {
+    [, $entryClass] = buildApiArticle();
+    $entry = $entryClass::create([
+        'brand' => 'Peugeot', 'price' => 25000, 'internal_note' => '',
+        'slug' => 'peugeot', 'status' => 'published',
+    ]);
+
+    $this->getJson('/api/v1/content/api-articles/peugeot')
+        ->assertOk()
+        ->assertJsonPath('data.brand', 'Peugeot')
+        // `data.id` doit pouvoir être rejoué sur la route : c'est la clé de
+        // route qui sort, jamais l'entier.
+        ->assertJsonPath('data.id', 'peugeot');
+
+    $this->getJson("/api/v1/content/api-articles/{$entry->getKey()}")->assertNotFound();
+});
+
+it('resolves a non-addressable entry by its uuid and no longer by its integer key', function () {
+    // Type construit ici plutôt que via buildApiArticle() : un type non
+    // adressable ne déclare pas de `title_field`, et le helper ne peut que
+    // remplacer une clé, pas la retirer.
+    $contentType = app(BuildContentType::class)((string) json_encode([
+        'key' => 'ApiLedgerLine',
+        'label' => ['singular' => 'Écriture', 'plural' => 'Écritures'],
+        'fields' => [['key' => 'label', 'type' => 'text', 'required' => true]],
+    ]));
+
+    app(ModuleAutoloader::class)->registerFor(Module::findOrFail($contentType->module_id));
+
+    /** @var class-string<Model> $entryClass */
+    $entryClass = $contentType->modelClass();
+
+    $entry = $entryClass::create(['label' => 'Écriture 42', 'status' => 'published']);
+
+    $uuid = $entry->fresh()->getRouteKey();
+
+    // Le trait a rempli la colonne sans toucher à la clé primaire.
+    expect($uuid)->toBeString()->toHaveLength(36)
+        ->and($entry->getKey())->toBeInt();
+
+    // Un type non adressable n'est jamais lisible publiquement (§7) : la
+    // lecture passe par un acteur autorisé, ce qui n'ôte rien à ce que le test
+    // vérifie — la clé par laquelle l'entrée se résout.
+    $actor = apiActor(['content.api_ledger_line.view']);
+
+    $this->actingAs($actor, 'baobab')
+        ->getJson("/api/v1/content/api-ledger-lines/{$uuid}")
+        ->assertOk()
+        ->assertJsonPath('data.id', $uuid);
+
+    $this->actingAs($actor, 'baobab')
+        ->getJson("/api/v1/content/api-ledger-lines/{$entry->getKey()}")
+        ->assertNotFound();
 });

@@ -98,13 +98,26 @@ final class ContentTypeProfile extends ModuleProfile
 
     /**
      * Le socle commun de la spec 02 §4.2, dans l'ordre où il était écrit
-     * jusqu'ici : `id`, statut éditorial, dates de publication, slug des types
-     * adressables, auteur.
+     * jusqu'ici : `id`, identifiant public des types non adressables, statut
+     * éditorial, dates de publication, slug des types adressables, auteur.
+     *
+     * La clé primaire reste **toujours** entière : un UUID en clé primaire
+     * rendrait le contenu invisible aux huit tables polymorphiques du Core,
+     * dont les `*_id` sont numériques (n° 166).
+     *
+     * L'identifiant public, lui, n'est jamais l'entier — il se **dérive** du
+     * caractère adressable au lieu de se cocher : le `slug` suffit là où il
+     * existe, déjà unique et déjà l'identifiant du front ; ailleurs il faut
+     * une colonne `uuid`, sans quoi l'API n'aurait que l'entier séquentiel à
+     * exposer sur ses six routes `{entry}`.
      */
     public function leadingColumns(array $entity): string
     {
         return implode("\n", array_filter([
             '            $table->id();',
+            $this->contentType->is_addressable
+                ? null
+                : "            \$table->uuid('uuid')->unique();",
             "            \$table->string('status')->default('draft');",
             "            \$table->timestamp('published_at')->nullable();",
             $this->contentType->unpublishAtEnabled()
@@ -130,16 +143,30 @@ final class ContentTypeProfile extends ModuleProfile
         ]);
     }
 
+    /**
+     * `HasUuids` n'accompagne que les types non adressables — les seuls à
+     * porter une colonne `uuid` à remplir. Sur un type adressable, le `slug`
+     * fait déjà office d'identifiant public et le trait n'aurait aucune
+     * colonne à alimenter.
+     */
     public function modelTraits(array $entity): array
     {
         $searchable = $this->contentType->searchableFields() !== [];
+        $uuid = ! $this->contentType->is_addressable;
+
+        $traits = array_filter([
+            'SoftDeletes',
+            $searchable ? 'Searchable' : null,
+            $uuid ? 'HasUuids' : null,
+        ]);
 
         return [
             'imports' => implode("\n", array_filter([
                 'use Illuminate\\Database\\Eloquent\\SoftDeletes;',
+                $uuid ? 'use Illuminate\\Database\\Eloquent\\Concerns\\HasUuids;' : null,
                 $searchable ? 'use Laravel\\Scout\\Searchable;' : null,
             ])),
-            'use' => $searchable ? '    use SoftDeletes, Searchable;' : '    use SoftDeletes;',
+            'use' => '    use '.implode(', ', $traits).';',
         ];
     }
 
@@ -164,6 +191,57 @@ final class ContentTypeProfile extends ModuleProfile
         ]));
     }
 
+    public function modelMethods(array $entity): string
+    {
+        return implode('', array_filter([
+            $this->publicIdentifierMethods(),
+            $this->searchableArrayMethod(),
+        ]));
+    }
+
+    /**
+     * Les méthodes qui font de l'identifiant public la **clé de route**, pour
+     * le front comme pour l'API (spec 02 §4.2).
+     *
+     * Sur un type non adressable, `uniqueIds()` dit à `HasUuids` quelle
+     * colonne remplir. Retourner `['uuid']` plutôt que la clé primaire est
+     * exactement ce qui laisse `getKeyType()` et `getIncrementing()` intacts —
+     * le trait ne les bascule que si la clé primaire y figure
+     * (`HasUniqueStringIds`). Sans `getRouteKeyName()`, la colonne existerait
+     * sans rien protéger : l'API continuerait d'exposer l'entier.
+     *
+     * Sur un type adressable, il n'y a pas de colonne à remplir — seulement la
+     * clé de route à déplacer de l'entier vers le `slug`, déjà unique.
+     */
+    private function publicIdentifierMethods(): string
+    {
+        if ($this->contentType->is_addressable) {
+            return <<<'PHP'
+
+                    public function getRouteKeyName(): string
+                    {
+                        return 'slug';
+                    }
+                PHP;
+        }
+
+        return <<<'PHP'
+
+                /**
+                 * @return list<string>
+                 */
+                public function uniqueIds(): array
+                {
+                    return ['uuid'];
+                }
+
+                public function getRouteKeyName(): string
+                {
+                    return 'uuid';
+                }
+            PHP;
+    }
+
     /**
      * Génère `toSearchableArray()` (contrat `Laravel\Scout\Searchable`, spec 11
      * §3.1) — jamais écrit à la main par le développeur. Seuls les champs
@@ -175,7 +253,7 @@ final class ContentTypeProfile extends ModuleProfile
      * Core (trait Scout configuré par lui), la façade `Hook` n'ajoute aucun
      * couplage nouveau.
      */
-    public function modelMethods(array $entity): string
+    private function searchableArrayMethod(): string
     {
         $searchableFields = $this->contentType->searchableFields();
 

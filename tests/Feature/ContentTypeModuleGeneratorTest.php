@@ -238,3 +238,59 @@ it('generates a pivot migration and belongsToMany method for a many_to_many rela
     $modelContents = (string) file_get_contents($moduleDir.'/src/Models/ContentTypeModuleGeneratorEntry.php');
     expect($modelContents)->toContain('public function options(): \Illuminate\Database\Eloquent\Relations\BelongsToMany');
 });
+
+/**
+ * L'identifiant public se **dérive** du caractère adressable au lieu de se
+ * cocher (spec 02 §4.2, n° 166) : le `slug` là où il existe, une colonne
+ * `uuid` ailleurs. Dans les deux cas c'est lui la clé de route — la clé
+ * primaire, elle, reste toujours entière, sans quoi l'entrée serait invisible
+ * aux huit tables polymorphiques du Core.
+ */
+it('gives a non-addressable type a uuid as its public identifier', function () {
+    $contentType = app(CreateContentType::class)(contentTypeBlueprintJson('WarehouseBin'));
+
+    app(ContentTypeModuleGenerator::class)($contentType);
+
+    $moduleDir = generatedModulesPath().'/content-warehouse-bins';
+    $migration = (string) file_get_contents(File::glob($moduleDir.'/database/migrations/*.php')[0]);
+
+    // Les deux, et dans cet ordre : la clé primaire ne devient jamais un UUID.
+    expect($migration)->toContain('$table->id();')
+        ->and($migration)->toContain("\$table->uuid('uuid')->unique();")
+        ->and($migration)->not->toContain("\$table->uuid('id')->primary();")
+        // Non adressable : aucun slug à générer.
+        ->and($migration)->not->toContain("\$table->string('slug')");
+
+    $modelContents = (string) file_get_contents($moduleDir.'/src/Models/WarehouseBin.php');
+
+    expect($modelContents)->toContain('use Illuminate\Database\Eloquent\Concerns\HasUuids;')
+        ->and($modelContents)->toContain('HasUuids')
+        // `uniqueIds()` ne doit surtout PAS nommer la clé primaire : c'est ce
+        // qui laisse `getKeyType()`/`getIncrementing()` intacts.
+        ->and($modelContents)->toContain("return ['uuid'];")
+        ->and($modelContents)->toContain("return 'uuid';");
+});
+
+it('makes the slug the public identifier of an addressable type, without a uuid column', function () {
+    $contentType = app(CreateContentType::class)(contentTypeBlueprintJson('StorefrontPage', [
+        'is_addressable' => true,
+        'title_field' => 'heading',
+        'fields' => [['key' => 'heading', 'type' => 'text', 'required' => true]],
+    ]));
+
+    app(ContentTypeModuleGenerator::class)($contentType);
+
+    $moduleDir = generatedModulesPath().'/content-storefront-pages';
+    $migration = (string) file_get_contents(File::glob($moduleDir.'/database/migrations/*.php')[0]);
+
+    // Le slug fait déjà le travail : pas d'index supplémentaire à payer.
+    expect($migration)->toContain('$table->id();')
+        ->and($migration)->toContain("\$table->string('slug')->unique();")
+        ->and($migration)->not->toContain('$table->uuid(');
+
+    $modelContents = (string) file_get_contents($moduleDir.'/src/Models/StorefrontPage.php');
+
+    expect($modelContents)->toContain("return 'slug';")
+        ->and($modelContents)->not->toContain('HasUuids')
+        ->and($modelContents)->not->toContain('uniqueIds');
+});

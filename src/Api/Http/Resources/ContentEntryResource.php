@@ -44,7 +44,11 @@ final class ContentEntryResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $attributes = ['id' => $this->resource->getKey()];
+        // `getRouteKey()` et non `getKey()` : l'entier séquentiel n'est pas un
+        // identifiant public (spec 02 §4.2), et depuis la bascule des routes
+        // il ne désignerait plus rien d'interrogeable — un client qui relit
+        // `data.id` doit pouvoir le rejouer sur `/content/{type}/{entry}`.
+        $attributes = ['id' => $this->resource->getRouteKey()];
 
         if ($this->contentType->is_addressable) {
             $attributes['slug'] = $this->resource->getAttribute('slug');

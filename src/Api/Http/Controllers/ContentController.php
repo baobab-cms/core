@@ -73,7 +73,7 @@ final class ContentController
         $query = $modelClass::query();
         $includes = (new ContentQueryBuilder($contentType))->applyIncludes($query, $this->requestIncludes($request));
 
-        $model = $query->find($entry);
+        $model = $this->whereRouteKey($query, $contentType, $entry)->first();
         abort_if($model === null, 404);
 
         $this->authorizeShow($contentType, $model);
@@ -102,7 +102,9 @@ final class ContentController
         return response()->json(
             ['data' => (new ContentEntryResource($entry, $contentType))->resolve($request)],
             201,
-            ['Location' => route('api.v1.content.show', ['type' => $type, 'entry' => $entry->getKey()])],
+            // `getRouteKey()` et non `getKey()` : l'en-tête doit désigner
+            // l'entrée par ce que la route accepte désormais.
+            ['Location' => route('api.v1.content.show', ['type' => $type, 'entry' => $entry->getRouteKey()])],
         );
     }
 
@@ -132,7 +134,7 @@ final class ContentController
             /** @var class-string<Model> $modelClass */
             $modelClass = $contentType->modelClass();
 
-            $model = ContentTrash::withTrashed($modelClass)->find($entry);
+            $model = $this->whereRouteKey(ContentTrash::withTrashed($modelClass), $contentType, $entry)->first();
             abort_if($model === null, 404);
 
             $this->authorizeInstance('forceDelete', $model);
@@ -168,7 +170,7 @@ final class ContentController
         /** @var class-string<Model> $modelClass */
         $modelClass = $contentType->modelClass();
 
-        $model = ContentTrash::onlyTrashed($modelClass)->find($entry);
+        $model = $this->whereRouteKey(ContentTrash::onlyTrashed($modelClass), $contentType, $entry)->first();
         abort_if($model === null, 404);
 
         $this->authorizeInstance('restore', $model);
@@ -218,11 +220,33 @@ final class ContentController
         /** @var class-string<Model> $modelClass */
         $modelClass = $type->modelClass();
 
-        $model = $modelClass::query()->find($id);
+        $model = $this->whereRouteKey($modelClass::query(), $type, $id)->first();
 
         abort_if($model === null, 404);
 
         return $model;
+    }
+
+    /**
+     * Contraint une requête sur la **clé de route** de l'entrée — `slug` pour
+     * un type adressable, `uuid` sinon (spec 02 §4.2). Jamais `find()`, qui
+     * interroge la clé primaire : l'entier n'est pas un identifiant public et
+     * l'exposer sur les six routes `{entry}` livrerait le volume du catalogue
+     * et le moyen de l'énumérer, `api_enabled` valant `true` par défaut.
+     *
+     * Bascule franche assumée (n° 166) : l'entier n'est plus accepté en repli.
+     * Un repli laisserait l'énumération possible, c'est-à-dire exactement le
+     * défaut que la règle corrige.
+     *
+     * @param  Builder<Model>  $query
+     * @return Builder<Model>
+     */
+    private function whereRouteKey(Builder $query, ContentType $type, int|string $entry): Builder
+    {
+        /** @var class-string<Model> $modelClass */
+        $modelClass = $type->modelClass();
+
+        return $query->where((new $modelClass)->getRouteKeyName(), $entry);
     }
 
     private function authorizeClass(string $ability, ContentType $type): User

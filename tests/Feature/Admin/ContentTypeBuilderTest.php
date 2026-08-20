@@ -128,7 +128,16 @@ it('evolves an existing type by adding a field, and keeps its data', function ()
 
     $type = ContentType::where('key', 'Gizmo')->firstOrFail();
 
-    DB::table('ct_gizmos')->insert(['title' => 'Déjà là', 'created_at' => now(), 'updated_at' => now()]);
+    // `uuid` explicite : l'insertion est volontairement brute pour simuler une
+    // donnée déjà en place, et contourne donc `HasUuids`, qui remplit la
+    // colonne sur les créations Eloquent. La colonne est NOT NULL — le type
+    // n'est pas adressable, son identifiant public est l'`uuid` (n° 168).
+    DB::table('ct_gizmos')->insert([
+        'uuid' => '0198c3f2-4b7a-7c3d-9e15-2a6b8d4f1c07',
+        'title' => 'Déjà là',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 
     $this->actingAs($actor, 'baobab')
         ->put('/admin/content-types/Gizmo', builderPayload([

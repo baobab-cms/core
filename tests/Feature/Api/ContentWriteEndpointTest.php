@@ -77,7 +77,7 @@ it('updates only the fields provided on a partial PATCH', function () {
     ]);
 
     $this->actingAs($owner, 'baobab')
-        ->patchJson("/api/v1/content/api-articles/{$entry->getKey()}", ['price' => 20000])
+        ->patchJson("/api/v1/content/api-articles/{$entry->getRouteKey()}", ['price' => 20000])
         ->assertOk()
         ->assertJsonPath('data.price', 20000)
         ->assertJsonPath('data.brand', 'Peugeot');
@@ -93,12 +93,12 @@ it('forbids updating another actor\'s entry without update_any', function () {
 
     $otherWithoutAny = apiActor(['content.api_article.update']);
     $this->actingAs($otherWithoutAny, 'baobab')
-        ->patchJson("/api/v1/content/api-articles/{$entry->getKey()}", ['price' => 1])
+        ->patchJson("/api/v1/content/api-articles/{$entry->getRouteKey()}", ['price' => 1])
         ->assertStatus(403);
 
     $otherWithAny = apiActor(['content.api_article.update_any']);
     $this->actingAs($otherWithAny, 'baobab')
-        ->patchJson("/api/v1/content/api-articles/{$entry->getKey()}", ['price' => 1])
+        ->patchJson("/api/v1/content/api-articles/{$entry->getRouteKey()}", ['price' => 1])
         ->assertOk();
 });
 
@@ -120,7 +120,7 @@ it('soft deletes on DELETE and the entry disappears from the public index', func
     ]);
 
     $this->actingAs($owner, 'baobab')
-        ->deleteJson("/api/v1/content/api-articles/{$entry->getKey()}")
+        ->deleteJson("/api/v1/content/api-articles/{$entry->getRouteKey()}")
         ->assertStatus(204);
 
     $this->getJson('/api/v1/content/api-articles')->assertOk()->assertJsonCount(0, 'data');
@@ -135,12 +135,12 @@ it('requires baobab.trash.purge for a force delete regardless of the own delete 
     ]);
 
     $this->actingAs($owner, 'baobab')
-        ->deleteJson("/api/v1/content/api-articles/{$entry->getKey()}?force=true")
+        ->deleteJson("/api/v1/content/api-articles/{$entry->getRouteKey()}?force=true")
         ->assertStatus(403);
 
     $purger = apiActor(['baobab.trash.purge']);
     $this->actingAs($purger, 'baobab')
-        ->deleteJson("/api/v1/content/api-articles/{$entry->getKey()}?force=true")
+        ->deleteJson("/api/v1/content/api-articles/{$entry->getRouteKey()}?force=true")
         ->assertStatus(204);
 
     expect(ContentTrash::withTrashed($carClass)->find($entry->getKey()))->toBeNull();
@@ -156,11 +156,11 @@ it('publishes a draft entry and forbids it without the publish permission', func
 
     $noPermission = apiActor([]);
     $this->actingAs($noPermission, 'baobab')
-        ->postJson("/api/v1/content/api-articles/{$entry->getKey()}/publish")
+        ->postJson("/api/v1/content/api-articles/{$entry->getRouteKey()}/publish")
         ->assertStatus(403);
 
     $this->actingAs($owner, 'baobab')
-        ->postJson("/api/v1/content/api-articles/{$entry->getKey()}/publish")
+        ->postJson("/api/v1/content/api-articles/{$entry->getRouteKey()}/publish")
         ->assertOk()
         ->assertJsonPath('data.status', 'published');
 });
@@ -174,13 +174,13 @@ it('restores a trashed entry, reverting to draft when it was published, and 404s
     ]);
 
     $this->actingAs($owner, 'baobab')
-        ->postJson("/api/v1/content/api-articles/{$entry->getKey()}/restore")
+        ->postJson("/api/v1/content/api-articles/{$entry->getRouteKey()}/restore")
         ->assertStatus(404);
 
     $entry->delete();
 
     $this->actingAs($owner, 'baobab')
-        ->postJson("/api/v1/content/api-articles/{$entry->getKey()}/restore")
+        ->postJson("/api/v1/content/api-articles/{$entry->getRouteKey()}/restore")
         ->assertOk()
         ->assertJsonPath('data.status', 'draft');
 });
@@ -194,10 +194,10 @@ it('lists only manual revisions after a series of patches', function () {
     ]);
 
     $this->actingAs($owner, 'baobab')
-        ->patchJson("/api/v1/content/api-articles/{$entry->getKey()}", ['price' => 20000])
+        ->patchJson("/api/v1/content/api-articles/{$entry->getRouteKey()}", ['price' => 20000])
         ->assertOk();
     $this->actingAs($owner, 'baobab')
-        ->patchJson("/api/v1/content/api-articles/{$entry->getKey()}", ['price' => 30000])
+        ->patchJson("/api/v1/content/api-articles/{$entry->getRouteKey()}", ['price' => 30000])
         ->assertOk();
 
     Revision::create([
@@ -209,7 +209,7 @@ it('lists only manual revisions after a series of patches', function () {
     ]);
 
     $response = $this->actingAs($owner, 'baobab')
-        ->getJson("/api/v1/content/api-articles/{$entry->getKey()}/revisions")
+        ->getJson("/api/v1/content/api-articles/{$entry->getRouteKey()}/revisions")
         ->assertOk();
 
     $types = collect($response->json('data'))->pluck('type');

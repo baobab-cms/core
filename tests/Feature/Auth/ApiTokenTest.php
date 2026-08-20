@@ -38,7 +38,7 @@ it('denies a Bearer token missing the required ability even though the user hold
     $token = app(CreateApiToken::class)($actor, 'ci', ['content.api_article.create']);
 
     $this->withHeader('Authorization', "Bearer {$token->plainTextToken}")
-        ->postJson("/api/v1/content/api-articles/{$entry->getKey()}/publish")
+        ->postJson("/api/v1/content/api-articles/{$entry->getRouteKey()}/publish")
         ->assertStatus(403);
 });
 

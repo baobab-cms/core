@@ -116,17 +116,21 @@ final class CompileOpenApiSpec
                     ] + $errorResponses,
                 ],
             ],
+            // `entry` est une chaîne et non un entier : la route se résout sur
+            // l'identifiant public — `slug` pour un type adressable, `uuid`
+            // sinon (spec 02 §4.2). La clé primaire entière n'est plus
+            // acceptée.
             "/content/{$slug}/{entry}" => [
                 'get' => [
                     'summary' => "Afficher une entrée {$label}",
                     'tags' => [$contentType->key],
-                    'parameters' => [['name' => 'entry', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'integer']]],
+                    'parameters' => [['name' => 'entry', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']]],
                     'responses' => ['200' => ['description' => 'OK', 'content' => ['application/json' => ['schema' => $ref]]]] + $errorResponses,
                 ],
                 'patch' => [
                     'summary' => "Modifier une entrée {$label} (partiel)",
                     'tags' => [$contentType->key],
-                    'parameters' => [['name' => 'entry', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'integer']]],
+                    'parameters' => [['name' => 'entry', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']]],
                     'requestBody' => ['content' => ['application/json' => ['schema' => $ref]]],
                     'responses' => [
                         '200' => ['description' => 'OK', 'content' => ['application/json' => ['schema' => $ref]]],
@@ -136,7 +140,7 @@ final class CompileOpenApiSpec
                 'delete' => [
                     'summary' => "Supprimer une entrée {$label} (`?force=true` pour une purge définitive)",
                     'tags' => [$contentType->key],
-                    'parameters' => [['name' => 'entry', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'integer']]],
+                    'parameters' => [['name' => 'entry', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']]],
                     'responses' => ['204' => ['description' => 'Supprimé']] + $errorResponses,
                 ],
             ],
@@ -144,7 +148,7 @@ final class CompileOpenApiSpec
                 'post' => [
                     'summary' => "Publier une entrée {$label}",
                     'tags' => [$contentType->key],
-                    'parameters' => [['name' => 'entry', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'integer']]],
+                    'parameters' => [['name' => 'entry', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']]],
                     'responses' => [
                         '200' => ['description' => 'OK', 'content' => ['application/json' => ['schema' => $ref]]],
                         '409' => ['$ref' => '#/components/responses/Conflict'],
@@ -155,7 +159,7 @@ final class CompileOpenApiSpec
                 'post' => [
                     'summary' => "Restaurer une entrée {$label} depuis la corbeille",
                     'tags' => [$contentType->key],
-                    'parameters' => [['name' => 'entry', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'integer']]],
+                    'parameters' => [['name' => 'entry', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']]],
                     'responses' => ['200' => ['description' => 'OK', 'content' => ['application/json' => ['schema' => $ref]]]] + $errorResponses,
                 ],
             ],
@@ -163,7 +167,7 @@ final class CompileOpenApiSpec
                 'get' => [
                     'summary' => "Lister les révisions d'une entrée {$label}",
                     'tags' => [$contentType->key],
-                    'parameters' => [['name' => 'entry', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'integer']]],
+                    'parameters' => [['name' => 'entry', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string']]],
                     'responses' => ['200' => ['description' => 'OK', 'content' => ['application/json' => ['schema' => ['type' => 'array', 'items' => ['type' => 'object']]]]]] + $errorResponses,
                 ],
             ],
