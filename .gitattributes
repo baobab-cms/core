@@ -1,0 +1,18 @@
+# Ce qui ne doit pas voyager dans une distribution du paquet.
+#
+# `export-ignore` est honoré par `git archive` — donc par le script de
+# construction de l'archive ZIP (spec 15 §2.1, M8 point 4) — et par les
+# téléchargements « dist » que Composer récupère depuis GitHub une fois le
+# paquet publié. Une seule déclaration sert donc tous les canaux, plutôt qu'une
+# liste d'exclusions recopiée dans chaque outil.
+#
+# Le principe : le paquet distribué contient son code et ses ressources, pas de
+# quoi le développer.
+
+/tests               export-ignore
+/phpunit.xml         export-ignore
+/phpstan.neon        export-ignore
+/testbench.yaml      export-ignore
+/.phpunit.cache      export-ignore
+/.gitignore          export-ignore
+/.gitattributes      export-ignore
