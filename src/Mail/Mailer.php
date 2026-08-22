@@ -57,7 +57,15 @@ final class Mailer
 
         $text = trim(strip_tags($body));
 
-        SendQueuedMail::dispatch($key, $payload['to'], $payload['subject'], $html, $text)
+        SendQueuedMail::dispatch(
+            $key,
+            $payload['to'],
+            $payload['subject'],
+            $html,
+            $text,
+            $template->fromAddress,
+            $template->fromName,
+        )
             ->onConnection('baobab')
             ->onQueue('baobab');
     }

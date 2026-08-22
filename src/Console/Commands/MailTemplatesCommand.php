@@ -4,38 +4,36 @@ declare(strict_types=1);
 
 namespace Baobab\Console\Commands;
 
-use Baobab\Modules\Models\Module;
+use Baobab\Mail\TemplateRegistry;
 use Illuminate\Console\Command;
 
 /**
  * Liste les templates d'e-mails déclarés — Core (`config('baobab.mail.templates')`)
- * et modules actifs (`manifest['mails']`, spec 13 §3.1, §6). Aucune notion de
- * personnalisation (§3.2 — M8) : uniquement l'état « déclaré ».
+ * et modules actifs (`manifest['mails']`, spec 13 §3.1, §6), avec leur état
+ * « défaut / personnalisé » (§3.2).
+ *
+ * L'énumération vient de `TemplateRegistry::all()` et n'est plus refaite ici :
+ * l'écran `admin/mails` liste la même chose, et deux boucles parallèles
+ * finiraient par ne plus dire la même chose (patron `ModuleInventory`, n° 113).
  */
 final class MailTemplatesCommand extends Command
 {
     protected $signature = 'baobab:mail:templates';
 
-    protected $description = 'Liste les templates d\'e-mails déclarés (Core + modules actifs).';
+    protected $description = 'Liste les templates d\'e-mails déclarés (Core + modules actifs) et leur état.';
 
-    public function handle(): int
+    public function handle(TemplateRegistry $templates): int
     {
         $rows = [];
+        $customised = $templates->customisedKeys();
 
-        /** @var list<array<string, mixed>> $coreTemplates */
-        $coreTemplates = config('baobab.mail.templates', []);
-
-        foreach ($coreTemplates as $mail) {
-            $rows[] = ['core', $mail['key'], $mail['description'] ?? ''];
-        }
-
-        foreach (Module::where('status', 'active')->get() as $module) {
-            /** @var list<array<string, mixed>> $mails */
-            $mails = $module->manifest['mails'] ?? [];
-
-            foreach ($mails as $mail) {
-                $rows[] = [$module->name, $mail['key'], $mail['description'] ?? ''];
-            }
+        foreach ($templates->all() as $declaration) {
+            $rows[] = [
+                $declaration->source,
+                $declaration->key,
+                in_array($declaration->key, $customised, true) ? 'personnalisé' : 'défaut',
+                $declaration->description,
+            ];
         }
 
         if ($rows === []) {
@@ -44,7 +42,7 @@ final class MailTemplatesCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->table(['Module', 'Clé', 'Description'], $rows);
+        $this->table(['Module', 'Clé', 'État', 'Description'], $rows);
 
         return self::SUCCESS;
     }

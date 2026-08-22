@@ -32,6 +32,8 @@ final class SendQueuedMail implements ShouldQueue
         public readonly string $subject,
         public readonly string $html,
         public readonly string $text,
+        public readonly ?string $fromAddress = null,
+        public readonly ?string $fromName = null,
     ) {}
 
     /**
@@ -44,7 +46,13 @@ final class SendQueuedMail implements ShouldQueue
 
     public function handle(): void
     {
-        Mail::to($this->to)->send(new RenderedMail($this->subject, $this->html, $this->text));
+        Mail::to($this->to)->send(new RenderedMail(
+            $this->subject,
+            $this->html,
+            $this->text,
+            $this->fromAddress,
+            $this->fromName,
+        ));
 
         Hook::action('baobab.mail.sent', $this->templateKey, $this->to);
     }

@@ -2,6 +2,7 @@
 
 use Baobab\Actions\Modules\ActivateModule;
 use Baobab\Actions\Modules\InstallModule;
+use Baobab\Mail\Actions\SaveMailTemplate;
 use Illuminate\Support\Facades\Artisan;
 
 it('lists the core.test template', function () {
@@ -24,4 +25,19 @@ it('lists a template declared by an active module', function () {
     expect($exitCode)->toBe(0)
         ->and($output)->toContain('acme.mailer.welcome')
         ->and($output)->toContain('acme/mailer');
+});
+
+it('tells a customised template from one left at its default', function () {
+    $before = Artisan::call('baobab:mail:templates') === 0 ? Artisan::output() : '';
+
+    expect($before)->toContain('défaut');
+
+    app(SaveMailTemplate::class)('core.test', [
+        'subject' => 'Mon sujet de test',
+        'body' => 'Envoyé le {{ sent_at }}.',
+    ]);
+
+    Artisan::call('baobab:mail:templates');
+
+    expect(Artisan::output())->toContain('personnalisé');
 });

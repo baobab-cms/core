@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Baobab\Mail;
 
 use Baobab\Mail\Exceptions\InvalidMailTemplateException;
+use Baobab\Mail\Support\MailTemplateVariables;
 use Baobab\Mail\Support\PlaceholderRenderer;
 use Baobab\Modules\ModuleManifest;
 
@@ -44,12 +45,13 @@ final class MailTemplateValidator
 
         $placeholders = $this->renderer->placeholdersIn(($defaults['subject'] ?? '').' '.($defaults['body'] ?? ''));
 
-        foreach ($mail['variables'] as $name => $definition) {
-            $required = is_array($definition) && ($definition['required'] ?? false);
+        /** @var array<string, string|array{label: string, required?: bool}> $declared */
+        $declared = $mail['variables'];
 
-            if ($required && ! in_array($name, $placeholders, true)) {
-                throw InvalidMailTemplateException::missingRequiredVariable($mail['key'], $name);
-            }
+        $missing = (new MailTemplateVariables($declared))->missingRequiredIn($placeholders);
+
+        if ($missing !== []) {
+            throw InvalidMailTemplateException::missingRequiredVariable($mail['key'], $missing[0]);
         }
     }
 }

@@ -39,6 +39,27 @@ final class PlaceholderRenderer
     }
 
     /**
+     * Toutes les variables **citées** par un texte : insertions et sujets de
+     * blocs conditionnels. Distinct de `placeholdersIn()` à dessein, et les
+     * deux ont chacun leur usage dans la validation d'un template personnalisé
+     * (spec 13 §3.3) : une variable `required` doit être réellement
+     * *insérée* — la tester dans un `{{# if }}` ne garantit pas qu'elle
+     * apparaisse — tandis qu'une variable *inconnue* est fautive où qu'elle
+     * soit citée, y compris dans la condition d'un bloc.
+     *
+     * @return list<string>
+     */
+    public function variablesIn(string $template): array
+    {
+        preg_match_all(self::CONDITIONAL_PATTERN, $template, $conditionals);
+
+        return array_values(array_unique([
+            ...$this->placeholdersIn($template),
+            ...$conditionals[1],
+        ]));
+    }
+
+    /**
      * @param  array<string, mixed>  $variables
      */
     public function render(string $template, array $variables): string

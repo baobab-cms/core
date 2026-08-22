@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace Baobab\Mail;
 
 /**
- * Sujet + corps par défaut d'un template résolu (spec 13 §3.1). Pas de lookup
- * de personnalisation admin ici — la table `mail_templates` (§3.2) est M8, ce
- * DTO ne porte que ce que le code du module a déclaré.
+ * Sujet + corps **résolus** d'un template (spec 13 §3.1-3.2) : le défaut du
+ * code, recouvert par la personnalisation admin quand il y en a une. C'est ce
+ * que `Mailer` rend ; la déclaration du code, elle, est
+ * `MailTemplateDeclaration`.
+ *
+ * `$fromAddress`/`$fromName` portent l'expéditeur par template (§3.2,
+ * « optionnel, sinon global ») : `null` signifie « l'expéditeur global de
+ * `config/mail.php` », jamais une valeur codée en dur ici.
  */
 final readonly class MailTemplate
 {
@@ -15,5 +20,8 @@ final readonly class MailTemplate
         public string $key,
         public string $subject,
         public string $body,
+        public ?string $fromAddress = null,
+        public ?string $fromName = null,
+        public bool $customised = false,
     ) {}
 }
