@@ -1516,6 +1516,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            if ($user->can('baobab.system.mail.templates')) {
+                $coreItems[] = new SidebarItem(
+                    id: -19,
+                    label: __('baobab::admin.sidebar.mails'),
+                    icon: 'bi-envelope-paper',
+                    url: route('admin.mails.index'),
+                    order: -8,
+                );
+            }
+
             if ($user->can('baobab.system.modules.manage')) {
                 $coreItems[] = new SidebarItem(
                     id: -17,

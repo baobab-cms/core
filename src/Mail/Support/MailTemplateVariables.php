@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Baobab\Mail\Support;
 
+use Illuminate\Support\Arr;
+
 /**
  * Le contrat de variables d'un template d'e-mail (spec 13 §3.1), normalisé une
  * fois : le manifeste accepte indifféremment la forme courte (`"nom": "libellé"`)
@@ -46,6 +48,37 @@ final readonly class MailTemplateVariables
     public function names(): array
     {
         return array_keys($this->declaration);
+    }
+
+    /**
+     * Des valeurs de substitution pour l'aperçu et l'envoi de test (spec 13
+     * §3.4) : **chaque variable est rendue par son propre libellé**, si bien
+     * que `{{ user.name }}` s'affiche « Nom du destinataire » à sa place.
+     *
+     * **Écart assumé avec la lettre du §3.4**, tranché avec l'utilisateur le
+     * 22 août 2026 (suivi n° 190) : la spec parle de « données d'exemple
+     * déclarées par le module », mais aucun mécanisme de déclaration n'existe
+     * — le bloc `mails` du manifeste est fermé (`additionalProperties: false`)
+     * et n'admet que `key`, `description`, `variables` et `defaults`. En
+     * ouvrir un serait amender le contrat de manifeste. Le libellé, lui, est
+     * déjà la description humaine de la variable : il remplit la fonction de
+     * l'aperçu — voir la mise en page et où les valeurs atterrissent — sans
+     * rien ajouter au contrat.
+     *
+     * La notation pointée est ré-imbriquée, `PlaceholderRenderer` résolvant
+     * `user.name` en traversée de tableaux et non par une clé littérale.
+     *
+     * @return array<string, mixed>
+     */
+    public function sampleValues(): array
+    {
+        $values = [];
+
+        foreach ($this->labels() as $name => $label) {
+            Arr::set($values, $name, $label);
+        }
+
+        return $values;
     }
 
     /**

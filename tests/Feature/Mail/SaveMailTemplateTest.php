@@ -2,6 +2,7 @@
 
 use Baobab\Audit\Models\AuditEntry;
 use Baobab\Mail\Actions\SaveMailTemplate;
+use Baobab\Mail\Actions\SendTestMail;
 use Baobab\Mail\Exceptions\InvalidMailTemplateException;
 use Baobab\Mail\Exceptions\MailTemplateNotFoundException;
 use Baobab\Mail\Jobs\SendQueuedMail;
@@ -169,4 +170,40 @@ it('applies a per-template sender, and falls back to the global one without it',
 
     Queue::assertPushed(SendQueuedMail::class, fn (SendQueuedMail $job) => $job->to === 'autre@example.com'
         && $job->fromAddress === null);
+});
+
+it('keeps the real send time when the caller also passes sample values', function () {
+    Queue::fake();
+
+    $key = declareMailTemplate(['user.name' => 'Nom'], 'Sujet', 'Envoyé le {{ sent_at }} à {{ user.name }}');
+
+    // Ce que fait l'écran : il passe les libellés en valeurs d'exemple. Ils ne
+    // doivent pas recouvrir `sent_at`, que `SendTestMail` calcule vraiment.
+    app(SendTestMail::class)('dest@example.com', $key, [
+        'sent_at' => 'Date/heure d\'envoi du test',
+        'user' => ['name' => 'Nom du destinataire'],
+    ]);
+
+    Queue::assertPushed(SendQueuedMail::class, function (SendQueuedMail $job): bool {
+        return ! str_contains($job->html, 'Date/heure d\'envoi du test')
+            && str_contains($job->html, 'Nom du destinataire')
+            && (bool) preg_match('#\d{2}/\d{2}/\d{4}#', $job->html);
+    });
+});
+
+it('strips HTML entities from the plain-text alternative', function () {
+    Queue::fake();
+
+    $key = declareMailTemplate(['owner' => 'Propriétaire'], 'Sujet', 'Bonjour {{ owner }}.');
+
+    // `PlaceholderRenderer` échappe pour le HTML ; la partie texte ne doit pas
+    // hériter de cet échappement (défaut vu dans un vrai e-mail, présent depuis
+    // le M5).
+    app(Mailer::class)->send($key, 'dest@example.com', ['owner' => "l'équipe"]);
+
+    Queue::assertPushed(SendQueuedMail::class, function (SendQueuedMail $job): bool {
+        return str_contains($job->text, "l'équipe")
+            && ! str_contains($job->text, '&#039;')
+            && ! str_contains($job->text, '&');
+    });
 });

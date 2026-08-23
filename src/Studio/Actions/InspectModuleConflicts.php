@@ -7,7 +7,7 @@ namespace Baobab\Studio\Actions;
 use Baobab\Studio\Blueprint\ModuleBlueprint;
 use Baobab\Studio\Generator\ModuleGenerator;
 use Baobab\Studio\Models\ModuleBlueprintDraft;
-use Baobab\Studio\Support\LineDiff;
+use Baobab\Support\LineDiff;
 
 /**
  * Fichiers d'un module déjà généré qui seraient **écrasés** par une

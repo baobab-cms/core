@@ -1,6 +1,6 @@
 <?php
 
-use Baobab\Studio\Support\LineDiff;
+use Baobab\Support\LineDiff;
 
 /**
  * @param  list<array{type: string, line: string}>|null  $diff

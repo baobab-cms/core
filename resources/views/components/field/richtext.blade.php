@@ -2,6 +2,15 @@
     'name',
     'label' => null,
     'value' => null,
+    /*
+        Menu d'insertion optionnel : nom de variable → libellé. Fourni, un
+        sélecteur apparaît dans la barre d'outils et insère le placeholder au
+        curseur — l'intégrateur ne tape jamais les accolades à la main (spec 13
+        §3.4). Absent, le composant est exactement celui d'avant : c'est ce qui
+        permet de l'enrichir sans toucher les écrans de contenu qui l'utilisent
+        déjà.
+    */
+    'variables' => [],
 ])
 
 <div class="mb-4">
@@ -51,6 +60,20 @@
             <button type="button" x-on:click="clearFormat()" class="rounded px-2 py-1 text-xs hover:bg-surface" aria-label="{{ __('baobab::admin.components.richtext_clear_format') }}">&#10005;</button>
             <button type="button" x-on:click="undo()" class="rounded px-2 py-1 text-xs hover:bg-surface" aria-label="Annuler">&#8630;</button>
             <button type="button" x-on:click="redo()" class="rounded px-2 py-1 text-xs hover:bg-surface" aria-label="Refaire">&#8631;</button>
+
+            @if ($variables !== [])
+                <span class="mx-1 h-4 w-px bg-border"></span>
+                <select
+                    x-on:change="insertVariable($event.target.value); $event.target.value = ''"
+                    class="rounded border border-border bg-surface px-2 py-1 text-xs text-foreground"
+                    aria-label="{{ __('baobab::admin.mails.insert') }}"
+                >
+                    <option value="">{{ __('baobab::admin.mails.insert') }}</option>
+                    @foreach ($variables as $variableName => $variableLabel)
+                        <option value="{{ $variableName }}">{{ $variableLabel }}</option>
+                    @endforeach
+                </select>
+            @endif
         </div>
 
         <div x-ref="editorRoot" class="tiptap px-3 py-2 text-sm text-foreground" data-tiptap-editor></div>
@@ -99,6 +122,29 @@
                     });
 
                     this.updateActive();
+                },
+
+                // Texte brut inséré au curseur : le placeholder n'est pas un
+                // noeud ProseMirror, seulement les caractères que
+                // `PlaceholderRenderer` saura relire côté serveur. Rien de
+                // « riche » ici, et c'est voulu — un noeud personnalisé
+                // survivrait mal au copier-coller et à la version texte.
+                insertVariable(name) {
+                    if (! name) {
+                        return;
+                    }
+
+                    // Les accolades sont assemblées en JavaScript pour que Blade
+                    // n'en voie jamais la paire ouvrante, qu'il compilerait en
+                    // `echo` PHP. L'échappement `@` de Blade a été essayé et
+                    // écarté : il est fragile ici, un simple commentaire
+                    // contenant la séquence ouvrante suffit à décaler la
+                    // correspondance jusqu'au premier `}` doublé rencontré plus
+                    // bas — défaut réel, trouvé en vérification navigateur.
+                    const open = '{' + '{';
+                    const close = '}' + '}';
+
+                    editor.chain().focus().insertContent(open + ' ' + name + ' ' + close).run();
                 },
 
                 updateActive() {

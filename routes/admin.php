@@ -13,6 +13,7 @@ use Baobab\Admin\Content\Http\Controllers\ContentController;
 use Baobab\Admin\Content\Http\Controllers\ContentTypesController;
 use Baobab\Admin\Content\Http\Controllers\TrashController;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
+use Baobab\Admin\Mail\Http\Controllers\MailTemplatesController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
 use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
 use Baobab\Admin\Menus\Http\Controllers\MenusController;
@@ -343,4 +344,26 @@ Route::prefix('content/{contentType}')
         Route::post('/{entry}/lock/heartbeat', [ContentController::class, 'heartbeat'])->name('lock.heartbeat');
         Route::post('/{entry}/lock/release', [ContentController::class, 'releaseLock'])->name('lock.release');
         Route::post('/{entry}/lock/take-over', [ContentController::class, 'takeOverLock'])->name('lock.take-over');
+    });
+
+// Personnalisation des templates d'e-mails (spec 13 §3.2-3.4, M8 point 7,
+// Pass A2). Liaison par la clé du template et non par l'id de la ligne
+// `mail_templates` : un template non personnalisé n'a pas de ligne du tout,
+// et c'est pourtant lui qu'on vient éditer en premier.
+Route::middleware('can:baobab.system.mail.templates')
+    ->prefix('mails')
+    ->name('mails.')
+    ->group(function (): void {
+        Route::get('/', [MailTemplatesController::class, 'index'])->name('index');
+        Route::get('/{key}/edit', [MailTemplatesController::class, 'edit'])->name('edit');
+        // `POST` et non `PUT`, contrairement aux autres écrans d'édition : ce
+        // formulaire a **deux** cibles (enregistrer, et prévisualiser via
+        // `formaction`), or le `_method` posé par le method spoofing vaut pour
+        // le formulaire entier — le bouton d'aperçu partait donc en `PUT` vers
+        // une route qui ne l'accepte pas. Défaut trouvé en vérification
+        // navigateur ; ne pas spoofer est la seule issue sans JavaScript.
+        Route::post('/{key}', [MailTemplatesController::class, 'update'])->name('update');
+        Route::post('/{key}/restore', [MailTemplatesController::class, 'restore'])->name('restore');
+        Route::post('/{key}/preview', [MailTemplatesController::class, 'preview'])->name('preview');
+        Route::post('/{key}/test', [MailTemplatesController::class, 'test'])->name('test');
     });

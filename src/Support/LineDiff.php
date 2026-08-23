@@ -2,11 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Baobab\Studio\Support;
+namespace Baobab\Support;
 
 /**
- * Diff ligne à ligne entre deux versions d'un fichier généré (spec 01 §5.4,
- * « diff proposé en cas de conflit »).
+ * Diff ligne à ligne entre deux textes. Écrit pour les fichiers générés du
+ * Studio (spec 01 §5.4, « diff proposé en cas de conflit »), il sert aussi à
+ * l'écran des e-mails, qui compare deux versions du défaut d'un template
+ * (spec 13 §3.2).
+ *
+ * **Déplacé de `Baobab\Studio\Support` vers ici le 22 août 2026** : comparer
+ * deux chaînes ligne à ligne n'appartient à aucun domaine métier, et faire
+ * dépendre le domaine Mail du domaine Studio pour un utilitaire de texte
+ * aurait été un couplage sans justification.
  *
  * **Pourquoi une implémentation maison plutôt qu'une librairie** :
  * `sebastian/diff` est bien présent dans `vendor/`, mais uniquement comme
