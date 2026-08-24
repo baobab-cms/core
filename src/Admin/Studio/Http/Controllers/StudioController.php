@@ -15,6 +15,7 @@ use Baobab\Studio\Exceptions\ColumnHasNullsException;
 use Baobab\Studio\Exceptions\DestructiveSchemaChangeNotConfirmedException;
 use Baobab\Studio\Exceptions\GeneratedDraftCannotBeDeletedException;
 use Baobab\Studio\Exceptions\InvalidModuleBlueprintException;
+use Baobab\Studio\Exceptions\ModuleGenerationFailedException;
 use Baobab\Studio\Models\ModuleBlueprintDraft;
 use Baobab\Studio\Wizard\StudioStepHandler;
 use Baobab\Studio\Wizard\StudioWizardSteps;
@@ -157,7 +158,7 @@ final class StudioController
             }
 
             $result = $action($draft, $overwrite, (bool) ($validated['confirm_destructive'] ?? false));
-        } catch (InvalidModuleBlueprintException|DestructiveSchemaChangeNotConfirmedException|ColumnHasNullsException|PermissionRemovalNotConfirmedException $e) {
+        } catch (InvalidModuleBlueprintException|DestructiveSchemaChangeNotConfirmedException|ColumnHasNullsException|PermissionRemovalNotConfirmedException|ModuleGenerationFailedException $e) {
             // Ces messages sont déjà écrits pour un humain — les afficher
             // tels quels plutôt qu'en rédiger une seconde version, forcément
             // divergente (patron de l'écran Modules, Pass A du point 9).

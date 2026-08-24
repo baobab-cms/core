@@ -147,6 +147,23 @@ it('renders a flashed session toast', function () {
     expect($html)->toContain('Saved');
 });
 
+/**
+ * Position et persistance, demandées en vérification du chantier 2 (n° 205) :
+ * en bas de page, un message long chevauchait le pied de la sidebar, et cinq
+ * secondes ne suffisent pas à lire une erreur qui dit quoi corriger.
+ */
+it('renders toasts at the top, and keeps the ones that require an action', function () {
+    $html = Blade::render('<x-baobab::toasts />');
+
+    expect($html)
+        ->toContain('top-4')
+        ->not->toContain('bottom-4')
+        // Le délai d'effacement ne s'applique qu'aux types qui n'appellent
+        // aucune correction.
+        ->toContain("type !== 'danger'")
+        ->toContain("type !== 'warning'");
+});
+
 it('renders x-baobab::form with csrf and method spoofing', function () {
     $html = Blade::render('<x-baobab::form method="PUT" action="/admin/roles/1"></x-baobab::form>');
 

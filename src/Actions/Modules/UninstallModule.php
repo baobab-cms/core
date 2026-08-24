@@ -9,9 +9,8 @@ use Baobab\Modules\Exceptions\ModuleNotFoundException;
 use Baobab\Modules\Exceptions\ModuleStillActiveException;
 use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleUploadPaths;
+use Baobab\Modules\Support\ModuleMigrations;
 use Baobab\Themes\Actions\UnpublishThemeAssets;
-use Illuminate\Database\Migrations\Migrator;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Spatie\Permission\Models\Permission;
 
@@ -36,7 +35,7 @@ use Spatie\Permission\Models\Permission;
 final class UninstallModule
 {
     public function __construct(
-        private readonly Migrator $migrator,
+        private readonly ModuleMigrations $migrations,
         private readonly UnpublishThemeAssets $unpublishAssets,
     ) {}
 
@@ -53,7 +52,7 @@ final class UninstallModule
         }
 
         if ($purge) {
-            $this->rollbackMigrations($module->path);
+            $this->migrations->rollback((string) $module->path);
             $this->purgePermissions($module);
         }
 
@@ -116,35 +115,6 @@ final class UninstallModule
                 return;
             }
         }
-    }
-
-    /**
-     * `migrate:rollback` ne regarde par défaut que le **dernier lot**. Les
-     * migrations d'un module installé avant que quoi que ce soit d'autre ne
-     * migre n'y sont plus : sans `--step`, la purge ne défaisait rien du tout,
-     * et en silence — les tables du module restaient en base alors que la CLI
-     * comme l'écran annonçaient leur suppression. Défaut relevé le 10 août
-     * 2026 en vérification navigateur (M8 point 9, Pass A).
-     *
-     * On demande donc autant d'étapes qu'il y a de migrations jouées. Laravel
-     * ignore celles qui ne se trouvent pas dans `--path` (« Migration not
-     * found »), ce qui laisse exactement les migrations de ce module, quel que
-     * soit le lot dans lequel elles ont été jouées.
-     */
-    private function rollbackMigrations(string $path): void
-    {
-        $migrationsPath = $path.'/database/migrations';
-
-        if (! is_dir($migrationsPath)) {
-            return;
-        }
-
-        Artisan::call('migrate:rollback', [
-            '--path' => $migrationsPath,
-            '--realpath' => true,
-            '--force' => true,
-            '--step' => count($this->migrator->getRepository()->getRan()),
-        ]);
     }
 
     private function purgePermissions(Module $module): void
