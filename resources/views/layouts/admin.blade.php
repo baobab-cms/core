@@ -20,6 +20,21 @@
 
     @include('baobab::layouts.partials.staging-noindex-banner')
 
+    {{--
+        Après les bandeaux, et non par-dessus : un toast en `fixed` masquait
+        l'avertissement d'environnement non-production, or un bandeau qui
+        prévient ne doit jamais être caché par un message passager
+        (demandé le 24 août 2026, suivi n° 205).
+
+        En flux normal plutôt qu'en `fixed`, ce que la structure autorise :
+        `<body>` est une colonne de hauteur fixe dont seul `<main>` défile, si
+        bien que tout ce qui se trouve ici reste visible sans avoir à sortir du
+        flux. Contrepartie assumée : l'apparition d'un toast décale le contenu
+        vers le bas de sa hauteur. C'est le prix d'un message qui ne recouvre
+        jamais rien.
+    --}}
+    <x-baobab::toasts />
+
     @include('baobab::layouts.partials.admin-topbar')
 
     <div class="flex flex-1 overflow-hidden">
@@ -44,8 +59,6 @@
     @include('baobab::layouts.partials.admin-footer')
 
     @include('baobab::layouts.partials.admin-omnibox')
-
-    <x-baobab::toasts />
 
     @stack('admin.scripts')
 </body>

@@ -149,19 +149,34 @@ it('renders a flashed session toast', function () {
 
 /**
  * Position et persistance, demandées en vérification du chantier 2 (n° 205) :
- * en bas de page, un message long chevauchait le pied de la sidebar, et cinq
+ * en bas de page, un message long chevauchait le pied de la sidebar ; en
+ * `fixed` tout en haut, il masquait le bandeau d'environnement. Et cinq
  * secondes ne suffisent pas à lire une erreur qui dit quoi corriger.
  */
-it('renders toasts at the top, and keeps the ones that require an action', function () {
+it('renders toasts in the flow, and keeps the ones that require an action', function () {
     $html = Blade::render('<x-baobab::toasts />');
 
     expect($html)
-        ->toContain('top-4')
+        // Hors flux, le toast recouvrait forcément quelque chose — un bandeau
+        // système en l'occurrence.
+        ->not->toContain('fixed')
         ->not->toContain('bottom-4')
         // Le délai d'effacement ne s'applique qu'aux types qui n'appellent
         // aucune correction.
         ->toContain("type !== 'danger'")
         ->toContain("type !== 'warning'");
+});
+
+/**
+ * Le layout place les toasts **après** les bandeaux système, et une seule
+ * fois : en `fixed` au bas du document, ils passaient par-dessus tout.
+ */
+it('places the toasts after the system banners in the admin layout', function () {
+    $layout = file_get_contents(__DIR__.'/../../resources/views/layouts/admin.blade.php');
+
+    expect(substr_count((string) $layout, '<x-baobab::toasts />'))->toBe(1)
+        ->and(strpos((string) $layout, 'staging-noindex-banner'))
+        ->toBeLessThan((int) strpos((string) $layout, '<x-baobab::toasts />'));
 });
 
 it('renders x-baobab::form with csrf and method spoofing', function () {

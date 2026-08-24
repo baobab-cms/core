@@ -34,18 +34,23 @@
         bas à droite, un message long chevauchait le pied de la sidebar et se
         lisait mal. Le regard revient en haut après une action, pas en bas.
 
+        **Dans le flux**, et placé par le layout juste après les bandeaux
+        système : en `fixed`, le toast masquait l'avertissement d'environnement
+        non-production. Aucune position hors flux n'est nécessaire ici — le
+        haut de la page admin ne défile pas, seul `<main>` le fait.
+
         Largeur bornée et centrée : un message d'erreur fait volontiers trois
         lignes, et une bande qui traverse tout l'écran se lit moins bien qu'un
-        bloc. `pointer-events-none` sur le conteneur laisse cliquer ce qu'il
-        survole, chaque toast rétablissant le sien pour rester congédiable.
+        bloc. Le conteneur n'occupe aucune hauteur tant qu'il est vide, les
+        marges vivant sur les toasts eux-mêmes.
     --}}
-    class="pointer-events-none fixed inset-x-0 top-4 z-50 mx-auto flex w-full max-w-2xl flex-col items-center gap-2 px-4"
+    class="relative z-40 mx-auto flex w-full max-w-2xl flex-col items-center gap-2 px-4"
 >
     <template x-for="toast in toasts" :key="toast.id">
         <div
             x-show="true"
             x-on:click="dismiss(toast.id)"
-            class="pointer-events-auto w-full cursor-pointer rounded-md border px-4 py-2 text-sm shadow-lg"
+            class="w-full cursor-pointer rounded-md border px-4 py-2 text-sm shadow-lg first:mt-2 last:mb-2"
             {{--
                 Fonds pleins et paliers 50/600-700, comme `<x-baobab::badge>` :
                 les opacités qui vivaient ici sont précisément ce que le n° 84
