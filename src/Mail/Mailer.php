@@ -110,7 +110,34 @@ final class Mailer
      */
     private function toPlainText(string $body): string
     {
-        return trim(html_entity_decode(strip_tags($body), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        // Les frontières de bloc deviennent des sauts de ligne **avant** le
+        // retrait des balises. `strip_tags()` ne met rien à la place de ce
+        // qu'il enlève : deux paragraphes se recollaient mot contre mot
+        // (« ...le 14/07/2026 10:00.14/07/2026 10:00 »), et la partie texte
+        // de tout e-mail à plus d'un paragraphe était illisible. Défaut
+        // présent depuis le M5, trouvé le 24 août 2026 dans un vrai e-mail —
+        // même fonction que celle corrigée deux jours plus tôt pour les
+        // entités, et le second défaut n'avait pas été vu parce qu'on
+        // regardait les apostrophes.
+        // Deux familles, et la distinction se voit à la lecture : un élément
+        // de liste ou une ligne de tableau suit le précédent, un paragraphe
+        // s'en détache. Tout mettre à la ligne vide ferait d'une liste de
+        // trois items un texte de trois paragraphes.
+        $spaced = preg_replace(
+            ['#<br\s*/?>#i', '#</(?:li|tr)\s*>#i', '#</(?:p|div|h[1-6]|blockquote|section|article|ul|ol|table)\s*>#i'],
+            ["\n", "\n", "\n\n"],
+            $body,
+        ) ?? $body;
+
+        $text = html_entity_decode(strip_tags($spaced), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        // Un HTML indenté laisse des espaces en bord de ligne : les retirer
+        // d'abord, sinon une ligne « vide » qui contient deux espaces survit
+        // à la réduction qui suit.
+        $text = (string) preg_replace("/[ \t]*\n[ \t]*/", "\n", $text);
+
+        // Une ligne vide sépare deux paragraphes ; trois en trouent un.
+        return trim((string) preg_replace("/\n{3,}/", "\n\n", $text));
     }
 
     private function wrap(string $subject, string $body): string

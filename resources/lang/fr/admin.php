@@ -205,6 +205,35 @@ return [
         'drift_unchanged' => 'Inchangé.',
         'drift_too_large' => 'Trop volumineux pour être comparé.',
     ],
+    'mail_log' => [
+        'title' => 'Journal des envois',
+        'intro' => 'Chaque e-mail parti du site laisse une ligne ici. Le contenu n\'est pas conservé : le journal dit qu\'un e-mail a été envoyé, à qui et avec quel résultat, pas ce qu\'il disait.',
+        'empty' => 'Aucun e-mail ne correspond.',
+
+        'filter_all' => 'Tous',
+        'filter_template' => 'Template',
+        'filter_status' => 'État',
+        'filter_recipient' => 'Destinataire',
+        'filter_from' => 'Du',
+        'filter_to' => 'Au',
+        'filter_submit' => 'Filtrer',
+        'filter_reset' => 'Tout afficher',
+
+        'column_date' => 'Date',
+        'column_template' => 'Template',
+        'column_recipient' => 'Destinataire',
+        'column_subject' => 'Sujet',
+        'column_status' => 'État',
+        'column_mailer' => 'Transport',
+
+        'status_queued' => 'En file',
+        'status_sent' => 'Envoyé',
+        'status_failed' => 'Échec',
+
+        'resend' => 'Renvoyer',
+        'resent' => 'E-mail remis en file pour :recipient.',
+        'not_resendable' => 'Ce template ne sait pas reconstituer ses données : il ne peut pas être renvoyé.',
+    ],
     'content_types' => [
         'title' => 'Types de contenu',
         'intro' => 'Un type de contenu possède sa propre table typée. Le créer ici génère un module complet : migration, modèle, permissions et écrans d\'administration.',

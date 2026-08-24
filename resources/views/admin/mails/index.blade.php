@@ -4,6 +4,14 @@
 
 @section('content')
     <x-baobab::page :title="__('baobab::admin.mails.title')">
+        <x-slot:actions>
+            @can('baobab.system.mail.log_view')
+                <x-baobab::button :href="route('admin.mails.log')" variant="secondary">
+                    {{ __('baobab::admin.mail_log.title') }}
+                </x-baobab::button>
+            @endcan
+        </x-slot:actions>
+
         <p class="mb-4 text-sm text-muted">{{ __('baobab::admin.mails.intro') }}</p>
 
         @if ($rows === [])

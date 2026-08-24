@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use Baobab\Mail\Resolvers\CoreTestMailResolver;
 use Baobab\Users\Models\User;
 
 return [
@@ -277,6 +278,12 @@ return [
                     'sent_at' => 'Date/heure d\'envoi du test',
                 ],
                 'defaults' => __DIR__.'/../resources/mails/core/test.json',
+                // Le seul template du Core renvoyable depuis le journal
+                // (spec 13 §4.2) : sa seule variable est l'heure d'envoi,
+                // recalculable par définition. Les autres dépendent d'un
+                // contenu ou d'un acteur que le journal ne mémorise pas
+                // (suivi n° 195).
+                'resolver' => CoreTestMailResolver::class,
             ],
             [
                 'key' => 'core.content.review_requested',

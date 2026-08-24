@@ -1,6 +1,7 @@
 <?php
 
 use Baobab\Facades\Hook;
+use Baobab\Mail\Actions\SaveMailTemplate;
 use Baobab\Mail\Jobs\SendQueuedMail;
 use Baobab\Mail\Mailer;
 use Illuminate\Support\Facades\Queue;
@@ -43,4 +44,40 @@ it('lets the baobab.mail.sending filter rewrite the recipient', function () {
     app(Mailer::class)->send('core.test', 'dest@example.com', ['sent_at' => 'now']);
 
     Queue::assertPushedOn('baobab', SendQueuedMail::class, fn (SendQueuedMail $job) => $job->to === 'rerouted@example.com');
+});
+
+/**
+ * `strip_tags()` ne met rien à la place de ce qu'il retire : deux paragraphes
+ * se recollaient mot contre mot dans la partie texte. Défaut du M5 trouvé le
+ * 24 août 2026 en vérification navigateur, dans un vrai e-mail — la version
+ * HTML, elle, était juste (suivi n° 198).
+ */
+it('keeps block boundaries in the plain-text alternative', function () {
+    Queue::fake();
+
+    app(SaveMailTemplate::class)('core.test', [
+        'subject' => 'Test',
+        'body' => '<p>Envoyé le {{ sent_at }}.</p><p>Second paragraphe.</p><ul><li>Un</li><li>Deux</li></ul>',
+    ]);
+
+    app(Mailer::class)->send('core.test', 'dest@example.com', ['sent_at' => '14/07/2026 10:00']);
+
+    Queue::assertPushed(SendQueuedMail::class, function (SendQueuedMail $job) {
+        return str_contains($job->text, "10:00.\n\nSecond paragraphe.")
+            && str_contains($job->text, "Un\nDeux")
+            && ! str_contains($job->text, '10:00.Second');
+    });
+});
+
+it('does not leave blank-line holes where the HTML was merely indented', function () {
+    Queue::fake();
+
+    app(SaveMailTemplate::class)('core.test', [
+        'subject' => 'Test',
+        'body' => "<div>\n    <p>Envoyé le {{ sent_at }}.</p>\n\n    <p>Fin.</p>\n</div>",
+    ]);
+
+    app(Mailer::class)->send('core.test', 'dest@example.com', ['sent_at' => 'ce matin']);
+
+    Queue::assertPushed(SendQueuedMail::class, fn (SendQueuedMail $job) => ! str_contains($job->text, "\n\n\n"));
 });

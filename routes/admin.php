@@ -13,6 +13,7 @@ use Baobab\Admin\Content\Http\Controllers\ContentController;
 use Baobab\Admin\Content\Http\Controllers\ContentTypesController;
 use Baobab\Admin\Content\Http\Controllers\TrashController;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
+use Baobab\Admin\Mail\Http\Controllers\MailLogController;
 use Baobab\Admin\Mail\Http\Controllers\MailTemplatesController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
 use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
@@ -366,4 +367,25 @@ Route::middleware('can:baobab.system.mail.templates')
         Route::post('/{key}/restore', [MailTemplatesController::class, 'restore'])->name('restore');
         Route::post('/{key}/preview', [MailTemplatesController::class, 'preview'])->name('preview');
         Route::post('/{key}/test', [MailTemplatesController::class, 'test'])->name('test');
+    });
+
+// Journal des e-mails (spec 13 §4.2, M8 point 7, Pass B2). **Groupe séparé
+// malgré le préfixe commun** : la spec fait de `.log_view` et `.templates`
+// deux permissions distinctes, et quelqu'un peut consulter ce qui est parti
+// sans pouvoir réécrire les templates. Les partager mettrait la seconde en
+// condition de la première.
+//
+// À `mails/log` et non à l'`admin/system/mail-log` de la spec : aucun
+// `admin/system/*` n'existe dans le Core, et les deux autres journaux du
+// produit sont eux aussi des sous-écrans de leur section — `redirects/
+// not-found`, `webhooks/{id}/deliveries`. Adresse tranchée et spec amendée
+// le 24 août 2026 (suivi n° 197).
+Route::middleware('can:baobab.system.mail.log_view')
+    ->prefix('mails')
+    ->name('mails.')
+    ->group(function (): void {
+        Route::get('/log', [MailLogController::class, 'index'])->name('log');
+        Route::post('/log/{entry}/resend', [MailLogController::class, 'resend'])
+            ->middleware('can:baobab.system.mail.resend')
+            ->name('log.resend');
     });

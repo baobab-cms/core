@@ -14,9 +14,14 @@ namespace Baobab\Mail\Contracts;
  * `sample`, l'aperçu retombe sur les **libellés** des variables — lisible,
  * mais ce n'est pas un rendu réaliste, et c'était tout le problème.
  *
- * Les valeurs peuvent être notées à plat en notation pointée
- * (`'user.name' => 'Awa'`) comme en tableaux imbriqués : `PlaceholderRenderer`
- * résout `user.name` en traversée, jamais comme une clé littérale.
+ * **Les valeurs se donnent en tableaux imbriqués, jamais à plat.**
+ * `PlaceholderRenderer::resolve()` traverse le chemin segment par segment :
+ * `{{ user.name }}` cherche la clé `user`, puis `name` dedans. Une clé
+ * littérale `'user.name' => 'Awa'` n'est jamais trouvée, et le placeholder
+ * est rendu vide avec un avertissement au journal technique.
+ *
+ *     return ['user' => ['name' => 'Awa']];   // ✅
+ *     return ['user.name' => 'Awa'];          // ❌ rendu vide
  */
 interface MailSampleProvider
 {
