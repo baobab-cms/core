@@ -7,6 +7,7 @@ namespace Baobab\Mail;
 use Baobab\Branding\Models\BrandingSetting;
 use Baobab\Facades\Hook;
 use Baobab\Mail\Jobs\SendQueuedMail;
+use Baobab\Mail\Models\MailLogEntry;
 use Baobab\Mail\Support\PlaceholderRenderer;
 use Baobab\Support\Logger;
 use Baobab\Users\Models\User;
@@ -47,14 +48,32 @@ final class Mailer
             return;
         }
 
+        $html = $this->wrap($payload['subject'], $body);
+
+        // Le journal s'écrit **avant** le dispatch, et depuis le Core : une
+        // ligne `queued` qui n'aurait pas de job serait un faux positif
+        // visible, là qu'un job sans ligne serait un envoi invisible. Et pas
+        // en écoutant `baobab.mail.sent`/`baobab.mail.failed` : ces hooks sont
+        // des points d'extension **publics**, pas la plomberie du noyau — un
+        // module qui en désenregistrerait un ne doit pas pouvoir aveugler le
+        // journal.
+        $entry = MailLogEntry::create([
+            'template_key' => $key,
+            'recipient' => $payload['to'],
+            'subject' => $payload['subject'],
+            'status' => MailLogStatus::Queued,
+            'body' => config('baobab.mail.log_body') === true ? $html : null,
+        ]);
+
         SendQueuedMail::dispatch(
             $key,
             $payload['to'],
             $payload['subject'],
-            $this->wrap($payload['subject'], $body),
+            $html,
             $this->toPlainText($body),
             $template->fromAddress,
             $template->fromName,
+            $entry->id,
         )
             ->onConnection('baobab')
             ->onQueue('baobab');

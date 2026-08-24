@@ -140,7 +140,7 @@ final class MailTemplatesController
 
         $html = $this->mailer->render(
             new MailTemplate($key, $data['subject'], $data['body']),
-            $declaration->variables->sampleValues(),
+            $declaration->sampleValues(),
         );
 
         return response($html)->header('Content-Type', 'text/html; charset=utf-8');
@@ -157,7 +157,7 @@ final class MailTemplatesController
 
         $declaration = $this->templates->declaration($key);
 
-        $send($data['recipient'], $key, $declaration->variables->sampleValues());
+        $send($data['recipient'], $key, $declaration->sampleValues());
 
         return redirect()
             ->route('admin.mails.edit', $key)

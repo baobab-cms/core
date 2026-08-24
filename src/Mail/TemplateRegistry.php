@@ -155,12 +155,20 @@ final class TemplateRegistry
         /** @var array<string, string|array{label: string, required?: bool}> $variables */
         $variables = $mail['variables'] ?? [];
 
+        /** @var class-string|null $resolver */
+        $resolver = $mail['resolver'] ?? null;
+
+        /** @var class-string|null $sample */
+        $sample = $mail['sample'] ?? null;
+
         return new MailTemplateDeclaration(
             key: (string) $mail['key'],
             source: $source,
             description: (string) ($mail['description'] ?? ''),
             variables: new MailTemplateVariables($variables),
             defaultsPath: $defaultsPath,
+            resolver: $resolver,
+            sample: $sample,
         );
     }
 

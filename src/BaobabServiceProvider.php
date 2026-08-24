@@ -32,6 +32,7 @@ use Baobab\Console\Commands\DesignTokensCompileCommand;
 use Baobab\Console\Commands\FontsListCommand;
 use Baobab\Console\Commands\GraphqlCompileCommand;
 use Baobab\Console\Commands\HookListCommand;
+use Baobab\Console\Commands\MailLogPurgeCommand;
 use Baobab\Console\Commands\MailTemplatesCommand;
 use Baobab\Console\Commands\MailTestCommand;
 use Baobab\Console\Commands\MediaPurgeTrashCommand;
@@ -369,6 +370,7 @@ class BaobabServiceProvider extends ServiceProvider
                 ContentPurgeTrashCommand::class,
                 MailTestCommand::class,
                 MailTemplatesCommand::class,
+                MailLogPurgeCommand::class,
                 NotifyTestCommand::class,
                 NotificationsPurgeCommand::class,
                 ThemeActivateCommand::class,
@@ -391,6 +393,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerMediaPurgeSchedule();
 
         $this->registerNotFoundPurgeSchedule();
+
+        $this->registerMailLogPurgeSchedule();
 
         $this->registerSchedulerTasks();
     }
@@ -438,6 +442,20 @@ class BaobabServiceProvider extends ServiceProvider
             $schedule = $this->app->make(Schedule::class);
 
             $schedule->command(NotFoundPurgeCommand::class)->daily();
+        });
+    }
+
+    /**
+     * `baobab:mail:purge-log` (spec 13 §4.2) — même patron que
+     * `registerNotFoundPurgeSchedule()`.
+     */
+    private function registerMailLogPurgeSchedule(): void
+    {
+        $this->app->booted(function (): void {
+            /** @var Schedule $schedule */
+            $schedule = $this->app->make(Schedule::class);
+
+            $schedule->command(MailLogPurgeCommand::class)->daily();
         });
     }
 

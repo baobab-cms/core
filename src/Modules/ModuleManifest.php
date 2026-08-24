@@ -144,7 +144,11 @@ final readonly class ModuleManifest
      * Templates d'e-mails déclarés par ce module (spec 13 §3.1), résolus par
      * `Baobab\Mail\Mailer` tant que le module est actif.
      *
-     * @return list<array{key: string, description?: string, variables: array<string, mixed>, defaults: string}>
+     * `resolver` et `sample` (§3.1, ajoutées en Pass B1) sont optionnelles :
+     * la première rend le template renvoyable depuis le journal (§4.2), la
+     * seconde alimente l'aperçu en données réalistes (§3.4).
+     *
+     * @return list<array{key: string, description?: string, variables: array<string, mixed>, defaults: string, resolver?: class-string, sample?: class-string}>
      */
     public function mails(): array
     {

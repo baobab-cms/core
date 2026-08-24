@@ -35,6 +35,24 @@ final class InvalidMailTemplateException extends RuntimeException
     }
 
     /**
+     * Les classes déclarées par `resolver` et `sample` (§3.1, Pass B1) sont
+     * vérifiées à l'installation du module, jamais au moment de servir un
+     * écran : une classe absente ou qui n'implémente pas le contrat est une
+     * erreur du module, pas une situation d'exécution à contourner. Le
+     * message nomme l'attribut fautif, sans quoi un module qui déclare les
+     * deux laisserait chercher lequel est en cause.
+     */
+    public static function unknownClass(string $key, string $attribute, string $class): self
+    {
+        return new self("Template d'e-mail « {$key} » invalide — la classe « {$class} » déclarée en `{$attribute}` est introuvable.");
+    }
+
+    public static function wrongContract(string $key, string $attribute, string $class, string $contract): self
+    {
+        return new self("Template d'e-mail « {$key} » invalide — la classe « {$class} » déclarée en `{$attribute}` doit implémenter {$contract}.");
+    }
+
+    /**
      * @param  list<string>  $variables
      */
     public static function unknownVariables(string $key, array $variables): self

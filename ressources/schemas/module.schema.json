@@ -312,6 +312,16 @@
                     "defaults": {
                         "type": "string",
                         "description": "Chemin vers un JSON {subject, body} relatif à la racine du module."
+                    },
+                    "resolver": {
+                        "type": "string",
+                        "description": "Optionnel (spec 13 §4.2) : classe implémentant Baobab\\Mail\\Contracts\\MailDataResolver, capable de re-produire les données du rendu depuis l'état courant. Sa présence est ce qui rend le template renvoyable depuis le journal ; sans elle le bouton reste désactivé. Vérifiée à l'installation par MailTemplateValidator.",
+                        "pattern": "^[A-Za-z_\\\\][A-Za-z0-9_\\\\]*$"
+                    },
+                    "sample": {
+                        "type": "string",
+                        "description": "Optionnel (spec 13 §3.4) : classe implémentant Baobab\\Mail\\Contracts\\MailSampleProvider, fournissant les données d'exemple de l'aperçu en admin. À défaut, l'aperçu substitue les libellés des variables. Vérifiée à l'installation par MailTemplateValidator.",
+                        "pattern": "^[A-Za-z_\\\\][A-Za-z0-9_\\\\]*$"
                     }
                 }
             }

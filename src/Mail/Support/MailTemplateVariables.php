@@ -55,15 +55,18 @@ final readonly class MailTemplateVariables
      * §3.4) : **chaque variable est rendue par son propre libellé**, si bien
      * que `{{ user.name }}` s'affiche « Nom du destinataire » à sa place.
      *
-     * **Écart assumé avec la lettre du §3.4**, tranché avec l'utilisateur le
-     * 22 août 2026 (suivi n° 190) : la spec parle de « données d'exemple
-     * déclarées par le module », mais aucun mécanisme de déclaration n'existe
-     * — le bloc `mails` du manifeste est fermé (`additionalProperties: false`)
-     * et n'admet que `key`, `description`, `variables` et `defaults`. En
-     * ouvrir un serait amender le contrat de manifeste. Le libellé, lui, est
-     * déjà la description humaine de la variable : il remplit la fonction de
-     * l'aperçu — voir la mise en page et où les valeurs atterrissent — sans
-     * rien ajouter au contrat.
+     * **C'est désormais le repli, plus l'unique réponse.** Jusqu'à la Pass B1,
+     * les « données d'exemple déclarées par le module » du §3.4 n'avaient
+     * aucun mécanisme de déclaration — le bloc `mails` était fermé — et ce
+     * substitut par les libellés était un écart assumé (suivi n° 190). La clé
+     * `sample` du §3.1 l'a refermé : les appelants passent maintenant par
+     * `MailTemplateDeclaration::sampleValues()`, qui rend la main ici quand le
+     * template ne déclare rien.
+     *
+     * Le repli reste le comportement **par défaut**, pas un pis-aller : le
+     * libellé est déjà la description humaine de la variable, et il suffit à
+     * juger d'une mise en page. Exiger un `sample` de chaque template
+     * alourdirait la déclaration sans rien apporter à la plupart d'entre eux.
      *
      * La notation pointée est ré-imbriquée, `PlaceholderRenderer` résolvant
      * `user.name` en traversée de tableaux et non par une clé littérale.

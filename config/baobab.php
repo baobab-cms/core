@@ -254,8 +254,21 @@ return [
     | que la section "mails" d'un module.json. Les templates de modules sont
     | lus depuis leur manifest par TemplateRegistry.
     |
+    | log_retention_days : rétention du journal des e-mails (spec 13 §4.2,
+    | défaut 90) — purge quotidienne par `baobab:mail:purge-log`, même
+    | convention que notifications.retention_days et
+    | redirects.not_found_retention_days.
+    |
+    | log_body : conservation du corps rendu, **désactivée par défaut** (§4.1 :
+    | volume et données personnelles). Activée, elle a sa propre rétention,
+    | plus courte que celle des lignes : on garde la preuve qu'un e-mail est
+    | parti bien plus longtemps que son contenu.
+    |
     */
     'mail' => [
+        'log_retention_days' => (int) env('BAOBAB_MAIL_LOG_RETENTION_DAYS', 90),
+        'log_body' => (bool) env('BAOBAB_MAIL_LOG_BODY', false),
+        'log_body_retention_days' => (int) env('BAOBAB_MAIL_LOG_BODY_RETENTION_DAYS', 7),
         'templates' => [
             [
                 'key' => 'core.test',
