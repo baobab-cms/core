@@ -4,50 +4,38 @@ declare(strict_types=1);
 
 namespace Baobab\Console\Commands;
 
-use Baobab\Users\Models\User;
+use Baobab\Install\Actions\CreateSuperAdmin;
 use Illuminate\Console\Command;
-use Illuminate\Support\Str;
-use Spatie\Permission\Models\Role;
 
+/**
+ * Commande de secours console : crée ou complète un super-admin.
+ *
+ * **Adaptateur mince, depuis le 25 août 2026** (suivi n° 213). Elle portait
+ * jusque-là la logique métier en dur — création de l'utilisateur, rôle,
+ * assignation — sans Action, ce qui contredisait la règle de revue n° 1.
+ * L'installateur en est devenu le second consommateur ; la logique vit
+ * désormais dans `CreateSuperAdmin`, cette commande ne fait plus que la
+ * traduire pour un terminal.
+ */
 final class SuperAdminCommand extends Command
 {
     protected $signature = 'baobab:super-admin {email : E-mail de l\'utilisateur}';
 
     protected $description = 'Crée ou met à jour un super-admin Baobab (commande de secours console).';
 
-    public function handle(): int
+    public function handle(CreateSuperAdmin $createSuperAdmin): int
     {
+        /** @var string $email */
         $email = $this->argument('email');
 
-        /** @var User|null $user */
-        $user = User::where('email', $email)->first();
-
-        $generated = false;
-        $password = null;
-
-        if ($user === null) {
-            $password = Str::password(16);
-            $user = User::create([
-                'name' => 'Super Admin',
-                'email' => $email,
-                'password' => $password,
-            ]);
-            $generated = true;
-        }
-
-        /** @var Role $role */
-        $role = Role::findOrCreate('super-admin', 'baobab');
-
-        if (! $user->hasRole($role)) {
-            $user->assignRole($role);
-        }
+        $result = $createSuperAdmin($email);
 
         $this->newLine();
         $this->line('  <fg=green;options=bold>✓ Super Admin configuré.</>');
         $this->line("  E-mail : <fg=cyan>{$email}</>");
 
-        if ($generated) {
-            $this->line("  Mot de passe généré : <fg=yellow>{$password}</> (non récupérable)");
+        if ($result->generatedPassword !== null) {
+            $this->line("  Mot de passe généré : <fg=yellow>{$result->generatedPassword}</> (non récupérable)");
         } else {
             $this->line('  <fg=gray>Utilisateur existant — rôle super-admin assigné.</>');
         }
