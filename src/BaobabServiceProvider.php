@@ -80,6 +80,7 @@ use Baobab\ContentTypes\Fields\Types\TimeField;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
 use Baobab\Hooks\HookRegistry;
+use Baobab\Install\InstallationState;
 use Baobab\Media\Actions\SyncMediaUsagesFromEntry;
 use Baobab\Media\Conversions\PresetRegistry;
 use Baobab\Menus\Actions\InvalidateMenuCacheForEntry;
@@ -134,6 +135,7 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
@@ -245,6 +247,16 @@ class BaobabServiceProvider extends ServiceProvider
             $paths = $app->make('config')->get('baobab.modules.paths', []);
 
             return new ModuleDiscovery($paths);
+        });
+
+        // L etat d installation est lu par la garde de routes comme par
+        // `baobab:check` : une seule instance, un seul chemin, pas deux
+        // conventions divergentes sur ou vit la sentinelle (spec 15 §3).
+        $this->app->singleton(InstallationState::class, function (Application $app): InstallationState {
+            /** @var string $directory */
+            $directory = $app->make('config')->get('baobab.install.state_path', storage_path('app/baobab'));
+
+            return new InstallationState($app->make(Filesystem::class), $directory);
         });
 
         $this->registerGuard();
