@@ -9,6 +9,7 @@ use Baobab\Users\Models\RegistrationSetting;
 use Baobab\Users\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Spec 15 §5 — `baobab:install`, l'adaptateur console.
@@ -34,9 +35,24 @@ beforeEach(function () {
     config()->set('app.env', 'local');
     app()->forgetInstance(InstallationState::class);
     $this->state = app(InstallationState::class);
+    $this->connexionInitiale = config('database.default');
 });
 
+/**
+ * `ConfigureDatabase` bascule la connexion par défaut : c'est son travail, et
+ * un test qui l'exerce doit défaire ce qu'il a provoqué **avant** de supprimer
+ * les fichiers — sinon l'application reste pointée sur une base disparue, et
+ * c'est le test suivant qui tombe.
+ *
+ * Windows masquait le défaut en refusant de supprimer un fichier SQLite encore
+ * ouvert ; Linux le supprime, et la CI l'a dit. Seule la connexion créée par
+ * l'Action est purgée : purger celle du banc d'essai détruirait sa base
+ * **en mémoire**, que `RefreshDatabase` ne remigrerait pas.
+ */
 afterEach(function () {
+    config()->set('database.default', $this->connexionInitiale);
+    DB::purge('sqlite');
+
     $this->files->deleteDirectory($this->repertoire);
 });
 

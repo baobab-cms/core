@@ -25,9 +25,27 @@ beforeEach(function () {
     $this->files->ensureDirectoryExists($this->repertoire);
     $this->env = new EnvFile($this->files, $this->repertoire.'/.env');
     $this->files->put($this->repertoire.'/.env', "APP_NAME=Baobab\nAPP_URL=http://localhost\n");
+    $this->connexionInitiale = config('database.default');
 });
 
+/**
+ * `ConfigureDatabase` bascule la connexion par défaut : c'est son travail, et
+ * un test qui l'exerce doit défaire ce qu'il a provoqué **avant** de supprimer
+ * les fichiers, sinon l'application reste pointée sur une base qui n'existe
+ * plus.
+ *
+ * Windows masquait le défaut en refusant de supprimer un fichier SQLite encore
+ * ouvert ; Linux le supprime, et la CI l'a dit. Le test était fragile sur les
+ * deux, visible sur un seul.
+ */
 afterEach(function () {
+    config()->set('database.default', $this->connexionInitiale);
+    // Seule la connexion créée par l Action est purgée. Purger celle du
+    // banc d essai détruirait sa base SQLite **en mémoire**, que
+    // `RefreshDatabase` ne remigrerait pas : les tests suivants
+    // tourneraient sur une base vide.
+    DB::purge('sqlite');
+
     $this->files->deleteDirectory($this->repertoire);
 });
 
