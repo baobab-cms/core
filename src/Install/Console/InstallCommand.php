@@ -263,6 +263,13 @@ final class InstallCommand extends Command
             $ui->line('');
         }
 
+        // Le repli sur bcrypt se dit : il est annoncé, jamais subi (n° 220).
+        if ($summary->hashDriver === 'bcrypt') {
+            $ui->line('  <fg=gray>Hachage des mots de passe : bcrypt. Ce PHP ne propose pas argon2id ;</>');
+            $ui->line('  <fg=gray>activez-le dans les options PHP de votre hébergement pour en profiter.</>');
+            $ui->line('');
+        }
+
         $ui->line('  <options=bold>Votre site est prêt.</>');
         $ui->line('  <fg=gray>Administration :</> '.rtrim($input->url, '/').'/admin');
 

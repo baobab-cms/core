@@ -71,14 +71,16 @@ function cheminsAccessibles(): array
     return ['storage' => storage_path()];
 }
 
-it('enchaîne les six étapes et note celles qui ont un effet', function () {
+it('enchaîne les étapes dans l\x27ordre, et note celles qui ont un effet', function () {
     $vues = [];
 
     $resume = ($this->pipeline)(entree(), $this->env, public_path(), cheminsAccessibles(), function (string $step) use (&$vues): void {
         $vues[] = $step;
     });
 
-    expect($vues)->toBe(['requirements', 'database', 'migrations', 'account', 'site', 'finalization'])
+    // `hashing` vient AVANT `account` : le premier compte doit être haché
+    // avec l algorithme du site, pas avec celui d avant (n° 220).
+    expect($vues)->toBe(['requirements', 'database', 'migrations', 'hashing', 'account', 'site', 'finalization'])
         ->and($resume->wasResumed())->toBeFalse()
         ->and($this->state->isInstalled())->toBeTrue()
         ->and($resume->superAdmin?->user->email)->toBe('admin@exemple.fr')
@@ -99,7 +101,7 @@ it('reprend là où une coupure a laissé l\'installation, sans rejouer ce qui e
         $vues[] = $step;
     });
 
-    expect($vues)->toBe(['requirements', 'account', 'site', 'finalization'])
+    expect($vues)->toBe(['requirements', 'hashing', 'account', 'site', 'finalization'])
         ->and($resume->wasResumed())->toBeTrue()
         ->and($resume->skipped)->toBe(['database', 'migrations']);
 });

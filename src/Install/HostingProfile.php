@@ -23,6 +23,7 @@ final readonly class HostingProfile
         public Capability $shellAccess,
         public Capability $publicIsDocumentRoot,
         public WebServer $webServer,
+        public Capability $argon2id = Capability::Unknown,
     ) {}
 
     /**
@@ -57,6 +58,10 @@ final readonly class HostingProfile
                 ? Capability::Unknown
                 : Capability::fromBool(self::samePath($documentRoot, $publicPath)),
             webServer: WebServer::detect($serverSoftware),
+            // Argon2id demande un PHP compilé avec libargon2. Absent, le site
+            // tourne en bcrypt — le défaut de Laravel, sûr, mais annoncé
+            // plutôt que subi (suivi n° 220).
+            argon2id: Capability::fromBool(in_array('argon2id', password_algos(), true)),
         );
     }
 
@@ -71,6 +76,7 @@ final readonly class HostingProfile
             'shell_access' => $this->shellAccess->value,
             'public_is_document_root' => $this->publicIsDocumentRoot->value,
             'web_server' => $this->webServer->value,
+            'argon2id' => $this->argon2id->value,
         ];
     }
 
@@ -87,6 +93,7 @@ final readonly class HostingProfile
             webServer: is_string($data['web_server'] ?? null)
                 ? WebServer::tryFrom($data['web_server']) ?? WebServer::Unknown
                 : WebServer::Unknown,
+            argon2id: self::capability($data, 'argon2id'),
         );
     }
 

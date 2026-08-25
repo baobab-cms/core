@@ -6,6 +6,7 @@ namespace Baobab\Install;
 
 use Baobab\Install\Actions\CheckRequirements;
 use Baobab\Install\Actions\ConfigureDatabase;
+use Baobab\Install\Actions\ConfigureHashing;
 use Baobab\Install\Actions\ConfigureSite;
 use Baobab\Install\Actions\CreateSuperAdmin;
 use Baobab\Install\Actions\FinalizeInstallation;
@@ -38,6 +39,8 @@ final readonly class InstallationPipeline
 
     public const STEP_MIGRATIONS = 'migrations';
 
+    public const STEP_HASHING = 'hashing';
+
     public const STEP_ACCOUNT = 'account';
 
     public const STEP_SITE = 'site';
@@ -48,6 +51,7 @@ final readonly class InstallationPipeline
     public const RESUMABLE_STEPS = [
         self::STEP_DATABASE,
         self::STEP_MIGRATIONS,
+        self::STEP_HASHING,
         self::STEP_ACCOUNT,
         self::STEP_SITE,
         self::STEP_FINALIZATION,
@@ -58,6 +62,7 @@ final readonly class InstallationPipeline
         private CheckRequirements $checkRequirements,
         private ConfigureDatabase $configureDatabase,
         private RunMigrations $runMigrations,
+        private ConfigureHashing $configureHashing,
         private CreateSuperAdmin $createSuperAdmin,
         private ConfigureSite $configureSite,
         private FinalizeInstallation $finalizeInstallation,
@@ -109,6 +114,19 @@ final readonly class InstallationPipeline
             $this->state->recordStep(self::STEP_MIGRATIONS);
         }
 
+        // ── Hachage — avant le compte, et pas avec les réglages de site ───
+        //
+        // Le compte administrateur naît à l étape suivante : poser le driver
+        // plus tard donnerait un premier compte haché autrement que le reste
+        // du site (suivi n° 220).
+        $hashDriver = null;
+
+        if ($this->shouldRun(self::STEP_HASHING, $skipped)) {
+            $announce(self::STEP_HASHING, 'Hachage');
+            $hashDriver = ($this->configureHashing)($env, $report->profile->argon2id);
+            $this->state->recordStep(self::STEP_HASHING);
+        }
+
         // ── Étape 4 ───────────────────────────────────────────────────────
         $superAdmin = null;
 
@@ -133,7 +151,7 @@ final readonly class InstallationPipeline
             $profile = ($this->finalizeInstallation)($input->version, $profile, $this->configChecksum($input), $input->optimize);
         }
 
-        return new InstallationSummary($profile, $report, $inspection, $superAdmin, $skipped);
+        return new InstallationSummary($profile, $report, $inspection, $superAdmin, $skipped, $hashDriver);
     }
 
     /**

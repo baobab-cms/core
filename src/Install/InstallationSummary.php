@@ -23,6 +23,8 @@ final readonly class InstallationSummary
         public DatabaseInspection $database,
         public ?SuperAdminResult $superAdmin,
         public array $skipped = [],
+        /** Driver de hachage retenu, `null` si l étape a été reprise sans être rejouée. */
+        public ?string $hashDriver = null,
     ) {}
 
     public function wasResumed(): bool
