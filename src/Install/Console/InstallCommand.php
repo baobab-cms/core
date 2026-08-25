@@ -1,0 +1,275 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Baobab\Install\Console;
+
+use Baobab\Install\DatabaseCredentials;
+use Baobab\Install\EnvFile;
+use Baobab\Install\Exceptions\InstallationStepFailed;
+use Baobab\Install\InstallationInput;
+use Baobab\Install\InstallationPipeline;
+use Baobab\Install\InstallationState;
+use Baobab\Install\InstallationSummary;
+use Illuminate\Console\Command;
+use Illuminate\Filesystem\Filesystem;
+
+use function Laravel\Prompts\password;
+use function Laravel\Prompts\select;
+use function Laravel\Prompts\text;
+
+/**
+ * `php artisan baobab:install` — le mode CLI (spec 15 §5).
+ *
+ * **Adaptateur mince.** Il pose des questions, traduit les réponses en
+ * `InstallationInput` et rend compte ; l'ordre des étapes et la reprise
+ * vivent dans `InstallationPipeline`, que le wizard consommera pareillement
+ * (§1, suivi n° 216).
+ *
+ * Le mot de passe ne passe **jamais** en argument : `--admin-password-env`
+ * nomme une variable d'environnement, sans quoi il fuiterait dans
+ * l'historique du shell et dans la liste des processus, où n'importe quel
+ * utilisateur de la machine le lirait.
+ */
+final class InstallCommand extends Command
+{
+    protected $signature = 'baobab:install
+        {--db-connection= : mysql, mariadb, pgsql ou sqlite}
+        {--db-host= : Hôte de la base}
+        {--db-port= : Port de la base}
+        {--db-database= : Nom de la base}
+        {--db-username= : Identifiant}
+        {--db-password-env= : Variable d\'environnement portant le mot de passe de la base}
+        {--db-prefix= : Préfixe de tables, si la base est partagée}
+        {--admin-name= : Nom du premier administrateur}
+        {--admin-email= : E-mail du premier administrateur}
+        {--admin-password-env= : Variable d\'environnement portant son mot de passe}
+        {--site-name= : Nom du site}
+        {--url= : URL publique du site}
+        {--timezone= : Fuseau horaire (défaut UTC)}
+        {--closed-registration : Ferme l\'inscription front, ouverte par défaut}';
+
+    protected $description = 'Installe Baobab : prérequis, base, migrations, compte, site, finalisation.';
+
+    public function handle(
+        InstallationPipeline $pipeline,
+        InstallationState $state,
+        Filesystem $files,
+    ): int {
+        $interactive = ! $this->option('no-interaction');
+        $ui = new InstallerOutput($this->output, quiet: ! $interactive);
+
+        if ($state->isInstalled()) {
+            $this->components->error('Ce site est déjà installé. Utilisez baobab:check pour en vérifier l\'état.');
+
+            return self::FAILURE;
+        }
+
+        $ui->title($this->version());
+
+        // Chemin configurable pour la même raison que `state_path` : sans ce
+        // point d entree, la commande ne serait vérifiable qu en écrivant dans
+        // le `.env` du projet qui la teste.
+        /** @var string $envPath */
+        $envPath = config('baobab.install.env_path', base_path('.env'));
+        $env = new EnvFile($files, $envPath);
+        $env->createFromExample($envPath.'.example');
+
+        try {
+            $input = $this->gather($interactive);
+        } catch (InstallationStepFailed $e) {
+            $this->components->error($e->getMessage());
+
+            return self::FAILURE;
+        }
+
+        try {
+            $summary = $pipeline(
+                $input,
+                $env,
+                public_path(),
+                $this->writablePaths(),
+                // Chaque étape close la précédente : c est ce qui donne une
+                // ligne par étape avec son verdict, plutôt qu une ligne qui
+                // se réécrit sur elle-même et se dédouble dans un journal.
+                function (string $step, string $label) use ($ui): void {
+                    $ui->done();
+                    $ui->step($label);
+                },
+            );
+        } catch (InstallationStepFailed $e) {
+            $this->output->newLine();
+            $this->components->error($e->getMessage());
+
+            // La cause reste pour le journal, jamais pour l'écran (n° 206).
+            report($e);
+
+            return self::FAILURE;
+        }
+
+        $ui->done();
+        $ui->banner();
+
+        $this->reportSuccess($ui, $summary, $input);
+
+        return self::SUCCESS;
+    }
+
+    private function gather(bool $interactive): InstallationInput
+    {
+        $driver = $this->option('db-connection') ?: ($interactive
+            ? select('Type de base de données', ['mysql', 'mariadb', 'pgsql', 'sqlite'], 'mysql')
+            : null);
+
+        if (! is_string($driver) || $driver === '') {
+            throw InstallationStepFailed::database('--db-connection est requis en mode non interactif.');
+        }
+
+        $database = $this->option('db-database') ?: ($interactive ? text('Nom de la base', required: true) : null);
+
+        if (! is_string($database) || $database === '') {
+            throw InstallationStepFailed::database('--db-database est requis en mode non interactif.');
+        }
+
+        $email = $this->option('admin-email') ?: ($interactive ? text('E-mail de l\'administrateur', required: true) : null);
+
+        if (! is_string($email) || $email === '') {
+            throw InstallationStepFailed::database('--admin-email est requis en mode non interactif.');
+        }
+
+        $siteName = $this->option('site-name') ?: ($interactive ? text('Nom du site', default: 'Mon site Baobab') : 'Mon site Baobab');
+        $url = $this->option('url') ?: ($interactive ? text('URL publique', default: 'http://localhost') : 'http://localhost');
+
+        return new InstallationInput(
+            database: $this->credentials($driver, (string) $database, $interactive),
+            adminEmail: (string) $email,
+            siteName: (string) $siteName,
+            url: (string) $url,
+            adminName: $this->stringOption('admin-name'),
+            adminPassword: $this->secretFromEnv('admin-password-env', $interactive, 'Mot de passe de l\'administrateur'),
+            timezone: $this->stringOption('timezone') ?? 'UTC',
+            registrationOpen: ! $this->option('closed-registration'),
+            appEnv: (string) config('app.env', 'production'),
+            version: $this->version(),
+            // Interrupteur d exploitation autant que de test : certains
+            // hébergements bridés échouent sur `config:cache`, et le site
+            // marche très bien sans, simplement moins vite.
+            optimize: (bool) config('baobab.install.optimize', true),
+        );
+    }
+
+    /**
+     * Les identifiants de base, demandés en entier.
+     *
+     * **SQLite n'en veut aucun** : un fichier n'a ni hôte, ni port, ni compte.
+     * Les demander donnerait quatre invites sans objet, et l'utilisateur qui y
+     * répond quand même se retrouverait avec un `.env` porteur de valeurs que
+     * rien ne lit.
+     *
+     * Pour les autres, tout est demandé — hôte, port, identifiant, mot de
+     * passe. Ne prompter que le mot de passe, comme le faisait la première
+     * version, laissait l'identifiant vide : la connexion échouait alors sur
+     * un message qui parlait d'identifiants qu'on n'avait jamais demandés.
+     * Trouvé par l'utilisateur à la première recette.
+     */
+    private function credentials(string $driver, string $database, bool $interactive): DatabaseCredentials
+    {
+        if ($driver === 'sqlite') {
+            return new DatabaseCredentials(
+                driver: $driver,
+                database: $database,
+                prefix: $this->stringOption('db-prefix') ?? '',
+            );
+        }
+
+        $host = $this->stringOption('db-host')
+            ?? ($interactive ? text('Hôte de la base', default: '127.0.0.1') : null);
+
+        $port = $this->stringOption('db-port')
+            ?? ($interactive ? text('Port', default: (string) self::defaultPort($driver)) : null);
+
+        $username = $this->stringOption('db-username')
+            ?? ($interactive ? text('Identifiant de la base', required: true) : null);
+
+        return new DatabaseCredentials(
+            driver: $driver,
+            database: $database,
+            host: $host,
+            port: $port === null || $port === '' ? null : (int) $port,
+            username: $username,
+            password: $this->secretFromEnv('db-password-env', $interactive, 'Mot de passe de la base'),
+            prefix: $this->stringOption('db-prefix')
+                ?? ($interactive ? text('Préfixe de tables (laisser vide si la base est dédiée)', default: '') : ''),
+        );
+    }
+
+    private static function defaultPort(string $driver): int
+    {
+        return $driver === 'pgsql' ? 5432 : 3306;
+    }
+
+    /**
+     * Un secret vient d'une variable d'environnement ou d'une invite, jamais
+     * d'un argument de ligne de commande (§5).
+     */
+    private function secretFromEnv(string $option, bool $interactive, string $label): ?string
+    {
+        $variable = $this->stringOption($option);
+
+        if ($variable !== null) {
+            $value = getenv($variable);
+
+            return $value === false ? null : $value;
+        }
+
+        return $interactive ? password($label) : null;
+    }
+
+    private function stringOption(string $name): ?string
+    {
+        $value = $this->option($name);
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function writablePaths(): array
+    {
+        return [
+            'storage' => storage_path(),
+            'bootstrap/cache' => base_path('bootstrap/cache'),
+            'public' => public_path(),
+        ];
+    }
+
+    private function version(): string
+    {
+        return (string) config('baobab.version', 'dev');
+    }
+
+    /**
+     * Le dernier mot revient à ce qu'il reste à faire, pas à la bannière.
+     *
+     * La checklist du §7 est la seule partie de cet écran qui demande une
+     * action ; sur un terminal de 24 lignes, c'est elle qui doit rester
+     * visible quand la bannière sort par le haut.
+     */
+    private function reportSuccess(InstallerOutput $ui, InstallationSummary $summary, InstallationInput $input): void
+    {
+        if ($summary->wasResumed()) {
+            $ui->line('  <fg=gray>Reprise : '.count($summary->skipped).' étape(s) déjà faites n\'ont pas été rejouées.</>');
+            $ui->line('');
+        }
+
+        $ui->line('  <options=bold>Votre site est prêt.</>');
+        $ui->line('  <fg=gray>Administration :</> '.rtrim($input->url, '/').'/admin');
+
+        if ($summary->superAdmin?->generatedPassword !== null) {
+            $ui->generatedPassword($summary->superAdmin->generatedPassword);
+        }
+
+        $ui->line('');
+    }
+}

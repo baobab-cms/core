@@ -14,6 +14,7 @@ use Baobab\Install\WebServer;
 use Baobab\Users\Models\RegistrationSetting;
 use Baobab\Users\Models\User;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Spec 15 §4, étapes 2 à 6 — les cinq Actions de la Pass A2.
@@ -143,4 +144,65 @@ it('efface l\'avancement en finalisant, puisqu\'il n\'a plus rien à reprendre',
     app(FinalizeInstallation::class, ['state' => $state])('1.0.0', profilComplet(), 'somme', optimize: false);
 
     expect($state->completedSteps())->toBe([]);
+});
+
+/**
+ * Le lock du §3 ne suffit pas : `storage/` est couramment exclu des
+ * sauvegardes, ou vidé lors d'un changement d'hébergement. Un lock perdu
+ * ferait croire à l'installateur qu'il est sur un terrain neuf — et il
+ * migrerait par-dessus un site vivant. La base, elle, ne ment pas.
+ */
+it('refuse d\'installer par-dessus un Baobab qui vit déjà dans cette base', function () {
+    $fichier = $this->repertoire.'/site-en-production.sqlite';
+    $this->files->put($fichier, '');
+
+    config()->set('database.connections.existante', [
+        'driver' => 'sqlite',
+        'database' => $fichier,
+        'prefix' => '',
+        'foreign_key_constraints' => false,
+    ]);
+    DB::connection('existante')->getSchemaBuilder()->create('modules', function ($table) {
+        $table->id();
+    });
+
+    $action = app(ConfigureDatabase::class);
+    $avant = $this->files->get($this->repertoire.'/.env');
+
+    expect(fn () => $action(
+        new DatabaseCredentials(driver: 'sqlite', database: $fichier),
+        $this->env,
+        'local',
+    ))->toThrow(InstallationStepFailed::class, 'contient déjà un site Baobab');
+
+    // « rien n'a été modifié » n'est pas une formule : le .env doit être intact.
+    expect($this->files->get($this->repertoire.'/.env'))->toBe($avant);
+});
+
+/**
+ * Le préfixe est justement la réponse à une base occupée : des tables Baobab
+ * sous un autre préfixe ne sont pas les nôtres, et ne doivent rien bloquer.
+ */
+it('n\'est pas gêné par un Baobab voisin installé sous un autre préfixe', function () {
+    $fichier = $this->repertoire.'/base-partagee.sqlite';
+    $this->files->put($fichier, '');
+
+    config()->set('database.connections.voisine', [
+        'driver' => 'sqlite',
+        'database' => $fichier,
+        'prefix' => '',
+        'foreign_key_constraints' => false,
+    ]);
+    DB::connection('voisine')->getSchemaBuilder()->create('voisin_modules', function ($table) {
+        $table->id();
+    });
+
+    $inspection = app(ConfigureDatabase::class)(
+        new DatabaseCredentials(driver: 'sqlite', database: $fichier, prefix: 'monsite_'),
+        $this->env,
+        'local',
+    );
+
+    expect($inspection->isEmpty())->toBeFalse()
+        ->and($inspection->conflicts())->toBe([]);
 });

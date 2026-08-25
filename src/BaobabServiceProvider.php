@@ -80,6 +80,8 @@ use Baobab\ContentTypes\Fields\Types\TimeField;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
 use Baobab\Hooks\HookRegistry;
+use Baobab\Install\Console\CheckCommand;
+use Baobab\Install\Console\InstallCommand;
 use Baobab\Install\InstallationState;
 use Baobab\Media\Actions\SyncMediaUsagesFromEntry;
 use Baobab\Media\Conversions\PresetRegistry;
@@ -372,6 +374,8 @@ class BaobabServiceProvider extends ServiceProvider
                 ModuleUpdateCommand::class,
                 ModuleBuildCommand::class,
                 HookListCommand::class,
+                InstallCommand::class,
+                CheckCommand::class,
                 SuperAdminCommand::class,
                 ContentTypeBuildCommand::class,
                 ContentTypeMakeCommand::class,

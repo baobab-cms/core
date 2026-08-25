@@ -71,6 +71,7 @@ final readonly class EnvFile
         $lines = $this->lines();
         $remaining = $values;
 
+        // 1. Les clés actives sont remplacées là où elles sont.
         foreach ($lines as $index => $line) {
             $key = $this->keyOf($line);
 
@@ -82,11 +83,50 @@ final readonly class EnvFile
             unset($remaining[$key]);
         }
 
+        // 2. Une clé qui n'existe qu'en commentaire est **décommentée sur
+        //    place**, jamais ajoutée à la fin.
+        //
+        //    Le `.env.example` de l'archive propose des clés commentées —
+        //    `# DB_DATABASE=`, `# DB_HOST=` — entourées du commentaire qui les
+        //    explique. Les ajouter en fin de fichier laisserait la version
+        //    commentée sous les yeux de l'utilisateur, avec la vraie valeur
+        //    soixante lignes plus bas : le fichier paraîtrait inchangé là où il
+        //    compte. Relevé en recette, l'utilisateur ayant conclu — à raison —
+        //    que le fichier n'avait pas bougé.
+        foreach ($lines as $index => $line) {
+            $key = $this->commentedKeyOf($line);
+
+            if ($key === null || ! array_key_exists($key, $remaining)) {
+                continue;
+            }
+
+            $lines[$index] = $key.'='.$this->format($remaining[$key]);
+            unset($remaining[$key]);
+        }
+
+        // 3. Ce que le fichier ne connaissait sous aucune forme.
         foreach ($remaining as $key => $value) {
             $lines[] = $key.'='.$this->format($value);
         }
 
         $this->files->put($this->path, implode("\n", $lines)."\n");
+    }
+
+    /**
+     * La clé d'une ligne commentée de la forme `# CLE=valeur`, ou `null`.
+     *
+     * **Strict à dessein** : la clé doit toucher le signe égal. Un commentaire
+     * en prose comme `# Utilisation = réservée aux tests` contient un signe
+     * égal sans être une affectation ; le décommenter détruirait une phrase
+     * écrite pour l'utilisateur, et lui ferait lire une clé qu'il n'a jamais
+     * posée. La tolérance appliquée aux lignes actives — où une espace avant
+     * le `=` reste une affectation — n'a pas lieu d'être ici.
+     */
+    private function commentedKeyOf(string $line): ?string
+    {
+        return preg_match('/^\s*#\s*([A-Za-z_][A-Za-z0-9_]*)=/', $line, $matches) === 1
+            ? $matches[1]
+            : null;
     }
 
     /**

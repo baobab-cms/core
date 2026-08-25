@@ -106,3 +106,52 @@ it('crée le fichier depuis l\'exemple, et ne l\'écrase jamais ensuite', functi
 
     $this->files->delete($exemple);
 });
+
+/**
+ * Le `.env.example` de l'archive propose des clés **commentées**, entourées du
+ * commentaire qui les explique. Les ajouter en fin de fichier laisserait la
+ * version commentée sous les yeux de l'utilisateur et la vraie valeur soixante
+ * lignes plus bas : le fichier paraîtrait inchangé là où il compte.
+ *
+ * Relevé en recette — l'utilisateur a lu le bloc « base de données », l'a vu
+ * intact, et en a conclu que rien n'avait été écrit. Il avait raison de le
+ * conclure.
+ */
+it('décommente une clé sur place plutôt que de l\'ajouter à la fin', function () {
+    $this->files->put($this->path, <<<'ENV'
+# SQLite convient à l'évaluation ; il est refusé en production.
+DB_CONNECTION=sqlite
+# DB_HOST=127.0.0.1
+# DB_DATABASE=baobab
+# DB_USERNAME=root
+
+MAIL_MAILER=log
+ENV);
+
+    $this->env->set(['DB_DATABASE' => 'monsite', 'DB_USERNAME' => 'compte']);
+
+    $contenu = $this->files->get($this->path);
+    $lignes = explode("\n", $contenu);
+
+    expect($this->env->get('DB_DATABASE'))->toBe('monsite')
+        ->and($this->env->get('DB_USERNAME'))->toBe('compte')
+        // Plus aucune version commentée de ces clés ne subsiste.
+        ->and($contenu)->not->toContain('# DB_DATABASE')
+        ->and($contenu)->not->toContain('# DB_USERNAME')
+        // ...et elles sont restées dans leur bloc, avant `MAIL_MAILER`.
+        ->and(array_search('DB_DATABASE=monsite', $lignes, true))
+        ->toBeLessThan(array_search('MAIL_MAILER=log', $lignes, true))
+        // Le commentaire explicatif, lui, ne bouge pas.
+        ->and($contenu)->toContain('# SQLite convient')
+        // Et la clé commentée qu'on ne demandait pas reste commentée.
+        ->and($contenu)->toContain('# DB_HOST=127.0.0.1');
+});
+
+it('ne prend pas une phrase de commentaire pour une clé', function () {
+    $this->files->put($this->path, "# Utilisation = réservée aux tests\nAPP_NAME=Baobab\n");
+
+    $this->env->set(['Utilisation' => 'production']);
+
+    expect($this->files->get($this->path))->toContain('# Utilisation = réservée aux tests')
+        ->and($this->env->get('Utilisation'))->toBe('production');
+});
