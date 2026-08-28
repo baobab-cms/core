@@ -1,0 +1,176 @@
+/*
+ * Feuille de style autonome du wizard d'installation — spec 15 §6.1, suivi n° 223.
+ *
+ * Elle ne dépend de rien : ni Tailwind, ni les design tokens du produit, ni le
+ * build de l'application hôte. C'est le prix — et la raison — de l'arbitrage 1
+ * de la Pass C : l'installateur tourne quand rien ne garantit qu'un build
+ * existe, et il doit rester lisible dans ce moment-là précisément.
+ *
+ * Les couleurs de marque sont donc **figées ici**. Elles reprennent celles de
+ * l'administration (`#1E7A54`, `#E9A13B`) et non celles de la console, qui sont
+ * une déclinaison pour fond noir (n° 211) : un navigateur est un médium clair.
+ * Si la marque change, ce fichier est à mettre à jour à la main — écart assumé,
+ * consigné, et sans alternative tant que les tokens se compilent depuis une
+ * base de données qui n'existe pas encore à cette étape.
+ *
+ * Aucune police distante : `fonts.googleapis.com` est un tiers, et une
+ * installation qui attend un CDN sur un réseau filtré affiche une page nue
+ * pendant plusieurs secondes. La pile système est instantanée et partout.
+ */
+
+:root {
+    --bb-green: #1E7A54;
+    --bb-green-dark: #17603F;
+    --bb-gold: #E9A13B;
+    --bb-fg: #16211C;
+    --bb-muted: #5C6B64;
+    --bb-bg: #F4F6F5;
+    --bb-surface: #FFFFFF;
+    --bb-border: #DCE3DF;
+    --bb-danger: #A3271F;
+    --bb-radius: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bb-green: #2F9B6E;
+        --bb-green-dark: #268159;
+        --bb-fg: #E8EFEA;
+        --bb-muted: #9AAAA2;
+        --bb-bg: #101713;
+        --bb-surface: #182420;
+        --bb-border: #2B3A33;
+        --bb-danger: #E4796F;
+    }
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 2rem 1rem;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bb-bg);
+    color: var(--bb-fg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+}
+
+.shell {
+    width: 100%;
+    max-width: 32rem;
+    background: var(--bb-surface);
+    border: 1px solid var(--bb-border);
+    border-radius: var(--bb-radius);
+    padding: 2rem;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 6%);
+}
+
+.shell__head {
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--bb-border);
+}
+
+.brand {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--bb-green);
+}
+
+.brand__sub {
+    margin: 0.25rem 0 0;
+    font-size: 0.9375rem;
+    color: var(--bb-muted);
+}
+
+.lede {
+    margin: 0 0 1rem;
+}
+
+.hint {
+    margin: 0 0 1.5rem;
+    font-size: 0.875rem;
+    color: var(--bb-muted);
+}
+
+/*
+ * Un chemin de fichier se recopie ; il ne doit donc jamais déborder ni forcer
+ * un défilement horizontal de la page. `anywhere` casse au besoin, y compris
+ * au milieu d'un segment, ce que `break-word` ne fait pas sur les chaînes sans
+ * espace — et un chemin de mutualisé n'en contient aucune.
+ */
+code {
+    display: inline-block;
+    margin-top: 0.25rem;
+    padding: 0.15rem 0.4rem;
+    background: var(--bb-bg);
+    border: 1px solid var(--bb-border);
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+    overflow-wrap: anywhere;
+}
+
+.alert {
+    margin: 0 0 1.25rem;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid var(--bb-danger);
+    border-radius: 8px;
+    color: var(--bb-danger);
+    font-size: 0.9375rem;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.label {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.input {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    background: var(--bb-surface);
+    color: var(--bb-fg);
+    border: 1px solid var(--bb-border);
+    border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 1rem;
+}
+
+.input:focus-visible,
+.button:focus-visible {
+    outline: 2px solid var(--bb-gold);
+    outline-offset: 2px;
+}
+
+.button {
+    margin-top: 0.75rem;
+    padding: 0.625rem 1rem;
+    background: var(--bb-green);
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.button:hover {
+    background: var(--bb-green-dark);
+}

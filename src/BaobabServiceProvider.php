@@ -83,6 +83,8 @@ use Baobab\Hooks\HookRegistry;
 use Baobab\Install\Console\CheckCommand;
 use Baobab\Install\Console\InstallCommand;
 use Baobab\Install\InstallationState;
+use Baobab\Install\InstallSession;
+use Baobab\Install\InstallToken;
 use Baobab\Media\Actions\SyncMediaUsagesFromEntry;
 use Baobab\Media\Conversions\PresetRegistry;
 use Baobab\Menus\Actions\InvalidateMenuCacheForEntry;
@@ -261,6 +263,30 @@ class BaobabServiceProvider extends ServiceProvider
             return new InstallationState($app->make(Filesystem::class), $directory);
         });
 
+        // Jeton et session d'installation (spec 15 §6.2, Pass C1) — meme
+        // repertoire que la sentinelle, pour qu'il n'y ait qu'un endroit ou
+        // regarder quand une installation se comporte mal.
+        $this->app->singleton(InstallToken::class, function (Application $app): InstallToken {
+            /** @var string $directory */
+            $directory = $app->make('config')->get('baobab.install.state_path', storage_path('app/baobab'));
+
+            return new InstallToken($app->make(Filesystem::class), $directory.'/install-token.txt');
+        });
+
+        // Lie a la session HTTP courante, donc jamais un singleton : deux
+        // requetes n'ont pas la meme session, et une instance partagee ferait
+        // repondre a la seconde ce qui etait vrai pour la premiere.
+        $this->app->bind(InstallSession::class, function (Application $app): InstallSession {
+            /** @var string $directory */
+            $directory = $app->make('config')->get('baobab.install.state_path', storage_path('app/baobab'));
+
+            return new InstallSession(
+                $app->make(Filesystem::class),
+                $app->make('session.store'),
+                $directory.'/install-session.json',
+            );
+        });
+
         $this->registerGuard();
 
         $this->registerLogging();
@@ -270,6 +296,7 @@ class BaobabServiceProvider extends ServiceProvider
     {
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
+        $this->registerInstallRoutes();
         $this->loadAdminRoutes();
         $this->registerSanctumGuard();
         $this->excludeApiFromDefaultCors();
@@ -303,6 +330,19 @@ class BaobabServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/baobab.php' => config_path('baobab.php'),
         ], 'baobab-config');
+
+        // Assets propres du wizard (spec 15 §6.1, arbitrage 1 du n° 223).
+        // Ils vont sous `public/baobab/install/` et NON `public/install/`, que le
+        // §6.3 nommait : un repertoire a cet emplacement **eclipse la route**
+        // `/install`. Le `.htaccess` standard de Laravel exclut du controleur
+        // frontal toute requete qui correspond a un repertoire existant
+        // (`RewriteCond %{REQUEST_FILENAME} !-d`), et la configuration Nginx
+        // usuelle fait de meme avec `try_files $uri $uri/`. Trouve en recette
+        // le 26 aout 2026 ; le §6.3 a ete amende en consequence. `public/baobab/` est
+        // deja l'espace public du Core, ou vit la jonction des polices.
+        $this->publishes([
+            __DIR__.'/../resources/install' => public_path('baobab/install'),
+        ], 'baobab-install-assets');
 
         // Super Admin bypasses all Gate checks.
         Gate::before(function (User $user, string $ability): ?bool {
@@ -835,6 +875,32 @@ class BaobabServiceProvider extends ServiceProvider
     private function registerApiDocsRoutes(): void
     {
         Route::middleware('web')->group(__DIR__.'/../routes/api-docs.php');
+    }
+
+    /**
+     * Routes du wizard graphique (spec 15 §6.1, Pass C1) — enregistrees
+     * seulement en l'absence de lock.
+     *
+     * Le §6.3 dit « les routes `/install/*` cessent d'exister au chargement
+     * suivant » : c'est ici que ca se joue. Ne pas les declarer du tout vaut
+     * mieux que les declarer puis les refuser — une route absente ne peut pas
+     * fuir par une liste de routes, un cache, ou un middleware mal ordonne.
+     *
+     * Le cout est une lecture de fichier par requete. C'est le meme prix que
+     * `baobab:check` paie deja, et l'instance est partagee (singleton), donc
+     * la sentinelle n'est lue qu'une fois par cycle de vie applicatif.
+     *
+     * `EnsureNotInstalled` double neanmoins la garde a l'interieur du fichier
+     * de routes : entre l'ecriture du lock et « le chargement suivant », le
+     * processus qui vient de finaliser a encore ses routes en memoire.
+     */
+    private function registerInstallRoutes(): void
+    {
+        if ($this->app->make(InstallationState::class)->isInstalled()) {
+            return;
+        }
+
+        $this->loadRoutesFrom(__DIR__.'/../routes/install.php');
     }
 
     /**
