@@ -57,6 +57,20 @@ final readonly class InstallationPipeline
         self::STEP_FINALIZATION,
     ];
 
+    /**
+     * Libellés d'affichage, partagés par la console et le navigateur — les
+     * deux surfaces doivent nommer une étape de la même façon, sans quoi une
+     * recette faite sur l'une ne décrit plus l'autre.
+     */
+    private const LABELS = [
+        self::STEP_DATABASE => 'Base de données',
+        self::STEP_MIGRATIONS => 'Migrations',
+        self::STEP_HASHING => 'Hachage',
+        self::STEP_ACCOUNT => 'Compte',
+        self::STEP_SITE => 'Site',
+        self::STEP_FINALIZATION => 'Finalisation',
+    ];
+
     public function __construct(
         private InstallationState $state,
         private CheckRequirements $checkRequirements,
@@ -79,15 +93,121 @@ final readonly class InstallationPipeline
         array $writablePaths,
         ?Closure $onStep = null,
     ): InstallationSummary {
-        $skipped = [];
-        $announce = static function (string $step, string $label) use ($onStep): void {
-            if ($onStep !== null) {
-                $onStep($step, $label);
-            }
-        };
+        $report = $this->requirements($publicPath, $writablePaths, $onStep);
 
-        // ── Étape 1 — toujours rejouée, sans effet de bord ────────────────
-        $announce('requirements', 'Prérequis');
+        $skipped = [];
+        $inspection = new DatabaseInspection([], $input->database->prefix);
+        $hashDriver = null;
+        $superAdmin = null;
+        $profile = $report->profile;
+
+        foreach (self::RESUMABLE_STEPS as $step) {
+            if ($this->state->hasCompleted($step)) {
+                $skipped[] = $step;
+
+                continue;
+            }
+
+            if ($onStep !== null) {
+                $onStep($step, self::LABELS[$step]);
+            }
+
+            $outcome = $this->execute($step, $input, $env, $report);
+
+            $inspection = $outcome->inspection ?? $inspection;
+            $hashDriver = $outcome->hashDriver ?? $hashDriver;
+            $superAdmin = $outcome->superAdmin ?? $superAdmin;
+            $profile = $outcome->profile ?? $profile;
+        }
+
+        return new InstallationSummary($profile, $report, $inspection, $superAdmin, $skipped, $hashDriver);
+    }
+
+    /**
+     * Exécute **la prochaine étape due**, puis rend la main — suivi n° 224.
+     *
+     * C'est ce que le wizard graphique appelle, une fois par requête (spec 15
+     * §6.1) : `RunMigrations` est l'étape longue, et une requête unique qui
+     * porterait toute la séquence se ferait tuer par les limites d'un
+     * hébergement mutualisé.
+     *
+     * **Le web n'apprend pas la séquence pour autant.** L'ordre reste
+     * `RESUMABLE_STEPS`, la table d'exécution reste `execute()`, et la console
+     * emprunte exactement les mêmes. Un adaptateur qui saurait dans quel ordre
+     * installer serait un second endroit où l'installation se décide — ce que
+     * le §1 refuse, et ce par quoi console et navigateur finiraient par
+     * diverger en silence.
+     *
+     * Rend `null` quand il n'y a plus rien à faire, ce qui est la façon la plus
+     * simple pour l'appelant de savoir qu'il a fini sans avoir à compter.
+     *
+     * @param  array<string, string>  $writablePaths  libellé => chemin, pour l'étape 1
+     */
+    public function advance(
+        InstallationInput $input,
+        EnvFile $env,
+        string $publicPath,
+        array $writablePaths,
+    ): ?StepOutcome {
+        // La finalisation n'est pas notée dans l'avancement : c'est le lock
+        // qui l'atteste (§3). Sans cette garde, elle se rejouerait sans fin.
+        if ($this->state->isInstalled()) {
+            return null;
+        }
+
+        $report = $this->requirements($publicPath, $writablePaths, null);
+
+        foreach (self::RESUMABLE_STEPS as $step) {
+            if ($this->state->hasCompleted($step)) {
+                continue;
+            }
+
+            return $this->execute($step, $input, $env, $report);
+        }
+
+        return null;
+    }
+
+    /**
+     * Étapes restant à faire, dans l'ordre — de quoi rendre une progression
+     * qui ne ment pas, puisqu'elle est lue de l'avancement réel et non d'un
+     * compteur tenu par l'écran.
+     *
+     * @return list<string>
+     */
+    public function remainingSteps(): array
+    {
+        if ($this->state->isInstalled()) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            self::RESUMABLE_STEPS,
+            fn (string $step): bool => ! $this->state->hasCompleted($step),
+        ));
+    }
+
+    public static function labelFor(string $step): string
+    {
+        return self::LABELS[$step] ?? $step;
+    }
+
+    /**
+     * Étape 1 — toujours rejouée, sans effet de bord.
+     *
+     * Elle ne modifie rien, coûte quelques millisecondes, et son profil est
+     * nécessaire au hachage comme à la finalisation. La rejouer à chaque
+     * requête du wizard est donc à la fois sans risque et nécessaire : c'est
+     * ce qui permet à `advance()` de ne rien avoir à retenir entre deux appels.
+     *
+     * @param  array<string, string>  $writablePaths
+     */
+    private function requirements(string $publicPath, array $writablePaths, ?Closure $onStep): RequirementsReport
+    {
+        if ($onStep !== null) {
+            $onStep('requirements', 'Prérequis');
+        }
+
         $report = ($this->checkRequirements)($publicPath, $writablePaths);
 
         if (! $report->passes()) {
@@ -98,74 +218,69 @@ final readonly class InstallationPipeline
             );
         }
 
-        // ── Étape 2 ───────────────────────────────────────────────────────
-        $inspection = new DatabaseInspection([], $input->database->prefix);
-
-        if ($this->shouldRun(self::STEP_DATABASE, $skipped)) {
-            $announce(self::STEP_DATABASE, 'Base de données');
-            $inspection = ($this->configureDatabase)($input->database, $env, $input->appEnv);
-            $this->state->recordStep(self::STEP_DATABASE);
-        }
-
-        // ── Étape 3 ───────────────────────────────────────────────────────
-        if ($this->shouldRun(self::STEP_MIGRATIONS, $skipped)) {
-            $announce(self::STEP_MIGRATIONS, 'Migrations');
-            ($this->runMigrations)();
-            $this->state->recordStep(self::STEP_MIGRATIONS);
-        }
-
-        // ── Hachage — avant le compte, et pas avec les réglages de site ───
-        //
-        // Le compte administrateur naît à l étape suivante : poser le driver
-        // plus tard donnerait un premier compte haché autrement que le reste
-        // du site (suivi n° 220).
-        $hashDriver = null;
-
-        if ($this->shouldRun(self::STEP_HASHING, $skipped)) {
-            $announce(self::STEP_HASHING, 'Hachage');
-            $hashDriver = ($this->configureHashing)($env, $report->profile->argon2id);
-            $this->state->recordStep(self::STEP_HASHING);
-        }
-
-        // ── Étape 4 ───────────────────────────────────────────────────────
-        $superAdmin = null;
-
-        if ($this->shouldRun(self::STEP_ACCOUNT, $skipped)) {
-            $announce(self::STEP_ACCOUNT, 'Compte');
-            $superAdmin = ($this->createSuperAdmin)($input->adminEmail, $input->adminName, $input->adminPassword);
-            $this->state->recordStep(self::STEP_ACCOUNT);
-        }
-
-        // ── Étape 5 ───────────────────────────────────────────────────────
-        if ($this->shouldRun(self::STEP_SITE, $skipped)) {
-            $announce(self::STEP_SITE, 'Site');
-            ($this->configureSite)($env, $input->siteName, $input->url, $input->timezone, $input->registrationOpen);
-            $this->state->recordStep(self::STEP_SITE);
-        }
-
-        // ── Étape 6 ───────────────────────────────────────────────────────
-        $profile = $report->profile;
-
-        if ($this->shouldRun(self::STEP_FINALIZATION, $skipped)) {
-            $announce(self::STEP_FINALIZATION, 'Finalisation');
-            $profile = ($this->finalizeInstallation)($input->version, $profile, $this->configChecksum($input), $input->optimize);
-        }
-
-        return new InstallationSummary($profile, $report, $inspection, $superAdmin, $skipped, $hashDriver);
+        return $report;
     }
 
     /**
-     * @param  list<string>  $skipped
+     * La table d'exécution — **le seul endroit** qui sache ce que fait chaque
+     * étape. `__invoke()` l'appelle en boucle, `advance()` une fois.
+     *
+     * L'avancement est noté ici, sauf pour la finalisation : c'est le lock
+     * qu'elle écrit qui l'atteste (§3), et le noter deux fois donnerait deux
+     * vérités à tenir d'accord.
      */
-    private function shouldRun(string $step, array &$skipped): bool
+    private function execute(string $step, InstallationInput $input, EnvFile $env, RequirementsReport $report): StepOutcome
     {
-        if ($this->state->hasCompleted($step)) {
-            $skipped[] = $step;
+        $outcome = match ($step) {
+            self::STEP_DATABASE => new StepOutcome(
+                $step,
+                self::LABELS[$step],
+                inspection: ($this->configureDatabase)($input->database, $env, $input->appEnv),
+            ),
+            self::STEP_MIGRATIONS => new StepOutcome(
+                $step,
+                self::LABELS[$step],
+                details: ($this->runMigrations)(),
+            ),
+            // Le hachage précède le compte, et ne va pas avec les réglages de
+            // site : le compte administrateur naît à l'étape suivante, et poser
+            // le driver plus tard donnerait un premier compte haché autrement
+            // que le reste du site (suivi n° 220).
+            self::STEP_HASHING => new StepOutcome(
+                $step,
+                self::LABELS[$step],
+                hashDriver: ($this->configureHashing)($env, $report->profile->argon2id),
+            ),
+            self::STEP_ACCOUNT => new StepOutcome(
+                $step,
+                self::LABELS[$step],
+                superAdmin: ($this->createSuperAdmin)($input->adminEmail, $input->adminName, $input->adminPassword),
+            ),
+            self::STEP_SITE => $this->configureSiteStep($step, $input, $env),
+            self::STEP_FINALIZATION => new StepOutcome(
+                $step,
+                self::LABELS[$step],
+                profile: ($this->finalizeInstallation)($input->version, $report->profile, $this->configChecksum($input), $input->optimize),
+            ),
+            default => throw InstallationStepFailed::database('Étape d\'installation inconnue : '.$step.'.'),
+        };
 
-            return false;
+        if ($step !== self::STEP_FINALIZATION) {
+            $this->state->recordStep($step);
         }
 
-        return true;
+        return $outcome;
+    }
+
+    /**
+     * `ConfigureSite` ne rend rien : sans cette enveloppe, `match` devrait
+     * porter une expression qui n'en est pas une.
+     */
+    private function configureSiteStep(string $step, InstallationInput $input, EnvFile $env): StepOutcome
+    {
+        ($this->configureSite)($env, $input->siteName, $input->url, $input->timezone, $input->registrationOpen);
+
+        return new StepOutcome($step, self::LABELS[$step]);
     }
 
     /**

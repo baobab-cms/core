@@ -83,6 +83,7 @@ use Baobab\Hooks\HookRegistry;
 use Baobab\Install\Console\CheckCommand;
 use Baobab\Install\Console\InstallCommand;
 use Baobab\Install\InstallationState;
+use Baobab\Install\InstallDraft;
 use Baobab\Install\InstallSession;
 use Baobab\Install\InstallToken;
 use Baobab\Media\Actions\SyncMediaUsagesFromEntry;
@@ -276,6 +277,13 @@ class BaobabServiceProvider extends ServiceProvider
         // Lie a la session HTTP courante, donc jamais un singleton : deux
         // requetes n'ont pas la meme session, et une instance partagee ferait
         // repondre a la seconde ce qui etait vrai pour la premiere.
+        // Meme raison que `InstallSession` de ne pas etre un singleton : le
+        // brouillon appartient a la session HTTP courante, pas au processus.
+        $this->app->bind(
+            InstallDraft::class,
+            fn (Application $app): InstallDraft => new InstallDraft($app->make('session.store')),
+        );
+
         $this->app->bind(InstallSession::class, function (Application $app): InstallSession {
             /** @var string $directory */
             $directory = $app->make('config')->get('baobab.install.state_path', storage_path('app/baobab'));
