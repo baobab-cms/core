@@ -900,7 +900,48 @@ class BaobabServiceProvider extends ServiceProvider
             return;
         }
 
+        $this->registerInstallRateLimiters();
+
         $this->loadRoutesFrom(__DIR__.'/../routes/install.php');
+    }
+
+    /**
+     * Limiteurs nommes de l'installateur (spec 15 §6.2, « throttling agressif »).
+     *
+     * Nommes plutot qu'inline (`throttle:5,1`) pour une seule raison, mais elle
+     * suffit : un limiteur nomme peut **rendre sa propre reponse**. Un 429 nu
+     * au milieu d'une installation laisse quelqu'un devant une page blanche
+     * sans savoir s'il a casse le site, combien de temps attendre, ni ou
+     * retrouver le code. Trouve en recette le 26 aout 2026.
+     *
+     * Deux regimes, parce que les deux surfaces ne courent pas le meme risque :
+     * la porte compte les tentatives contre un secret de 128 bits, les ecrans
+     * internes font defiler une etape par requete (n° 211) et ne doivent pas se
+     * faire arreter par leur propre garde.
+     *
+     * Le comptage se fait par IP. C'est imparfait derriere un partage d'adresse,
+     * et c'est assume : l'alternative serait de compter par session, or une
+     * session s'efface — ce qui offrirait a l'attaquant le moyen de remettre
+     * son propre compteur a zero.
+     */
+    private function registerInstallRateLimiters(): void
+    {
+        $refuse = function (Request $request, array $headers) {
+            return response()->view('baobab::install.throttled', [
+                'seconds' => max(1, (int) ($headers['Retry-After'] ?? 60)),
+                'tokenPath' => $this->app->make(InstallToken::class)->path(),
+            ], 429, $headers);
+        };
+
+        RateLimiter::for(
+            'baobab-install-gate',
+            fn (Request $request): Limit => Limit::perMinute(5)->by((string) $request->ip())->response($refuse),
+        );
+
+        RateLimiter::for(
+            'baobab-install-steps',
+            fn (Request $request): Limit => Limit::perMinute(60)->by((string) $request->ip())->response($refuse),
+        );
     }
 
     /**

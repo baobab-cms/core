@@ -174,3 +174,20 @@ code {
 .button:hover {
     background: var(--bb-green-dark);
 }
+
+/*
+ * Les liens ne sont pas soulignes par defaut ici : la seule page qui en
+ * contient est celle du 429, ou le lien est la derniere ligne et se lit
+ * comme une suite logique. Le soulignement revient au survol et au focus,
+ * ou il sert a confirmer la cible.
+ */
+a {
+    color: var(--bb-green);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+a:hover,
+a:focus-visible {
+    text-decoration: underline;
+}

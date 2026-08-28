@@ -7,7 +7,6 @@ use Baobab\Install\InstallSession;
 use Baobab\Install\InstallToken;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -195,6 +194,48 @@ it('coupe la porte après cinq tentatives dans la minute', function () {
         $this->post('/install', ['token' => 'faux']);
     }
 
-    expect(fn () => $this->withoutExceptionHandling()->post('/install', ['token' => 'faux']))
-        ->toThrow(HttpException::class);
+    $this->post('/install', ['token' => 'faux'])->assertStatus(429);
+});
+
+/**
+ * Le 429 par défaut de Laravel est une page nue. Au milieu d'une installation,
+ * elle laisse quelqu'un sans savoir s'il a cassé le site, combien de temps
+ * attendre, ni où retrouver son code — constaté en recette le 26 août 2026.
+ *
+ * Ce test verrouille les trois informations, et **l'absence** de la quatrième :
+ * le nombre de tentatives restantes ne doit jamais être dit, il ne renseignerait
+ * que celui qui tâtonne.
+ */
+it('explique le refus au lieu de rendre une page nue', function () {
+    $this->get('/install');
+
+    foreach (range(1, 5) as $ignore) {
+        $this->post('/install', ['token' => 'faux']);
+    }
+
+    $reponse = $this->post('/install', ['token' => 'faux']);
+
+    $reponse->assertStatus(429)
+        ->assertSee('Trop de tentatives')
+        ->assertSee('install-token.txt')
+        ->assertSee('seconde', false);
+
+    expect($reponse->headers->get('Retry-After'))->not->toBeNull();
+});
+
+/**
+ * Le jeton ne doit pas fuir par la page d'erreur : elle en donne le chemin,
+ * comme la porte, et jamais la valeur.
+ */
+it('ne divulgue pas le jeton sur la page de refus', function () {
+    $this->get('/install');
+    $jeton = trim($this->files->get($this->repertoire.'/install-token.txt'));
+
+    foreach (range(1, 5) as $ignore) {
+        $this->post('/install', ['token' => 'faux']);
+    }
+
+    $this->post('/install', ['token' => 'faux'])
+        ->assertStatus(429)
+        ->assertDontSee($jeton);
 });
