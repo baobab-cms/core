@@ -84,6 +84,7 @@ final readonly class InstallationPipeline
 
     /**
      * @param  array<string, string>  $writablePaths  libellé => chemin, pour l'étape 1
+     * @param  array<string, mixed>  $server  `$_SERVER` de la requête, vide en console
      * @param  Closure(string, string): void|null  $onStep  appelé à l'entrée de chaque étape (clé, libellé)
      */
     public function __invoke(
@@ -92,8 +93,9 @@ final readonly class InstallationPipeline
         string $publicPath,
         array $writablePaths,
         ?Closure $onStep = null,
+        array $server = [],
     ): InstallationSummary {
-        $report = $this->requirements($publicPath, $writablePaths, $onStep);
+        $report = $this->requirements($publicPath, $writablePaths, $onStep, $server);
 
         $skipped = [];
         $inspection = new DatabaseInspection([], $input->database->prefix);
@@ -142,12 +144,14 @@ final readonly class InstallationPipeline
      * simple pour l'appelant de savoir qu'il a fini sans avoir à compter.
      *
      * @param  array<string, string>  $writablePaths  libellé => chemin, pour l'étape 1
+     * @param  array<string, mixed>  $server  `$_SERVER` de la requête, vide en console
      */
     public function advance(
         InstallationInput $input,
         EnvFile $env,
         string $publicPath,
         array $writablePaths,
+        array $server = [],
     ): ?StepOutcome {
         // La finalisation n'est pas notée dans l'avancement : c'est le lock
         // qui l'atteste (§3). Sans cette garde, elle se rejouerait sans fin.
@@ -155,7 +159,7 @@ final readonly class InstallationPipeline
             return null;
         }
 
-        $report = $this->requirements($publicPath, $writablePaths, null);
+        $report = $this->requirements($publicPath, $writablePaths, null, $server);
 
         foreach (self::RESUMABLE_STEPS as $step) {
             if ($this->state->hasCompleted($step)) {
@@ -201,14 +205,21 @@ final readonly class InstallationPipeline
      * ce qui permet à `advance()` de ne rien avoir à retenir entre deux appels.
      *
      * @param  array<string, string>  $writablePaths
+     * @param  array<string, mixed>  $server  `$_SERVER` de la requête, vide en console
      */
-    private function requirements(string $publicPath, array $writablePaths, ?Closure $onStep): RequirementsReport
+    private function requirements(string $publicPath, array $writablePaths, ?Closure $onStep, array $server = []): RequirementsReport
     {
         if ($onStep !== null) {
             $onStep('requirements', 'Prérequis');
         }
 
-        $report = ($this->checkRequirements)($publicPath, $writablePaths);
+        // **`$server` était accepté par l'Action et jamais transmis** : trois
+        // capacités — accès shell, racine de document, serveur web — ne se
+        // lisent que dans `$_SERVER`, et le profil les rendait donc `unknown`
+        // même depuis le navigateur, qui les a pourtant sous la main. Le
+        // tri-état de la Pass A1 marchait ; on ne lui donnait rien à constater.
+        // Trouvé en lisant la première entrée d'audit réelle (n° 233).
+        $report = ($this->checkRequirements)($publicPath, $writablePaths, $server);
 
         if (! $report->passes()) {
             throw InstallationStepFailed::database(

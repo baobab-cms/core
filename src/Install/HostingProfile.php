@@ -24,7 +24,41 @@ final readonly class HostingProfile
         public Capability $publicIsDocumentRoot,
         public WebServer $webServer,
         public Capability $argon2id = Capability::Unknown,
+        /**
+         * Chemin de l'interpréteur en ligne de commande, et sa certitude.
+         *
+         * Il n'est pas une *capacité* — on ne le lit ni présent ni absent,
+         * mais quelque part — et pourtant il vit ici : c'est ce que la
+         * checklist du §7 doit rendre, et c'est aussi une **dérive utile**.
+         * Un hébergeur qui change de version de PHP déplace ce binaire, et la
+         * ligne de cron posée à l'installation cesse alors de fonctionner sans
+         * que rien ne le dise. `baobab:check` le verra (n° 235).
+         */
+        public ?PhpBinary $phpBinary = null,
     ) {}
+
+    /**
+     * Le même profil, symlink constaté absent.
+     *
+     * **Existe parce qu'un profil se recopie mal à la main** : la finalisation
+     * reconstruisait un `HostingProfile` champ par champ quand `storage:link`
+     * échouait, et **oubliait `argon2id`** — ajouté après elle. Le lock d'un
+     * hébergement sans symlink enregistrait donc « hachage inconnu » alors
+     * qu'on venait de le constater. Un constructeur nommé ne peut pas oublier
+     * ce qu'il ne nomme pas.
+     */
+    public function withoutSymlink(): self
+    {
+        return new self(
+            symlink: Capability::Absent,
+            procOpen: $this->procOpen,
+            shellAccess: $this->shellAccess,
+            publicIsDocumentRoot: $this->publicIsDocumentRoot,
+            webServer: $this->webServer,
+            argon2id: $this->argon2id,
+            phpBinary: $this->phpBinary,
+        );
+    }
 
     /**
      * Détecte le profil du processus courant.
@@ -62,6 +96,7 @@ final readonly class HostingProfile
             // tourne en bcrypt — le défaut de Laravel, sûr, mais annoncé
             // plutôt que subi (suivi n° 220).
             argon2id: Capability::fromBool(in_array('argon2id', password_algos(), true)),
+            phpBinary: PhpBinary::detect($sapi),
         );
     }
 
@@ -77,6 +112,10 @@ final readonly class HostingProfile
             'public_is_document_root' => $this->publicIsDocumentRoot->value,
             'web_server' => $this->webServer->value,
             'argon2id' => $this->argon2id->value,
+            // `unknown` plutôt que l'absence : `driftFrom()` traite déjà cette
+            // valeur comme « on ne sait pas », et une clé toujours présente
+            // évite d'avoir à distinguer un lock ancien d'un profil muet.
+            'php_binary' => $this->phpBinary->path ?? 'unknown',
         ];
     }
 
@@ -94,6 +133,9 @@ final readonly class HostingProfile
                 ? WebServer::tryFrom($data['web_server']) ?? WebServer::Unknown
                 : WebServer::Unknown,
             argon2id: self::capability($data, 'argon2id'),
+            phpBinary: is_string($data['php_binary'] ?? null) && $data['php_binary'] !== 'unknown'
+                ? PhpBinary::remembered($data['php_binary'])
+                : null,
         );
     }
 
@@ -112,11 +154,17 @@ final readonly class HostingProfile
         $before = $reference->toArray();
 
         foreach ($this->toArray() as $key => $value) {
-            if ($value === 'unknown' || $before[$key] === 'unknown' || $value === $before[$key]) {
+            // `?? 'unknown'` : un lock écrit par une version antérieure ne
+            // porte pas les clés ajoutées depuis. Sans ce repli, comparer un
+            // profil d'aujourd'hui à un lock d'hier lèverait sur une clé
+            // absente — au lieu de dire, comme il se doit, qu'on ne sait pas.
+            $avant = $before[$key] ?? 'unknown';
+
+            if ($value === 'unknown' || $avant === 'unknown' || $value === $avant) {
                 continue;
             }
 
-            $drift[$key] = ['avant' => $before[$key], 'apres' => $value];
+            $drift[$key] = ['avant' => $avant, 'apres' => $value];
         }
 
         return $drift;

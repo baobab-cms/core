@@ -6,7 +6,6 @@ namespace Baobab\Install\Actions;
 
 use Baobab\Audit\AuditLogger;
 use Baobab\Facades\Hook;
-use Baobab\Install\Capability;
 use Baobab\Install\HostingProfile;
 use Baobab\Install\InstallationState;
 use Baobab\Install\InstallToken;
@@ -126,13 +125,12 @@ final class FinalizeInstallation
         try {
             $this->artisan->call('storage:link');
         } catch (Throwable) {
-            return new HostingProfile(
-                symlink: Capability::Absent,
-                procOpen: $profile->procOpen,
-                shellAccess: $profile->shellAccess,
-                publicIsDocumentRoot: $profile->publicIsDocumentRoot,
-                webServer: $profile->webServer,
-            );
+            // `withoutSymlink()` plutôt qu'une reconstruction champ par champ :
+            // celle-ci **oubliait `argon2id`**, ajouté au profil après elle, si
+            // bien qu'un hébergement sans symlink enregistrait « hachage
+            // inconnu » dans son lock alors qu'on venait de le constater
+            // (trouvé en instruisant la C3b, n° 235).
+            return $profile->withoutSymlink();
         }
 
         return $profile;

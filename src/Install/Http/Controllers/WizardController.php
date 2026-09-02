@@ -55,9 +55,13 @@ final class WizardController
      * jour vaut mieux que de montrer un constat vieux de dix minutes, pendant
      * lesquelles l'utilisateur a pu corriger des droits chez son hébergeur.
      */
-    public function requirements(CheckRequirements $check): View
+    public function requirements(Request $request, CheckRequirements $check): View
     {
-        $report = $check(public_path(), InstallPaths::writable());
+        // `$request->server->all()` : ce que le `$_SERVER` de la requête
+        // apprend au profil — accès shell, racine de document, serveur web.
+        // Sans lui, la détection restait `unknown` alors qu'on est précisément
+        // dans le seul contexte capable de la renseigner (n° 233).
+        $report = $check(public_path(), InstallPaths::writable(), $request->server->all());
 
         return view('baobab::install.requirements', [
             'screens' => $this->screens('requirements'),
@@ -228,6 +232,10 @@ final class WizardController
                 $env,
                 public_path(),
                 InstallPaths::writable(),
+                // Le profil se redétecte à chaque étape (§4.1) : lui donner le
+                // `$_SERVER` de *cette* requête est ce qui le rend complet
+                // côté web, et c'est lui qui finira dans le lock (n° 233).
+                $request->server->all(),
             );
         } catch (InstallationStepFailed $e) {
             // On rend 200 avec un drapeau d'échec plutôt qu'un code d'erreur :
