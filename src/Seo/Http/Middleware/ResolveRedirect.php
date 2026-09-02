@@ -9,7 +9,9 @@ use Baobab\Seo\Models\Redirect;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Redirector;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * Court-circuite le routage public si le chemin courant correspond à une
@@ -21,6 +23,26 @@ final class ResolveRedirect
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // **Rien à résoudre tant que la table n'existe pas.** Sur une archive
+        // fraîchement décompressée, il n'y a pas encore de base : ce middleware
+        // tourne pourtant sur **toute** requête publique, et sa requête faisait
+        // finir chacune en 500 — c'est l'erreur que voyait l'utilisateur avant
+        // même d'atteindre l'installateur (recette du 28 août 2026, n° 224).
+        //
+        // La garde porte sur la **table** et non sur le lock d'installation :
+        // le lock atteste une installation terminée, quand ce qui manque ici
+        // est seulement de quoi lire. C'est le même patron que
+        // `BaobabServiceProvider::bootstrapActiveModules()`, et il vaut aussi
+        // pour un site dont la base est momentanément injoignable — mieux vaut
+        // servir la page sans résoudre de redirection que ne rien servir.
+        try {
+            if (! Schema::hasTable('redirects')) {
+                return $next($request);
+            }
+        } catch (Throwable) {
+            return $next($request);
+        }
+
         $path = '/'.ltrim($request->path(), '/');
         $match = app(ResolveRedirectTarget::class)($path);
 

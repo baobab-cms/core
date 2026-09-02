@@ -84,6 +84,7 @@ use Baobab\Install\Console\CheckCommand;
 use Baobab\Install\Console\InstallCommand;
 use Baobab\Install\InstallationState;
 use Baobab\Install\InstallDraft;
+use Baobab\Install\InstallPaths;
 use Baobab\Install\InstallSession;
 use Baobab\Install\InstallToken;
 use Baobab\Media\Actions\SyncMediaUsagesFromEntry;
@@ -908,7 +909,22 @@ class BaobabServiceProvider extends ServiceProvider
             return;
         }
 
+        // Seulement hors console : la garantie de cle existe pour le navigateur,
+        // qui ne peut demander a personne de lancer une commande. `baobab:install`
+        // gere deja son `.env` explicitement, et creer un fichier a chaque appel
+        // d'artisan sur un site non installe serait intrusif — la construction de
+        // l'archive en a fait les frais, un `.env` s'etant glisse dans le zip.
+        if (! $this->app->runningInConsole()) {
+            InstallPaths::ensureApplicationKey($this->app->make('config'), $this->app->make(Filesystem::class));
+        }
+        InstallPaths::useLocalDrivers($this->app->make('config'), $this->app->make(Filesystem::class));
         $this->registerInstallRateLimiters();
+
+        // L'empreinte des assets est calculee ici plutot que dans le layout :
+        // une vue affiche, elle ne calcule pas.
+        View::composer('baobab::install.*', function (ViewContract $view): void {
+            $view->with('assetVersion', InstallPaths::assetVersion());
+        });
 
         $this->loadRoutesFrom(__DIR__.'/../routes/install.php');
     }

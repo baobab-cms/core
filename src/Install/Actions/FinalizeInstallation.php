@@ -84,13 +84,20 @@ final class FinalizeInstallation
     }
 
     /**
-     * Les caches sont un confort, jamais une condition.
+     * Mise en cache de la configuration, des routes et des vues (§4 étape 6).
      *
-     * Un `config:cache` qui échoue sur un hébergement bridé ne doit pas
-     * empêcher un site par ailleurs installé de démarrer — il démarrera
-     * simplement moins vite.
+     * **Publique parce que le wizard la diffère.** `config:cache` reconstruit
+     * toute la configuration : l'exécuter au milieu d'une requête HTTP fait
+     * perdre les réglages posés à chaud — dont le débranchement des pilotes de
+     * session et de cache pendant l'installation — et la réponse en cours se
+     * termine sur une configuration qui n'est plus celle qui l'a produite.
+     * Constaté en recette le 28 août 2026 : la finalisation aboutissait, le
+     * site fonctionnait, mais le navigateur recevait une réponse illisible.
+     *
+     * La console peut l'appeler en ligne — elle n'a pas de réponse à rendre.
+     * Le wizard l'appelle après avoir répondu, sur `terminating()`.
      */
-    private function optimize(): void
+    public function optimize(): void
     {
         foreach (['config:cache', 'route:cache', 'view:cache'] as $command) {
             try {

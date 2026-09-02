@@ -191,3 +191,237 @@ a:hover,
 a:focus-visible {
     text-decoration: underline;
 }
+
+/* ─── Fil des écrans de saisie ─────────────────────────────────────────── */
+
+.steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin: 0 0 1.5rem;
+    padding: 0;
+    list-style: none;
+    font-size: 0.8125rem;
+    color: var(--bb-muted);
+}
+
+.steps__item.is-done {
+    color: var(--bb-green);
+}
+
+.steps__item.is-current {
+    color: var(--bb-fg);
+    font-weight: 600;
+}
+
+/* ─── Prérequis ────────────────────────────────────────────────────────── */
+
+.checks {
+    margin: 0 0 1.5rem;
+    padding: 0;
+    list-style: none;
+}
+
+.check {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.6rem 0 0.6rem 1.5rem;
+    border-bottom: 1px solid var(--bb-border);
+    position: relative;
+}
+
+.check:last-child {
+    border-bottom: 0;
+}
+
+/*
+ * Le verdict est porté par un caractère et non par la seule couleur : §4.1
+ * veut un constat lisible, et une pastille verte ne dit rien à qui ne
+ * distingue pas le vert du rouge.
+ */
+.check::before {
+    position: absolute;
+    left: 0;
+    top: 0.6rem;
+    font-weight: 700;
+}
+
+.check.is-ok::before {
+    content: "✓";
+    color: var(--bb-green);
+}
+
+.check.is-blocking::before {
+    content: "✕";
+    color: var(--bb-danger);
+}
+
+.check.is-advisory::before {
+    content: "!";
+    color: var(--bb-gold);
+}
+
+.check__detail,
+.check__remedy {
+    font-size: 0.8125rem;
+    color: var(--bb-muted);
+}
+
+/* ─── Formulaires ──────────────────────────────────────────────────────── */
+
+.label__hint {
+    font-weight: 400;
+    color: var(--bb-muted);
+}
+
+.field-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.field-row__main {
+    flex: 1 1 auto;
+}
+
+.field-row__side {
+    flex: 0 0 7rem;
+}
+
+.choice {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin-top: 1rem;
+    font-size: 0.9375rem;
+}
+
+.choice input {
+    margin-top: 0.3rem;
+    accent-color: var(--bb-green);
+}
+
+.choice__hint {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.8125rem;
+    color: var(--bb-muted);
+}
+
+.actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 1.5rem;
+}
+
+.button--ghost {
+    background: transparent;
+    color: var(--bb-muted);
+    border: 1px solid var(--bb-border);
+    text-decoration: none;
+}
+
+.button--ghost:hover {
+    background: var(--bb-bg);
+    color: var(--bb-fg);
+    text-decoration: none;
+}
+
+.button--link {
+    display: inline-block;
+    color: #fff;
+    text-decoration: none;
+}
+
+.button--link:hover {
+    color: #fff;
+    text-decoration: none;
+}
+
+/* ─── Progression ──────────────────────────────────────────────────────── */
+
+.run {
+    margin: 0 0 1.25rem;
+    padding: 0;
+    list-style: none;
+}
+
+.run__step {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--bb-border);
+}
+
+/*
+ * La tuile du logo qui se remplit — `direction-visuelle.md` : « jamais un
+ * spinner qui tourne, jamais un balayage ». Elle n'a que trois états, tous
+ * **statiques** : vide, à moitié, pleine. Rien ne bouge en permanence ; seul
+ * le passage d'un état à l'autre est animé, et il l'est parce qu'il correspond
+ * à un fait réel — une requête qui vient d'aboutir.
+ */
+.run__tile {
+    width: 0.9rem;
+    height: 0.9rem;
+    border: 1px solid var(--bb-border);
+    border-radius: 3px;
+    background: linear-gradient(to top, var(--bb-green) 0%, transparent 0%);
+    transition: background 240ms ease-out, border-color 240ms ease-out;
+}
+
+.run__step.is-running .run__tile {
+    border-color: var(--bb-green);
+    background: linear-gradient(to top, var(--bb-green) 50%, transparent 50%);
+}
+
+.run__step.is-done .run__tile {
+    border-color: var(--bb-green);
+    background: linear-gradient(to top, var(--bb-green) 100%, transparent 100%);
+}
+
+.run__step.is-failed .run__tile {
+    border-color: var(--bb-danger);
+    background: linear-gradient(to top, var(--bb-danger) 100%, transparent 100%);
+}
+
+.run__state {
+    font-size: 0.8125rem;
+    color: var(--bb-muted);
+}
+
+.run__step.is-done .run__state {
+    color: var(--bb-green);
+}
+
+.run__step.is-failed .run__state {
+    color: var(--bb-danger);
+}
+
+/*
+ * Les vraies migrations, en mono — « on regarde Baobab écrire de vrais
+ * fichiers ». Elles apparaissent une fois l'étape passée : rien ne peut
+ * défiler pendant, la requête partant, migrant et revenant.
+ */
+.run__details {
+    grid-column: 2 / -1;
+    margin: 0.35rem 0 0;
+    padding: 0;
+    list-style: none;
+    max-height: 9rem;
+    overflow-y: auto;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    color: var(--bb-muted);
+}
+
+.run__details:empty {
+    margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .run__tile {
+        transition: none;
+    }
+}

@@ -179,7 +179,7 @@ it('assemble l\'entrée du pipeline à partir du brouillon', function () {
         'registration_open' => true,
     ]);
 
-    $input = $draft->toInput('1.2.3', optimize: false);
+    $input = $draft->toInput('1.2.3', 'local', optimize: false);
 
     expect($input->database->driver)->toBe('mysql')
         ->and($input->database->port)->toBe(3307)

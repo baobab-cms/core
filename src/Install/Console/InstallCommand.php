@@ -11,6 +11,7 @@ use Baobab\Install\InstallationInput;
 use Baobab\Install\InstallationPipeline;
 use Baobab\Install\InstallationState;
 use Baobab\Install\InstallationSummary;
+use Baobab\Install\InstallPaths;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 
@@ -88,7 +89,7 @@ final class InstallCommand extends Command
                 $input,
                 $env,
                 public_path(),
-                $this->writablePaths(),
+                InstallPaths::writable(),
                 // Chaque étape close la précédente : c est ce qui donne une
                 // ligne par étape avec son verdict, plutôt qu une ligne qui
                 // se réécrit sur elle-même et se dédouble dans un journal.
@@ -230,18 +231,6 @@ final class InstallCommand extends Command
         $value = $this->option($name);
 
         return is_string($value) && $value !== '' ? $value : null;
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function writablePaths(): array
-    {
-        return [
-            'storage' => storage_path(),
-            'bootstrap/cache' => base_path('bootstrap/cache'),
-            'public' => public_path(),
-        ];
     }
 
     private function version(): string

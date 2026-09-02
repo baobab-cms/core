@@ -53,18 +53,26 @@ final class RunMigrations
         try {
             $status = $this->artisan->call('migrate', ['--force' => true]);
         } catch (Throwable $e) {
+            // **On rend l'erreur de la base, pas une hypothèse sur elle.**
+            // Ce message affirmait un défaut de privilèges ; en recette il
+            // s'est affiché alors que 43 tables venaient d'être créées, ce qui
+            // envoyait l'utilisateur chercher chez son hébergeur un problème
+            // qui n'existait pas. Une supposition présentée comme un
+            // diagnostic coûte plus qu'un message sec (suivi n° 224).
             throw InstallationStepFailed::migrations(
-                'La création des tables a échoué. La base est joignable, mais l\'utilisateur '
-                .'qui s\'y connecte n\'a peut-être pas le droit de créer des tables — '
-                .'vérifiez ses privilèges auprès de votre hébergement.',
+                'La création des tables s\'est interrompue : '.$e->getMessage(),
                 $e,
             );
         }
 
         if ($status !== 0) {
+            // `migrate` rend un code non nul sans lever : le détail n'existe
+            // que dans sa sortie, et c'est la seule chose qui dise quelle
+            // migration a cédé.
             throw InstallationStepFailed::migrations(
                 'La création des tables s\'est interrompue. Relancez l\'installation : '
-                .'elle reprendra à cette étape sans refaire les précédentes.',
+                .'elle reprendra à cette étape sans refaire les précédentes.'
+                .$this->lastLines($this->artisan->output()),
             );
         }
 
@@ -93,5 +101,23 @@ final class RunMigrations
         }
 
         return $migrations;
+    }
+
+    /**
+     * Les dernières lignes utiles d'une sortie de `migrate`.
+     *
+     * On ne rend pas la sortie entière : elle contient 58 lignes de
+     * migrations réussies avant celle qui a cédé, et noyer l'erreur est une
+     * autre façon de la cacher.
+     */
+    private function lastLines(string $output, int $keep = 3): string
+    {
+        $lines = array_values(array_filter(array_map('trim', preg_split('/\R/', $output) ?: [])));
+
+        if ($lines === []) {
+            return '';
+        }
+
+        return ' '.implode(' ', array_slice($lines, -$keep));
     }
 }

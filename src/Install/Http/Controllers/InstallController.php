@@ -59,14 +59,4 @@ final class InstallController
 
         return redirect()->route('baobab.install.index');
     }
-
-    /**
-     * Coquille du wizard. La Pass C2 y branche les étapes ; la C1 se borne à
-     * prouver que le socle tient — routes conditionnelles, jeton, session,
-     * verrou, layout autonome et assets servis sans l'application.
-     */
-    public function index(): View
-    {
-        return view('baobab::install.index');
-    }
 }

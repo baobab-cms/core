@@ -29,7 +29,7 @@
     <meta name="robots" content="noindex, nofollow">
     <title>@yield('title', 'Installation') — Baobab</title>
 
-    <link rel="stylesheet" href="{{ url('baobab/install/wizard.css') }}?v={{ config('baobab.version', 'dev') }}">
+    <link rel="stylesheet" href="{{ url('baobab/install/wizard.css') }}?v={{ $assetVersion }}">
 </head>
 <body>
     <main class="shell">

@@ -103,7 +103,7 @@ final class InstallDraft
      * réponse avant de demander, et un brouillon incomplet est un défaut de
      * parcours, pas un cas d'exécution.
      */
-    public function toInput(string $version, bool $optimize = true): InstallationInput
+    public function toInput(string $version, string $appEnv = 'production', bool $optimize = true): InstallationInput
     {
         $database = $this->section(self::SECTION_DATABASE);
         $account = $this->section(self::SECTION_ACCOUNT);
@@ -125,6 +125,7 @@ final class InstallDraft
             adminName: ($name = $this->string($account, 'name')) === '' ? null : $name,
             adminPassword: ($password = $this->string($account, 'password')) === '' ? null : $password,
             timezone: $this->string($site, 'timezone', 'UTC'),
+            appEnv: $appEnv,
             registrationOpen: (bool) ($site['registration_open'] ?? false),
             version: $version,
             optimize: $optimize,
