@@ -105,6 +105,34 @@
         error.hidden = false;
     }
 
+    /*
+     * Décrit une réponse que l'on n'a pas su lire.
+     *
+     * Le corps est tronqué : une page d'erreur PHP fait des kilo-octets, et
+     * l'utile — le message, la classe d'exception — tient dans les premières
+     * lignes. Les balises sont retirées pour que le texte reste lisible dans
+     * une bannière ; on ne cherche pas à rendre du HTML, on cherche à le citer.
+     */
+    function describe(response, body) {
+        var texte = String(body || '')
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 300);
+
+        var parts = ['Réponse inattendue du serveur (HTTP ' + response.status + ')'];
+
+        if (response.redirected) {
+            parts.push('redirigé vers ' + response.url);
+        }
+
+        if (texte !== '') {
+            parts.push(texte);
+        }
+
+        return parts.join(' — ');
+    }
+
     function next() {
         var pending = run.querySelector('.run__step:not(.is-done):not(.is-failed)');
 
@@ -122,8 +150,25 @@
             credentials: 'same-origin'
         })
             .then(function (response) {
-                return response.json().catch(function () {
-                    throw new Error('Réponse inattendue du serveur.');
+                /*
+                 * **Ce que le serveur a réellement répondu, et pas une
+                 * paraphrase.** Ce bloc rendait « Réponse inattendue du
+                 * serveur » quoi qu'il arrive. Le 2 septembre 2026, cette
+                 * phrase a caché pendant deux recettes une redirection 302
+                 * vers la porte d'installation : la session avait été perdue,
+                 * et l'écran ne pouvait pas le dire (suivi n° 226).
+                 *
+                 * `redirected` et `url` sont les deux seules choses qui
+                 * nommaient la cause. On les rend, avec le code HTTP et le
+                 * début du corps — un installateur qui échoue doit laisser une
+                 * trace lisible par quelqu'un qui n'a ni shell ni journaux.
+                 */
+                return response.text().then(function (body) {
+                    try {
+                        return JSON.parse(body);
+                    } catch (e) {
+                        throw new Error(describe(response, body));
+                    }
                 });
             })
             .then(function (payload) {

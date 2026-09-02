@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Rendering;
 
+use Baobab\Install\Http\Middleware\RedirectToInstaller;
 use Baobab\Rendering\Actions\RenderContentArchive;
 use Baobab\Rendering\Actions\RenderContentEntry;
 use Baobab\Rendering\Actions\RenderHomepage;
@@ -51,7 +52,14 @@ final class PublicRouteRegistrar
     public function register(Router $router): void
     {
         $router->middleware(['web', NormalizePublicUrl::class, ResolveRedirect::class, ResolveActiveTheme::class, ForceStagingNoindexHeader::class])->group(function () use ($router): void {
-            $router->get('/', RenderHomepage::class)->name('baobab.welcome');
+            // `RedirectToInstaller` ne s'interpose que sur un site qui ne peut
+            // rien servir — pas de lock **et** base hors d'atteinte, ce qui est
+            // l'état d'une archive fraîchement décompressée. Partout ailleurs
+            // il laisse passer : un site monté à la main n'a jamais eu de lock
+            // et n'a pas à être détourné (suivi n° 226).
+            $router->get('/', RenderHomepage::class)
+                ->middleware(RedirectToInstaller::class)
+                ->name('baobab.welcome');
 
             $router->get('/sitemap.xml', RenderSitemapIndex::class)->name('baobab.sitemap.index');
 

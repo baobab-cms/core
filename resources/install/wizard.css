@@ -18,6 +18,20 @@
  * pendant plusieurs secondes. La pile système est instantanée et partout.
  */
 
+/*
+ * `hidden` doit gagner sur tout le reste.
+ *
+ * `.actions { display: flex }` plus bas écrase la règle du navigateur pour
+ * l'attribut `hidden` : le repli « Exécuter l'étape suivante » restait donc
+ * visible alors que `wizard.js` venait de le masquer, offrant deux façons
+ * concurrentes d'avancer — exactement ce que ce masquage existe pour éviter.
+ * Vu sur la capture d'une recette du 2 septembre 2026, où le bouton
+ * s'affichait sous une bannière d'erreur.
+ */
+[hidden] {
+    display: none !important;
+}
+
 :root {
     --bb-green: #1E7A54;
     --bb-green-dark: #17603F;

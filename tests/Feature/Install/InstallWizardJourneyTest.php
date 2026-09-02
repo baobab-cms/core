@@ -7,6 +7,7 @@ use Baobab\Install\InstallToken;
 use Illuminate\Config\Repository;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Spec 15 §6.1 — le parcours d'installation (Pass C2b, suivi n° 224).
@@ -94,6 +95,34 @@ it('montre les prérequis avant toute saisie', function () {
 it('renvoie à la porte tant que le jeton n\'a pas été présenté', function () {
     $this->get('/install/database')->assertRedirect(route('baobab.install.gate'));
     $this->get('/install/run')->assertRedirect(route('baobab.install.gate'));
+});
+
+/**
+ * La racine d'une archive fraîchement décompressée mène à l'installateur
+ * (n° 213, demandé en recette le 2 septembre 2026). Quelqu'un qui décompresse
+ * ouvre son domaine, pas `/install` : sans ce détour il tombe sur le rendu
+ * public d'un site sans base, et rien ne lui dit quoi faire.
+ *
+ * La base hors d'atteinte est simulée en retirant la table que le détour
+ * interroge : c'est l'état réel d'une archive, où aucune base n'existe encore.
+ */
+it('mène la racine à l\'installateur quand le site ne peut rien servir', function () {
+    Schema::drop('users');
+
+    $this->get('/')->assertRedirect(route('baobab.install.gate'))->assertStatus(302);
+});
+
+/**
+ * **Le lock ne suffit pas à détourner.** Un site monté à la main — `composer
+ * require` dans une application existante, ou ce banc d'essai — n'en a jamais
+ * eu et fonctionne parfaitement. La première version de ce détour ne regardait
+ * que le lock : elle a détourné seize tests de rendu public, ce qui est en
+ * petit ce qu'elle aurait fait à ces sites-là.
+ */
+it('laisse sa page d\'accueil à un site déjà monté, lock ou pas', function () {
+    expect($this->state->isInstalled())->toBeFalse();
+
+    $this->get('/')->assertOk();
 });
 
 it('collecte la base sans rien écrire', function () {

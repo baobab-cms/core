@@ -24,6 +24,15 @@ final readonly class InstallationInput
         public ?string $adminPassword = null,
         public string $timezone = 'UTC',
         public bool $registrationOpen = true,
+        /**
+         * Consentement à la télémétrie (§8 point 2), **faux par défaut**.
+         *
+         * L'opt-in est explicite : une entrée qui ne dit rien vaut un refus,
+         * jamais un consentement implicite. C'est aussi ce que rend le défaut
+         * de la colonne, pour que les deux bouts de la chaîne disent la même
+         * chose (suivi n° 229, arbitrage A4).
+         */
+        public bool $telemetry = false,
         public string $appEnv = 'production',
         public string $version = 'dev',
         /**

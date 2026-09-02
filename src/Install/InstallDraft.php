@@ -127,6 +127,10 @@ final class InstallDraft
             timezone: $this->string($site, 'timezone', 'UTC'),
             appEnv: $appEnv,
             registrationOpen: (bool) ($site['registration_open'] ?? false),
+            // La case de l'écran « site » arrive jusqu'ici, et de là jusqu'en
+            // base : jusqu'au 2 septembre 2026 elle s'arrêtait au brouillon,
+            // que `forget()` efface à la finalisation (suivi n° 229).
+            telemetry: (bool) ($site['telemetry'] ?? false),
             version: $version,
             optimize: $optimize,
         );

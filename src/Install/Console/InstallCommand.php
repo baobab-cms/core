@@ -48,7 +48,8 @@ final class InstallCommand extends Command
         {--site-name= : Nom du site}
         {--url= : URL publique du site}
         {--timezone= : Fuseau horaire (défaut UTC)}
-        {--closed-registration : Ferme l\'inscription front, ouverte par défaut}';
+        {--closed-registration : Ferme l\'inscription front, ouverte par défaut}
+        {--telemetry : Transmettre des statistiques anonymes ; rien n\'est transmis sans ce drapeau}';
 
     protected $description = 'Installe Baobab : prérequis, base, migrations, compte, site, finalisation.';
 
@@ -150,6 +151,12 @@ final class InstallCommand extends Command
             adminPassword: $this->secretFromEnv('admin-password-env', $interactive, 'Mot de passe de l\'administrateur'),
             timezone: $this->stringOption('timezone') ?? 'UTC',
             registrationOpen: ! $this->option('closed-registration'),
+            // **Drapeau et non invite** : le §8 point 2 veut un opt-in
+            // explicite, et une invite posée au milieu d'une installation
+            // console obtient surtout des « oui » distraits. Absent, rien
+            // n'est consenti — c'est le défaut de l'entrée comme celui de la
+            // colonne (suivi n° 229, arbitrage A4).
+            telemetry: (bool) $this->option('telemetry'),
             appEnv: (string) config('app.env', 'production'),
             version: $this->version(),
             // Interrupteur d exploitation autant que de test : certains

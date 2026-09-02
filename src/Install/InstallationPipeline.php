@@ -278,7 +278,7 @@ final readonly class InstallationPipeline
      */
     private function configureSiteStep(string $step, InstallationInput $input, EnvFile $env): StepOutcome
     {
-        ($this->configureSite)($env, $input->siteName, $input->url, $input->timezone, $input->registrationOpen);
+        ($this->configureSite)($env, $input->siteName, $input->url, $input->timezone, $input->registrationOpen, $input->telemetry);
 
         return new StepOutcome($step, self::LABELS[$step]);
     }
