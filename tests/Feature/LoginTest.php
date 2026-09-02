@@ -57,3 +57,23 @@ it('rejects an invalid password', function () {
     $response->assertSessionHasErrors('email');
     $this->assertGuest('baobab');
 });
+
+/**
+ * La carte de connexion reste centrée — garde de non-régression du n° 227.
+ *
+ * Le défaut n'était pas dans une feuille de style mais dans la **mise en
+ * page** : le corps du layout invité était un flex **en rangée**, et le jour
+ * où `<x-baobab::toasts />` a quitté le flottement (24 août 2026, n° 205) il
+ * est devenu un second enfant réclamant la largeur. `justify-center` n'avait
+ * plus d'espace à répartir, et la carte se collait à gauche.
+ *
+ * Le test porte donc sur la **direction** : deux enfants sur une rangée, c'est
+ * le défaut lui-même ; en colonne, chacun est centré. C'est un test de
+ * présentation, assumé comme tel — ce défaut a traversé deux hébergements et
+ * une semaine sans que rien ne le voie, faute de quoi que ce soit qui regarde.
+ */
+it('garde la carte de connexion centrée, toasts compris', function () {
+    $this->get('/login')
+        ->assertOk()
+        ->assertSee('flex h-full flex-col items-center justify-center', false);
+});
