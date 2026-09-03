@@ -138,7 +138,7 @@ final class SeedDemoContent
      */
     private function importCover(string $slug, User $actor): ?int
     {
-        $path = dirname(__DIR__, 3).'/ressources/demo/'.$slug.'.jpg';
+        $path = $this->assetsPath().'/'.$slug.'.jpg';
 
         if (! is_file($path)) {
             return null;
@@ -155,6 +155,24 @@ final class SeedDemoContent
         DemoContent::markCreated($media);
 
         return (int) $media->getKey();
+    }
+
+    /**
+     * Où les images de démonstration sont cherchées.
+     *
+     * Configurable pour une raison de vérification et non de souplesse : le
+     * dépôt **porte** ces images, si bien que le cas « aucune image fournie »
+     * — celui d'une distribution amputée, et le seul où l'absence doit rester
+     * sans conséquence — ne serait exerçable par aucun test si le chemin
+     * était figé.
+     */
+    private function assetsPath(): string
+    {
+        $configured = config('baobab.demo.assets_path');
+
+        return is_string($configured) && $configured !== ''
+            ? rtrim($configured, '/\\')
+            : dirname(__DIR__, 3).'/ressources/demo';
     }
 
     private function buildPrimaryMenu(Model $home, Model $about): void

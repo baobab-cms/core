@@ -3,6 +3,7 @@
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Demo\Actions\SeedDemoContent;
 use Baobab\Demo\Models\DemoContent;
+use Baobab\Media\Models\Media;
 use Baobab\Menus\Models\Menu;
 use Baobab\Menus\Models\MenuAssignment;
 use Baobab\Rendering\Models\ReadingSetting;
@@ -66,8 +67,14 @@ it('marque chaque objet qu\'elle crée', function () {
 
     $marques = DemoContent::whereNotNull('demoable_type')->get();
 
-    // 2 Content Types + leurs 2 modules + 2 pages + 3 articles + 1 menu.
-    expect($marques)->toHaveCount(10)
+    // 2 Content Types + leurs 2 modules + 2 pages + 3 articles + 1 menu, plus
+    // un média par image trouvée. Le total se calcule au lieu d'être écrit :
+    // le figer ferait échouer ce test selon que le dépôt porte ses images ou
+    // non, alors que ce qu'il garde — « tout ce qui est créé est marqué » —
+    // ne dépend pas d'elles.
+    $attendu = 10 + Media::query()->count();
+
+    expect($marques)->toHaveCount($attendu)
         ->and($marques->pluck('demoable_type')->unique()->count())->toBeGreaterThan(2);
 });
 
@@ -123,21 +130,43 @@ it('ne repose rien si le contenu de démonstration est déjà là', function () 
 });
 
 /**
- * Les images sont fournies hors du code (spec 19 §7.2). Un dépôt qui n'en
- * porte pas encore doit produire un site cohérent, avec des articles sans
- * image mise en avant — jamais une installation qui échoue.
+ * Le cas nominal depuis que le dépôt porte les trois images (spec 19 §7.2) :
+ * chaque article reçoit la sienne, importée par le pipeline média réel — et
+ * non copiée à la main — donc miniatures et métadonnées comprises.
  */
-it('produit des articles sans image quand aucun fichier n\'est fourni', function () {
+it('importe l\'image de chaque article et la met en avant', function () {
     app(SeedDemoContent::class)($this->acteur);
 
     $article = ContentType::where('key', 'Article')->firstOrFail();
     /** @var class-string<Model> $articleModel */
     $articleModel = $article->modelClass();
 
-    // L'assertion porte sur ce qui doit rester vrai dans les deux cas : les
-    // trois articles existent. Le jour où les images seront déposées, elles
-    // rempliront `cover` sans que ce test ait à changer — c'est précisément
-    // ce qu'on veut d'un contenu optionnel.
+    $couvertures = $articleModel::query()->pluck('cover');
+
+    expect($couvertures)->toHaveCount(3)
+        ->and($couvertures->filter()->count())->toBe(3)
+        ->and(Media::whereIn('id', $couvertures->all())->count())->toBe(3);
+});
+
+/**
+ * Le cas d'une distribution amputée. Il n'est exerçable que parce que le
+ * chemin est configurable : le dépôt porte les images, donc pointer ailleurs
+ * est la seule façon de vérifier que leur absence reste sans conséquence.
+ */
+it('produit des articles sans image quand aucun fichier n\'est fourni', function () {
+    $vide = sys_get_temp_dir().'/baobab-demo-sans-images-'.bin2hex(random_bytes(4));
+    File::ensureDirectoryExists($vide);
+    config(['baobab.demo.assets_path' => $vide]);
+
+    app(SeedDemoContent::class)($this->acteur);
+
+    $article = ContentType::where('key', 'Article')->firstOrFail();
+    /** @var class-string<Model> $articleModel */
+    $articleModel = $article->modelClass();
+
     expect($articleModel::query()->count())->toBe(3)
-        ->and($articleModel::query()->whereNotNull('title')->count())->toBe(3);
+        ->and($articleModel::query()->whereNotNull('cover')->count())->toBe(0)
+        ->and(Media::query()->count())->toBe(0);
+
+    File::deleteDirectory($vide);
 });
