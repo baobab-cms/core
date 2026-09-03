@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Install;
 
+use Baobab\Install\Actions\ActivateDefaultTheme;
 use Baobab\Install\Actions\CheckRequirements;
 use Baobab\Install\Actions\ConfigureDatabase;
 use Baobab\Install\Actions\ConfigureHashing;
@@ -45,6 +46,8 @@ final readonly class InstallationPipeline
 
     public const STEP_SITE = 'site';
 
+    public const STEP_THEME = 'theme';
+
     public const STEP_FINALIZATION = 'finalization';
 
     /** Les étapes à effet de bord, dans l'ordre. L'étape 1 n'y figure pas : voir le docblock. */
@@ -54,6 +57,7 @@ final readonly class InstallationPipeline
         self::STEP_HASHING,
         self::STEP_ACCOUNT,
         self::STEP_SITE,
+        self::STEP_THEME,
         self::STEP_FINALIZATION,
     ];
 
@@ -68,6 +72,7 @@ final readonly class InstallationPipeline
         self::STEP_HASHING => 'Hachage',
         self::STEP_ACCOUNT => 'Compte',
         self::STEP_SITE => 'Site',
+        self::STEP_THEME => 'Thème',
         self::STEP_FINALIZATION => 'Finalisation',
     ];
 
@@ -79,6 +84,7 @@ final readonly class InstallationPipeline
         private ConfigureHashing $configureHashing,
         private CreateSuperAdmin $createSuperAdmin,
         private ConfigureSite $configureSite,
+        private ActivateDefaultTheme $activateDefaultTheme,
         private FinalizeInstallation $finalizeInstallation,
     ) {}
 
@@ -268,6 +274,15 @@ final readonly class InstallationPipeline
                 superAdmin: ($this->createSuperAdmin)($input->adminEmail, $input->adminName, $input->adminPassword),
             ),
             self::STEP_SITE => $this->configureSiteStep($step, $input, $env),
+            // Le thème vient après les réglages de site et avant la
+            // finalisation : `ActivateTheme` publie des assets et enregistre
+            // des emplacements de menus, que le `optimize()` de l'étape
+            // suivante doit voir. Elle ne lève jamais — voir son docblock.
+            self::STEP_THEME => new StepOutcome(
+                $step,
+                self::LABELS[$step],
+                details: ($this->activateDefaultTheme)(),
+            ),
             self::STEP_FINALIZATION => new StepOutcome(
                 $step,
                 self::LABELS[$step],

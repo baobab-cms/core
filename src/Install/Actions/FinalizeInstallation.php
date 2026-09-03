@@ -41,7 +41,7 @@ final class FinalizeInstallation
 
     /**
      * @param  string  $version  version installée, journalisée dans le lock
-     * @param  bool  $optimize  met en cache config, routes et vues (§4 étape 6)
+     * @param  bool  $optimize  met en cache config, routes et vues (§4 étape 9)
      */
     public function __invoke(string $version, HostingProfile $profile, string $configChecksum, bool $optimize = true): HostingProfile
     {
@@ -137,7 +137,7 @@ final class FinalizeInstallation
     }
 
     /**
-     * Mise en cache de la configuration, des routes et des vues (§4 étape 6).
+     * Mise en cache de la configuration, des routes et des vues (§4 étape 9).
      *
      * **Publique parce que le wizard la diffère.** `config:cache` reconstruit
      * toute la configuration : l'exécuter au milieu d'une requête HTTP fait

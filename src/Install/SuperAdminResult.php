@@ -7,7 +7,7 @@ namespace Baobab\Install;
 use Baobab\Users\Models\User;
 
 /**
- * Résultat de la création du premier compte (spec 15 §4, étape 4).
+ * Résultat de la création du premier compte (spec 15 §4, étape 5).
  *
  * `generatedPassword` n'est renseigné que lorsque l'Action a dû en forger un —
  * il n'est **jamais** relisible ensuite, et c'est le seul moment où

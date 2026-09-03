@@ -147,7 +147,7 @@ final class InstallPaths
      * part en 419 « Page expirée »**. Au rechargement, tout marche — ce qui
      * est le pire des cas, puisque le défaut ne se reproduit plus ensuite.
      *
-     * **C'est le n° 231 déplacé d'un cran plus tôt** : là, c'était l'étape 5
+     * **C'est le n° 231 déplacé d'un cran plus tôt** : là, c'était l'étape 6
      * qui renommait le site et emportait la session ; ici, c'est la naissance
      * du `.env` lui-même. Même remède : le nom est **écrit dans le `.env`**,
      * donc soustrait à toute dérivation ultérieure, et appliqué à la requête

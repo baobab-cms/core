@@ -42,7 +42,7 @@ final class InstallChecklist extends Component
      * ensuite que les deux marques de notre propre convention. Un texte qui
      * contiendrait `<script>` ressort donc inerte, quelle qu'en soit la
      * provenance — et une partie de ces textes porte l'URL que l'utilisateur
-     * a saisie à l'étape 5.
+     * a saisie à l'étape 6.
      *
      * Les deux marques sont celles que `ComposeServerChecklist` écrit déjà
      * pour la console, où elles restent en clair : la composition est unique,

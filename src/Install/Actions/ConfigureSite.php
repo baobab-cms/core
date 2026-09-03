@@ -48,7 +48,7 @@ final class ConfigureSite
             // du site le déplaçait donc, et la requête suivante cherchait un
             // cookie que le navigateur n'avait pas. La session d'installation
             // — qui porte le verrou et le brouillon — disparaissait entre
-            // l'étape 5 et la finalisation, `EnsureInstallSession` renvoyait à
+            // l'étape 6 et la finalisation, `EnsureInstallSession` renvoyait à
             // la porte, et le wizard recevait du HTML là où il attendait du
             // JSON. Trouvé en recette le 2 septembre 2026 sur mutualisé réel
             // (suivi n° 226) ; invisible aux tests, où la configuration n'est

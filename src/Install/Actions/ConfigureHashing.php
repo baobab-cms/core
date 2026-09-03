@@ -19,7 +19,7 @@ use Illuminate\Contracts\Config\Repository;
  * nivellement : le repli est **dit** dans la checklist de fin (§7).
  *
  * **Appelée avant la création du compte administrateur, et c'est le fond de
- * cette Action.** Ce compte naît à l'étape 4 ; poser le driver à l'étape 5,
+ * cette Action.** Ce compte naît à l'étape 5 ; poser le driver à l'étape 6,
  * avec les autres réglages de site, donnerait un premier compte haché en
  * bcrypt sur un site en argon2id — un seul compte discordant, celui du Super
  * Admin, et personne pour s'en apercevoir.

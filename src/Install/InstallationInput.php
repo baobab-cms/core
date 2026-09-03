@@ -36,7 +36,7 @@ final readonly class InstallationInput
         public string $appEnv = 'production',
         public string $version = 'dev',
         /**
-         * Met en cache config, routes et vues à la finalisation (§4 étape 6).
+         * Met en cache config, routes et vues à la finalisation (§4 étape 9).
          *
          * Vrai en production, où c est un gain net. Faux partout où le cache
          * survivrait au geste qui l a écrit — une suite de tests, notamment :
