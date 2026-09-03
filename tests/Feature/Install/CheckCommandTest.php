@@ -3,6 +3,7 @@
 use Baobab\Install\Capability;
 use Baobab\Install\HostingProfile;
 use Baobab\Install\InstallationState;
+use Baobab\Install\PhpBinary;
 use Baobab\Install\WebServer;
 use Illuminate\Filesystem\Filesystem;
 
@@ -71,4 +72,59 @@ it('réussit sur un environnement sain', function () {
     // est couvert là où il peut l'être honnêtement — sur l'Action elle-même
     // (`CheckRequirementsTest`), qui reçoit ses chemins en paramètre.
     $this->artisan('baobab:check')->assertExitCode(0);
+});
+
+/**
+ * B4 du n° 235 : la checklist est rendue **à chaque exécution**.
+ *
+ * C'est la commande qu'on lance quand quelque chose cloche, et deux crons
+ * absents sont l'explication la plus fréquente d'un e-mail qui ne part pas ou
+ * d'un article qui ne se publie pas à sa date. La faire dépendre d'un drapeau
+ * la rendrait introuvable au moment exact où elle sert.
+ */
+it('rend la checklist des tâches serveur sur un site installé', function () {
+    $this->state->markInstalled('1.0.0', HostingProfile::detect(public_path(), sapi: 'cli'), 'somme');
+
+    $this->artisan('baobab:check')
+        ->assertExitCode(0)
+        ->expectsOutputToContain('artisan schedule:run');
+});
+
+/**
+ * D3 du n° 238 : les configurations serveur sont **réécrites** à chaque
+ * passage. Un site déplacé garderait sinon des fichiers portant les chemins
+ * d'avant — et c'est précisément la situation où l'on vient chercher de
+ * l'aide ici.
+ */
+it('réécrit les configurations serveur à chaque passage', function () {
+    $this->state->markInstalled('1.0.0', HostingProfile::detect(public_path(), sapi: 'cli'), 'somme');
+    $this->files->put($this->repertoire.'/baobab-nginx.conf', 'périmé');
+
+    $this->artisan('baobab:check')->assertExitCode(0);
+
+    expect($this->files->get($this->repertoire.'/baobab-nginx.conf'))->toContain('X-Content-Type-Options');
+});
+
+/**
+ * D2 du n° 238 : le profil vient du lock, **sauf** le chemin PHP.
+ *
+ * Le lock d'une installation web porte un chemin *déduit* — `PHP_BINARY` y
+ * désigne le binaire FPM. La console, elle, s'exécute dans le binaire
+ * cherché : lui faire répéter « à vérifier » serait taire ce qu'elle constate.
+ */
+it('ne met aucune réserve sur le chemin PHP, qu\'elle constate elle-même', function () {
+    $installe = new HostingProfile(
+        symlink: Capability::Present,
+        procOpen: Capability::Present,
+        shellAccess: Capability::Unknown,
+        publicIsDocumentRoot: Capability::Unknown,
+        webServer: WebServer::Apache,
+        phpBinary: PhpBinary::remembered('/chemin/du/web/php'),
+    );
+
+    $this->state->markInstalled('1.0.0', $installe, 'somme');
+
+    $this->artisan('baobab:check')
+        ->assertExitCode(0)
+        ->doesntExpectOutputToContain('déduit et non constaté');
 });

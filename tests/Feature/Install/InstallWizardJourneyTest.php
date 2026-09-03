@@ -113,6 +113,22 @@ it('mène la racine à l\'installateur quand le site ne peut rien servir', funct
 });
 
 /**
+ * **Le scénario exact rapporté le 3 septembre 2026** : sur une archive
+ * fraîchement décompressée, `/` rendait une exception SQLite au lieu de
+ * rediriger vers `/install` — mais pas à cause de `RedirectToInstaller`, qui
+ * calculait bien la redirection. `ForceStagingNoindexHeader` l'écrasait
+ * ensuite en relisant `seo_settings` sans garde, hors production. Cette table
+ * n'a aucune raison d'être plus disponible que `users` sur un site qui ne
+ * peut rien servir : les deux tombent ensemble.
+ */
+it('mène la racine à l\'installateur même quand seo_settings est hors d\'atteinte aussi', function () {
+    Schema::drop('users');
+    Schema::drop('seo_settings');
+
+    $this->get('/')->assertRedirect(route('baobab.install.gate'))->assertStatus(302);
+});
+
+/**
  * **Le lock ne suffit pas à détourner.** Un site monté à la main — `composer
  * require` dans une application existante, ou ce banc d'essai — n'en a jamais
  * eu et fonctionne parfaitement. La première version de ce détour ne regardait
@@ -123,6 +139,34 @@ it('laisse sa page d\'accueil à un site déjà monté, lock ou pas', function (
     expect($this->state->isInstalled())->toBeFalse();
 
     $this->get('/')->assertOk();
+});
+
+/**
+ * **L'administration aussi mène à l'installateur** — recette du 3 septembre
+ * 2026, n° 242.
+ *
+ * Le détour de la C3a ne couvrait que `/`. Or `/admin` est l'adresse que
+ * l'écran final donne à l'utilisateur : c'est celle qu'il rouvre. Elle partait
+ * vers `/login`, qui rend le layout invité, qui lit la base — et une archive
+ * décompressée répondait par une exception de base de données là où
+ * l'installateur attendait à un clic.
+ */
+it('mène l\'administration et la connexion à l\'installateur, faute de base', function () {
+    Schema::drop('users');
+
+    $this->get('/admin')->assertRedirect(route('baobab.install.gate'));
+    $this->get('/login')->assertRedirect(route('baobab.install.gate'));
+});
+
+/**
+ * La garde reste celle de la C3a : un site qui a ses tables sert ses écrans,
+ * lock ou pas. Sans ce test, le détour ci-dessus rendrait l'administration
+ * inatteignable sur toute instance montée à la main.
+ */
+it('laisse son écran de connexion à un site qui a sa base', function () {
+    expect($this->state->isInstalled())->toBeFalse();
+
+    $this->get('/login')->assertOk();
 });
 
 it('collecte la base sans rien écrire', function () {
@@ -263,6 +307,70 @@ it('mène l\'installation de bout en bout, puis oublie les secrets', function ()
 });
 
 /**
+ * L'écran final porte la checklist du §7, et il la reçoit **rendue par le
+ * serveur** (arbitrage D1, n° 238).
+ *
+ * Ce que ce test garde, c'est l'unicité du rendu : le jour où quelqu'un
+ * reconstruira la fin en JavaScript, `html` disparaîtra de la réponse et ce
+ * test tombera avant que les deux écritures aient eu le temps de diverger.
+ */
+it('rend la checklist du §7 dans la réponse qui finalise', function () {
+    ouvrirSessionInstall();
+    saisirBase();
+    saisirCompte();
+    saisirSite();
+
+    $fin = null;
+
+    for ($appels = 0; $appels < 10; $appels++) {
+        $reponse = $this->postJson('/install/step')->assertOk();
+
+        if ($reponse->json('done') === true) {
+            $fin = $reponse;
+            break;
+        }
+    }
+
+    $html = (string) $fin?->json('html');
+
+    expect($html)->toContain('artisan schedule:run')
+        ->and($html)->toContain('--stop-when-empty')
+        ->and($html)->toContain('Aller à l\'administration');
+});
+
+/**
+ * **La page de fin ne dépend plus de rien** (arbitrage B1, n° 235).
+ *
+ * `FinalizeInstallation` vient de supprimer `public/baobab/install/` dans la
+ * même requête : une page qui référencerait encore `wizard.css` s'afficherait
+ * nue. Le test regarde donc les deux faces d'une même exigence — les styles
+ * sont là, et le lien vers la feuille disparue n'y est plus.
+ */
+it('rend une page de fin autonome quand le navigateur n\'exécute pas de JavaScript', function () {
+    ouvrirSessionInstall();
+    saisirBase();
+    saisirCompte();
+    saisirSite();
+
+    $page = null;
+
+    for ($appels = 0; $appels < 10; $appels++) {
+        $reponse = $this->post('/install/step');
+
+        if ($reponse->status() === 200) {
+            $page = $reponse;
+            break;
+        }
+    }
+
+    $html = (string) $page?->getContent();
+
+    expect($html)->toContain('<style>')
+        ->and($html)->not->toContain('wizard.css')
+        ->and($html)->toContain('artisan schedule:run');
+});
+
+/**
  * Sans JavaScript, chaque envoi du formulaire de repli exécute une étape et
  * revient à l'écran de progression. C'est laid, et c'est mieux qu'une page qui
  * ne fait rien — le public de l'archive n'a pas toujours un navigateur récent.
@@ -345,6 +453,53 @@ it('se donne une clé applicative avant d\'ouvrir la moindre page', function () 
     // existe : sans elle, `EncryptCookies` refuse la requête.
     expect($config->get('app.key'))->not->toBe('')
         ->and($this->files->isFile($this->repertoire.'/neuf.env'))->toBeTrue();
+});
+
+/**
+ * **Le nom du cookie de session est figé dès la naissance du `.env`.**
+ *
+ * Reproduit sur une archive décompressée le 3 septembre 2026 : à la première
+ * requête il n'y a pas de `.env`, donc pas d'`APP_NAME`, et
+ * `config/session.php` dérive `laravel-session`. La même requête écrit le
+ * `.env` depuis l'exemple, où `APP_NAME` vaut « Baobab CMS » : à la requête
+ * suivante l'application cherche `baobab-cms-session` et ne trouve pas le
+ * cookie qu'elle vient de poser. Le premier envoi du formulaire de jeton
+ * partait alors en 419, et seulement celui-là — le pire des cas, puisqu'un
+ * rechargement suffit à masquer le défaut.
+ */
+it('fige le nom du cookie de session dès la première requête', function () {
+    $this->files->put($this->repertoire.'/archive.env.example', 'APP_NAME="Baobab CMS"
+APP_KEY=
+');
+    config()->set('baobab.install.env_path', $this->repertoire.'/archive.env');
+
+    // La configuration de la première requête : résolue sans `.env`, elle
+    // porte le repli du framework.
+    $config = new Repository(['app' => ['key' => ''], 'session' => ['cookie' => 'laravel-session']]);
+
+    InstallPaths::ensureApplicationKey($config, $this->files, $this->repertoire.'/archive.env.example');
+
+    expect($config->get('session.cookie'))->toBe('baobab-cms-session')
+        ->and($this->files->get($this->repertoire.'/archive.env'))->toContain('SESSION_COOKIE=baobab-cms-session');
+});
+
+/**
+ * Une valeur déjà écrite est celle **en vigueur** : la réécrire déconnecterait
+ * les sessions ouvertes — c'est précisément ce que le n° 231 a corrigé côté
+ * `ConfigureSite`, et il n'y a aucune raison de le refaire ici.
+ */
+it('ne renomme jamais un cookie déjà figé', function () {
+    $this->files->put($this->repertoire.'/deja.env', 'APP_NAME="Autre Nom"
+APP_KEY=base64:'.base64_encode(random_bytes(32)).'
+SESSION_COOKIE=baobab-cms-session
+');
+    config()->set('baobab.install.env_path', $this->repertoire.'/deja.env');
+
+    $config = new Repository(['app' => ['key' => ''], 'session' => ['cookie' => 'autre-nom-session']]);
+
+    InstallPaths::ensureApplicationKey($config, $this->files);
+
+    expect($config->get('session.cookie'))->toBe('baobab-cms-session');
 });
 
 /**

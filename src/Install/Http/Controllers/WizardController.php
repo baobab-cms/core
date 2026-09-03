@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Baobab\Install\Http\Controllers;
 
 use Baobab\Install\Actions\CheckRequirements;
+use Baobab\Install\Actions\ComposeServerChecklist;
 use Baobab\Install\Actions\FinalizeInstallation;
+use Baobab\Install\ChecklistItem;
 use Baobab\Install\Exceptions\InstallationStepFailed;
+use Baobab\Install\HostingProfile;
 use Baobab\Install\InstallationPipeline;
+use Baobab\Install\InstallationState;
 use Baobab\Install\InstallDraft;
 use Baobab\Install\InstallPaths;
 use Illuminate\Filesystem\Filesystem;
@@ -15,6 +19,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Throwable;
 
 /**
  * Le parcours d'installation — spec 15 §6.1, Pass C2b (suivi n° 224).
@@ -202,13 +207,20 @@ final class WizardController
      * wizard où le navigateur pilote : partout ailleurs, ce sont des
      * formulaires qui rechargent la page.
      */
-    public function step(Request $request, InstallDraft $draft, InstallationPipeline $pipeline, Filesystem $files): JsonResponse|View|RedirectResponse
-    {
+    public function step(
+        Request $request,
+        InstallDraft $draft,
+        InstallationPipeline $pipeline,
+        Filesystem $files,
+        ComposeServerChecklist $checklist,
+        InstallationState $state,
+    ): JsonResponse|View|RedirectResponse {
         if (! $draft->isComplete()) {
             return response()->json(['done' => true, 'error' => 'L\'installation n\'a pas été renseignée entièrement.'], 409);
         }
 
-        $adminUrl = rtrim((string) ($draft->section(InstallDraft::SECTION_SITE)['url'] ?? url('/')), '/').'/admin';
+        $siteUrl = rtrim((string) ($draft->section(InstallDraft::SECTION_SITE)['url'] ?? url('/')), '/');
+        $adminUrl = $siteUrl.'/admin';
 
         $env = InstallPaths::env($files);
         $env->createFromExample(base_path('.env.example'));
@@ -272,14 +284,25 @@ final class WizardController
                 app()->terminating(fn () => app(FinalizeInstallation::class)->optimize());
             }
 
-            // La checklist du §7 remplacera cet écran en Pass C3.
+            $data = [
+                'adminUrl' => $adminUrl,
+                'items' => $this->serverChecklist($checklist, $state, $siteUrl),
+            ];
+
             if (! $request->expectsJson()) {
-                return view('baobab::install.finished', ['adminUrl' => $adminUrl]);
+                return view('baobab::install.finished', $data);
             }
 
+            // **Le HTML de la fin est rendu ici, pas en JavaScript** (arbitrage
+            // D1, n° 238). `wizard.js` l'insère tel quel : la checklist n'est
+            // écrite qu'une fois, dans le même fragment que sert la page
+            // autonome du repli sans JavaScript. La rendre une seconde fois en
+            // JavaScript aurait garanti que les deux divergent — et c'est ce
+            // que l'action unique du §7 existe pour empêcher.
             return response()->json([
                 'done' => true,
                 'adminUrl' => $adminUrl,
+                'html' => view('baobab::install.partials.final', $data)->render(),
                 'step' => $outcome?->step,
                 'label' => $outcome?->label,
                 'details' => $outcome->details ?? [],
@@ -297,6 +320,47 @@ final class WizardController
             'details' => $outcome->details,
             'remaining' => $remaining,
         ]);
+    }
+
+    /**
+     * La checklist des tâches serveur, pour l'écran final (§7).
+     *
+     * **Le profil vient du lock**, que `FinalizeInstallation` vient d'écrire
+     * quelques lignes plus haut : c'est celui qui a été *constaté à la
+     * finalisation*, symlink refusé compris, et non celui détecté à l'étape 1.
+     * C'est aussi ce qui rend la checklist recalculable plus tard par
+     * `baobab:check`, pour qui aura fermé l'onglet (arbitrage A1, n° 229).
+     *
+     * **Sous garde, et jusqu'au bout.** Cet écran annonce que le site est
+     * installé — il l'est, le lock est écrit. Rien de ce qui suit ne vaut une
+     * page d'erreur à cet instant : une liste vide reste préférable, et
+     * `baobab:check` la rendra de toute façon.
+     *
+     * @return list<ChecklistItem>
+     */
+    private function serverChecklist(ComposeServerChecklist $compose, InstallationState $state, string $siteUrl): array
+    {
+        try {
+            $profile = $state->installedProfile();
+
+            if (! $profile instanceof HostingProfile) {
+                return [];
+            }
+
+            return $compose(
+                $profile,
+                base_path(),
+                public_path(),
+                $siteUrl,
+                (string) config('baobab.install.state_path', storage_path('app/baobab')),
+                (bool) config('app.debug'),
+                (string) config('app.env'),
+            );
+        } catch (Throwable $e) {
+            report($e);
+
+            return [];
+        }
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Baobab\Install\Console;
 
 use Baobab\Install\Actions\CheckRequirements;
+use Baobab\Install\Actions\ComposeServerChecklist;
 use Baobab\Install\HostingProfile;
 use Baobab\Install\InstallationState;
 use Illuminate\Console\Command;
@@ -29,8 +30,11 @@ final class CheckCommand extends Command
 
     protected $description = 'Vérifie les prérequis et signale ce qui a changé depuis l\'installation.';
 
-    public function handle(CheckRequirements $checkRequirements, InstallationState $state): int
-    {
+    public function handle(
+        CheckRequirements $checkRequirements,
+        InstallationState $state,
+        ComposeServerChecklist $checklist,
+    ): int {
         $report = $checkRequirements(public_path(), [
             'storage' => storage_path(),
             'bootstrap/cache' => base_path('bootstrap/cache'),
@@ -59,12 +63,48 @@ final class CheckCommand extends Command
 
         if ($installed instanceof HostingProfile) {
             $this->reportDrift($report->profile, $installed);
+            $this->reportChecklist($checklist, $installed, $report->profile);
         } else {
             $this->newLine();
             $this->components->info('Ce site n\'est pas encore installé : aucun profil de référence à comparer.');
         }
 
         return $report->passes() ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * La checklist du §7, **rendue à chaque exécution** (arbitrage B4, n° 235).
+     *
+     * C'est la commande qu'on lance quand quelque chose cloche, et la
+     * checklist est souvent la réponse : un e-mail qui ne part pas, un article
+     * qui ne se publie pas à sa date, ce sont deux crons absents. La faire
+     * dépendre d'un drapeau la rendrait introuvable au moment où elle sert.
+     *
+     * **Le profil est celui du lock**, seul à savoir ce qu'une requête HTTP a
+     * pu constater — sauf le chemin PHP, que cette commande, elle, constate
+     * (arbitrage D2, n° 238).
+     *
+     * **Les configurations sont réécrites** à chaque passage (arbitrage D3) :
+     * un site déplacé garderait sinon des fichiers aux chemins d'avant, et
+     * c'est exactement la situation où l'on vient chercher de l'aide ici.
+     * L'écriture est sous garde dans l'action : un `storage/` verrouillé n'a
+     * jamais empêché un diagnostic de rendre son verdict.
+     */
+    private function reportChecklist(ComposeServerChecklist $checklist, HostingProfile $installed, HostingProfile $today): void
+    {
+        $ui = new InstallerOutput($this->output, quiet: false);
+
+        $this->newLine();
+
+        $ui->checklist(($checklist)(
+            $installed->withPhpBinary($today->phpBinary ?? $installed->phpBinary),
+            base_path(),
+            public_path(),
+            (string) config('app.url'),
+            (string) config('baobab.install.state_path', storage_path('app/baobab')),
+            (bool) config('app.debug'),
+            (string) config('app.env'),
+        ));
     }
 
     private function reportDrift(HostingProfile $today, HostingProfile $installed): void

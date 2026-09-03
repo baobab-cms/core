@@ -5,6 +5,7 @@ use Baobab\Branding\Support\DesignTokenSchema;
 use Baobab\Branding\Support\ResolveDesignTokens;
 use Baobab\Facades\Hook;
 use Baobab\Modules\Models\Module;
+use Illuminate\Support\Facades\Schema;
 
 it('resolves to Core defaults when no theme is active and no admin override exists', function () {
     $resolved = app(ResolveDesignTokens::class)();
@@ -79,4 +80,23 @@ it('applies the baobab.branding.tokens filter last', function () {
     $resolved = app(ResolveDesignTokens::class)();
 
     expect($resolved['colors']['primary'])->toBe('#ffffff');
+});
+
+/**
+ * **La cascade survit à une base absente** — recette du 3 septembre 2026,
+ * suivi n° 242.
+ *
+ * `layouts/guest.blade.php` rend `<x-baobab::design-tokens />`, donc cette
+ * cascade : sans garde, l'écran de connexion mourait d'une exception de base
+ * de données dès que celle-ci était hors d'atteinte. C'est l'écran par lequel
+ * on vient réparer un site en panne — il ne peut pas dépendre d'un réglage
+ * d'apparence.
+ *
+ * Ce que le repli rend n'est pas dégradé : les défauts du Core sont un rendu
+ * complet, simplement sans les personnalisations choisies par l'administrateur.
+ */
+it('falls back to the levels below when the branding table cannot be read', function () {
+    Schema::drop('branding_settings');
+
+    expect(app(ResolveDesignTokens::class)())->toBe(DesignTokenSchema::CORE_DEFAULTS);
 });

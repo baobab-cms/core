@@ -61,6 +61,32 @@ final readonly class HostingProfile
     }
 
     /**
+     * Le même profil, avec le chemin PHP d'ailleurs.
+     *
+     * **Existe pour `baobab:check`** (arbitrage D2, n° 238). La checklist du
+     * §7 est gouvernée par le profil du **lock** : le serveur web, `proc_open`
+     * et le symlink ne se constatent qu'au moment de l'installation, et une
+     * console ne les reverra jamais. Le chemin PHP, lui, est l'exception
+     * exacte : le lock en porte un *déduit* — depuis le web, `PHP_BINARY`
+     * désigne le binaire FPM — alors que la commande en cours d'exécution
+     * *est* le binaire CLI cherché. Taire ce qu'on constate pour répéter ce
+     * qu'on avait déduit ferait afficher « à vérifier » à la seule surface qui
+     * n'a rien à vérifier.
+     */
+    public function withPhpBinary(?PhpBinary $binary): self
+    {
+        return new self(
+            symlink: $this->symlink,
+            procOpen: $this->procOpen,
+            shellAccess: $this->shellAccess,
+            publicIsDocumentRoot: $this->publicIsDocumentRoot,
+            webServer: $this->webServer,
+            argon2id: $this->argon2id,
+            phpBinary: $binary,
+        );
+    }
+
+    /**
      * Détecte le profil du processus courant.
      *
      * Deux capacités ne se lisent que dans une requête HTTP. En console, elles

@@ -67,6 +67,14 @@ function item(array $items, string $key): ?ChecklistItem
     return null;
 }
 
+/**
+ * Les chemins écrits, à plat — pour dire lesquels ont été produits.
+ */
+function chemins(?ChecklistItem $item): string
+{
+    return implode(' ', array_map(fn ($file): string => (string) $file->path, $item?->files ?? []));
+}
+
 it('rend une ligne de cron complète, prête à coller dans un panneau', function () {
     $cron = item(checklist(), 'cron.scheduler');
 
@@ -137,16 +145,16 @@ it('écrit la configuration Apache et la nomme, sous Apache', function () {
     $items = checklist(['webServer' => WebServer::Apache]);
     $config = item($items, 'server.config');
 
-    expect($config?->file)->toContain('baobab-htaccess.conf')
-        ->and($config?->file)->not->toContain('nginx')
+    expect(chemins($config))->toContain('baobab-htaccess.conf')
+        ->and(chemins($config))->not->toContain('nginx')
         ->and($this->files->get($this->repertoire.'/baobab-htaccess.conf'))->toContain('X-Content-Type-Options');
 });
 
 it('écrit la configuration Nginx, et pas de .htaccess, sous Nginx', function () {
     $items = checklist(['webServer' => WebServer::Nginx]);
 
-    expect(item($items, 'server.config')?->file)->toContain('baobab-nginx.conf')
-        ->and(item($items, 'server.config')?->file)->not->toContain('htaccess')
+    expect(chemins(item($items, 'server.config')))->toContain('baobab-nginx.conf')
+        ->and(chemins(item($items, 'server.config')))->not->toContain('htaccess')
         ->and($this->files->get($this->repertoire.'/baobab-nginx.conf'))->toContain('/home/user/monsite/public');
 });
 
@@ -158,8 +166,8 @@ it('écrit la configuration Nginx, et pas de .htaccess, sous Nginx', function ()
 it('écrit les deux formes quand le serveur reste inconnu', function () {
     $items = checklist(['webServer' => WebServer::Unknown]);
 
-    expect(item($items, 'server.config')?->file)->toContain('htaccess')
-        ->and(item($items, 'server.config')?->file)->toContain('nginx')
+    expect(chemins(item($items, 'server.config')))->toContain('htaccess')
+        ->and(chemins(item($items, 'server.config')))->toContain('nginx')
         ->and(item($items, 'server.config')?->body)->toContain('les deux formes');
 });
 
@@ -170,8 +178,34 @@ it('écrit les deux formes quand le serveur reste inconnu', function () {
 it('interdit l\'exécution de code dans le stockage, dans les deux formats', function () {
     checklist(['webServer' => WebServer::Unknown]);
 
-    expect($this->files->get($this->repertoire.'/baobab-htaccess.conf'))->toContain('RemoveHandler')
+    expect($this->files->get($this->repertoire.'/baobab-htaccess.conf'))
+        ->toContain('RewriteRule ^storage/')
         ->and($this->files->get($this->repertoire.'/baobab-nginx.conf'))->toContain('deny all');
+});
+
+/**
+ * **Ce que le contexte `.htaccess` interdit** — trouvé en recette le
+ * 3 septembre 2026 sur un mutualisé réel, où suivre notre propre consigne
+ * mettait tout le site en erreur 500.
+ *
+ * `<Directory>` n'est admis qu'en configuration serveur ou en vhost ; dans un
+ * `.htaccess`, Apache répond `<Directory not allowed here` et ne sert plus
+ * rien. `php_flag` n'existe qu'avec PHP en module Apache : en FPM, CGI ou
+ * LSAPI — la quasi-totalité des mutualisés — la directive est inconnue, et
+ * une directive inconnue est fatale.
+ *
+ * Ce test est un garde-fou de **contexte**, pas de contenu : il tombera le
+ * jour où quelqu'un ajoutera une directive réservée à la configuration
+ * serveur dans un fichier destiné à un répertoire.
+ */
+it('n\'écrit aucune directive interdite dans un .htaccess', function () {
+    checklist(['webServer' => WebServer::Apache]);
+
+    $regles = $this->files->get($this->repertoire.'/baobab-htaccess.conf');
+
+    expect($regles)->not->toContain('<Directory')
+        ->and($regles)->not->toContain('php_flag')
+        ->and($regles)->not->toContain('php_value');
 });
 
 it('rappelle HTTPS seulement quand le site est en clair', function () {
@@ -210,4 +244,51 @@ it('ne renvoie vers aucune documentation tant qu\'il n\'y en a pas', function ()
 
     expect($premiers?->body)->toContain('/admin')
         ->and($premiers?->body)->not->toContain('documentation');
+});
+
+/**
+ * Le §7 veut la configuration **écrite et affichée en clair** (arbitrage A2,
+ * n° 229). Ne rendre que le chemin ferait de la seconde moitié de la promesse
+ * une lettre morte : l'écran final est le seul endroit où ces règles se lisent
+ * sans client FTP.
+ */
+it('porte le contenu de la configuration autant que son chemin', function () {
+    $config = item(checklist(['webServer' => WebServer::Apache]), 'server.config');
+
+    expect($config?->files)->toHaveCount(1)
+        ->and($config?->files[0]->label)->toBe('Apache')
+        ->and($config?->files[0]->contents)->toContain('X-Content-Type-Options')
+        ->and($config?->files[0]->path)->toContain('baobab-htaccess.conf');
+});
+
+/**
+ * Un `storage/` non inscriptible n'a rien d'exceptionnel sur un mutualisé — et
+ * cette action est appelée par l'écran qui annonce que le site est installé.
+ * Une exception y transformerait une réussite en page blanche. L'échec se dit
+ * donc dans l'objet, et le contenu reste : c'est justement le cas où l'écran
+ * est le seul moyen de récupérer les règles.
+ */
+it('garde les règles à l\'écran quand le disque refuse l\'écriture', function () {
+    $refus = new class extends Filesystem
+    {
+        public function put($path, $contents, $lock = false)
+        {
+            throw new RuntimeException('lecture seule');
+        }
+    };
+
+    $items = (new ComposeServerChecklist($refus))(
+        profil(['webServer' => WebServer::Nginx]),
+        '/home/user/monsite',
+        '/home/user/monsite/public',
+        'https://monsite.fr',
+        $this->repertoire,
+        false,
+        'production',
+    );
+
+    $config = item($items, 'server.config');
+
+    expect($config?->files[0]->path)->toBeNull()
+        ->and($config?->files[0]->contents)->toContain('add_header');
 });

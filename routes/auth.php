@@ -5,9 +5,20 @@ declare(strict_types=1);
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Auth\Http\Controllers\LoginController;
 use Baobab\Auth\Http\Controllers\TwoFactorChallengeController;
+use Baobab\Install\Http\Middleware\RedirectToInstaller;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['web', 'guest:baobab'])->group(function (): void {
+/*
+ * `RedirectToInstaller` en tête des écrans invités — recette du 3 septembre
+ * 2026, n° 242.
+ *
+ * Ces vues rendent `layouts/guest.blade.php`, donc `<x-baobab::design-tokens />`,
+ * qui lit la base. Sur une archive décompressée, `/login` répondait par une
+ * exception de base de données là où l'installateur attendait à un clic. Le
+ * middleware garde la règle de la C3a : il ne détourne qu'un site sans lock
+ * **et** sans base atteignable, c'est-à-dire un site qui ne peut rien servir.
+ */
+Route::middleware([RedirectToInstaller::class, 'web', 'guest:baobab'])->group(function (): void {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store'])->middleware('throttle:5,1');
 

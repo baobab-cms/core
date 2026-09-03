@@ -6,6 +6,7 @@ namespace Baobab\Install;
 
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Str;
 
 /**
  * Les chemins que l'installation regarde — définis **une seule fois**.
@@ -105,7 +106,7 @@ final class InstallPaths
      * chaque requête — la session de l'installateur, qui porte le verrou et le
      * brouillon, deviendrait illisible d'une page à l'autre.
      */
-    public static function ensureApplicationKey(Repository $config, Filesystem $files): void
+    public static function ensureApplicationKey(Repository $config, Filesystem $files, ?string $examplePath = null): void
     {
         $key = $config->get('app.key');
 
@@ -114,7 +115,7 @@ final class InstallPaths
         }
 
         $env = self::env($files);
-        $env->createFromExample(base_path('.env.example'));
+        $env->createFromExample($examplePath ?? base_path('.env.example'));
 
         $existing = $env->exists() ? $env->get('APP_KEY') : null;
 
@@ -127,6 +128,50 @@ final class InstallPaths
         // démarrage : sans cette ligne, la requête en cours n'aurait toujours
         // pas de clé et échouerait comme avant.
         $config->set('app.key', $existing);
+
+        self::pinSessionCookie($config, $env);
+    }
+
+    /**
+     * Fige le nom du cookie de session, **au moment où le `.env` naît**.
+     *
+     * **Le défaut, reproduit sur une archive décompressée le 3 septembre 2026.**
+     * `config/session.php` dérive le nom du cookie de `APP_NAME`
+     * (`Str::slug(APP_NAME).'-session'`). À la toute première requête d'une
+     * archive, il n'y a pas de `.env` : `APP_NAME` est absent, le repli vaut
+     * `laravel` et le navigateur reçoit un cookie `laravel-session`. La même
+     * requête écrit ensuite le `.env` depuis l'exemple, où `APP_NAME` vaut
+     * « Baobab CMS ». À la requête suivante, l'application attend donc
+     * `baobab-cms-session`, ne trouve pas le cookie qu'elle a elle-même posé,
+     * et ouvre une session vide : **le premier envoi du formulaire de jeton
+     * part en 419 « Page expirée »**. Au rechargement, tout marche — ce qui
+     * est le pire des cas, puisque le défaut ne se reproduit plus ensuite.
+     *
+     * **C'est le n° 231 déplacé d'un cran plus tôt** : là, c'était l'étape 5
+     * qui renommait le site et emportait la session ; ici, c'est la naissance
+     * du `.env` lui-même. Même remède : le nom est **écrit dans le `.env`**,
+     * donc soustrait à toute dérivation ultérieure, et appliqué à la requête
+     * en cours pour que le premier cookie porte déjà le bon nom.
+     *
+     * Écrit une seule fois : une valeur déjà présente est celle en vigueur, et
+     * la réécrire déconnecterait les sessions ouvertes.
+     */
+    private static function pinSessionCookie(Repository $config, EnvFile $env): void
+    {
+        $pinned = $env->get('SESSION_COOKIE');
+
+        if (is_string($pinned) && $pinned !== '') {
+            $config->set('session.cookie', $pinned);
+
+            return;
+        }
+
+        $name = $env->get('APP_NAME');
+        $slug = Str::slug(is_string($name) && $name !== '' ? $name : 'laravel');
+        $cookie = ($slug === '' ? 'laravel' : $slug).'-session';
+
+        $env->set(['SESSION_COOKIE' => $cookie]);
+        $config->set('session.cookie', $cookie);
     }
 
     /**

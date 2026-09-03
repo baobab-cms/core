@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Baobab\Install\Console;
 
+use Baobab\Install\ChecklistItem;
 use Illuminate\Console\OutputStyle;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 
 /**
  * La surface console de l'installateur (spec 15 §5, suivi n° 211).
@@ -141,6 +143,89 @@ final class InstallerOutput
         }
 
         $this->output->writeln($text);
+    }
+
+    /**
+     * La checklist des tâches serveur (§7) — l'adaptateur console.
+     *
+     * **Il n'y a pas de couleur de succès ici, et c'est voulu.** Ces items ne
+     * sont pas des verdicts : ce sont des tâches que l'installateur ne peut
+     * pas faire à la place de quelqu'un (`ChecklistItem`). Les peindre en vert
+     * ou en rouge les ferait lire comme des prérequis, et un utilisateur qui
+     * voit six lignes sans « OK » croirait à six échecs.
+     *
+     * La ligne à coller n'est **jamais reformatée** : ni repli, ni indentation
+     * ajoutée, ni couleur — elle est destinée à un panneau d'hébergement, et
+     * un retour à la ligne inséré par nos soins produirait une tâche cron
+     * silencieusement fausse. Le reste est replié à 74 colonnes, largeur qui
+     * tient dans un terminal de 80 sans compter sur `stty`.
+     *
+     * @param  list<ChecklistItem>  $items
+     */
+    public function checklist(array $items): void
+    {
+        if ($this->quiet || $items === []) {
+            return;
+        }
+
+        $this->output->writeln('  <options=bold>Il reste à faire, sur votre serveur :</>');
+        $this->output->newLine();
+
+        $number = 0;
+
+        foreach ($items as $item) {
+            $marker = $item->warning
+                ? '<fg='.self::GOLD.';options=bold>  !  </>'
+                : '<fg='.self::GREEN.'>'.str_pad((string) ++$number, 3, ' ', STR_PAD_LEFT).'. </>';
+
+            $this->output->writeln($marker.'<options=bold>'.$this->escape($item->title).'</>');
+            $this->wrapped($item->body);
+
+            if ($item->command !== null) {
+                $this->output->newLine();
+
+                foreach (explode("\n", $item->command) as $line) {
+                    $this->output->writeln('      <fg='.self::GOLD.'>'.$this->escape($line).'</>');
+                }
+            }
+
+            if ($item->caveat !== null) {
+                $this->output->newLine();
+                $this->wrapped('À vérifier : '.$item->caveat);
+            }
+
+            foreach ($item->files as $file) {
+                // Le contenu ne s'imprime pas : la console a `cat`, et trente
+                // lignes de règles chasseraient le reste de la checklist de
+                // l'écran. C'est l'écran final du navigateur qui les affiche,
+                // faute d'y avoir autre chose.
+                $this->wrapped($file->path === null
+                    ? 'Configuration '.$file->label.' : non écrite, le dossier de stockage n\'est pas accessible en écriture.'
+                    : 'Configuration '.$file->label.' : '.$file->path);
+            }
+
+            $this->output->newLine();
+        }
+    }
+
+    /**
+     * Un paragraphe replié et indenté sous son titre.
+     */
+    private function wrapped(string $text): void
+    {
+        foreach (explode("\n", wordwrap($text, 74, "\n", false)) as $line) {
+            $this->output->writeln('      <fg='.self::MUTED.'>'.$this->escape($line).'</>');
+        }
+    }
+
+    /**
+     * Ces textes viennent d'une action, pas d'un gabarit de console : un `<`
+     * y serait lu comme une balise de style par Symfony et disparaîtrait de
+     * l'écran, ou pire, laisserait le reste de la ligne colorée.
+     */
+    private function escape(string $text): string
+    {
+        return OutputFormatter::escape($text);
     }
 
     /**

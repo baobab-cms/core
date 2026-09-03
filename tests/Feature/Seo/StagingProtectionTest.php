@@ -8,6 +8,7 @@ use Baobab\Seo\Models\SeoSetting;
 use Baobab\Users\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 
 beforeEach(function () {
     File::deleteDirectory(generatedModulesPath());
@@ -55,6 +56,35 @@ it('stops forcing noindex outside production when force_index_on_staging is enab
 
     $response->assertDontSee('name="robots"', false)
         ->assertHeaderMissing('X-Robots-Tag');
+});
+
+/**
+ * **Le défaut réel, reproduit le 3 septembre 2026 sur une archive
+ * décompressée.** `handle()` appelle `$next($request)` en premier : sur `/`,
+ * cette étape avait déjà calculé la redirection de `RedirectToInstaller` vers
+ * `/install`. C'est la lecture de `seo_settings` **après coup**, non gardée,
+ * qui écrasait cette réponse par une 500 — et non l'absence de redirection
+ * elle-même. Masqué à la toute première requête d'une archive fraîche : avant
+ * que `.env` existe, `APP_ENV` vaut le repli `production` de Laravel, la
+ * condition ne s'évaluait donc jamais ; dès la deuxième visite, `.env` existe,
+ * `APP_ENV=local` s'applique, et la base absente faisait tomber toute requête
+ * publique suivante.
+ *
+ * **Route choisie à dessein : `/sitemap.xml`, pas une page de contenu.**
+ * Une page de contenu (`/staging-pages/...`) ou `/robots.txt` traversent
+ * aussi `ComposeSeoMeta`/`ComposeRobotsTxt`, qui lisent `seo_settings` une
+ * seconde fois, sans garde — un second défaut, réel mais distinct de
+ * celui-ci, consigné à part (suivi n° 243) plutôt que corrigé ici sans
+ * cadrage. `RenderSitemapIndex` ne touche pas `seo_settings` et isole donc
+ * exactement le point corrigé : le middleware, seul.
+ */
+it('ne casse pas une réponse déjà calculée quand la base est hors d\'atteinte', function () {
+    Schema::drop('seo_settings');
+
+    $response = $this->get('/sitemap.xml');
+
+    $response->assertOk()
+        ->assertHeader('X-Robots-Tag', 'noindex');
 });
 
 it('shows the staging banner in admin when the protection is active', function () {

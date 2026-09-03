@@ -12,7 +12,15 @@ use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 /**
- * La racine d'un site qui ne peut rien servir mène à l'installateur.
+ * Un site qui ne peut rien servir mène à l'installateur.
+ *
+ * **Étendu à l'administration et aux écrans invités le 3 septembre 2026**
+ * (recette, suivi n° 242). Livré en C3a sur la seule racine `/`, il laissait
+ * `/admin` partir vers `/login`, qui rend le layout invité, qui lit la base :
+ * une archive décompressée répondait par une exception de base de données là
+ * où l'installateur attendait à un clic. Or `/admin` est justement l'adresse
+ * que l'écran final donne à l'utilisateur — celle qu'il rouvre le lendemain.
+ * La garde, elle, n'a pas bougé d'un pouce.
  *
  * **Le besoin** : quelqu'un qui vient de décompresser l'archive ouvre son
  * domaine, pas `/install` — il ne sait pas encore que cette adresse existe.

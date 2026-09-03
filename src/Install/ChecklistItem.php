@@ -16,16 +16,21 @@ namespace Baobab\Install;
  * le même sens ; les confondre aurait fait de la checklist une liste de
  * reproches.
  *
- * `command` est ce qui se copie, `file` ce qui se récupère par FTP, `warning`
+ * `command` est ce qui se copie, `files` ce qui se récupère par FTP, `warning`
  * ce qui alerte sans commander. Tous trois sont facultatifs : une tâche peut
  * n'être qu'une phrase — « activez HTTPS » — et c'est très bien.
+ *
+ * **`files` est une liste de `ChecklistFile` et non un chemin** (Pass C3b2) :
+ * un serveur web non identifié fait écrire les *deux* configurations, et le
+ * §7 les veut **écrites et affichées en clair** — un chemin seul aurait fait
+ * de la moitié de cette promesse une lettre morte.
  */
 final readonly class ChecklistItem
 {
     /**
      * @param  string  $key  identifiant stable, pour les tests et les traductions
      * @param  string|null  $command  ligne à copier telle quelle, jamais reformatée à l'affichage
-     * @param  string|null  $file  chemin d'un fichier écrit sur disque, à récupérer
+     * @param  list<ChecklistFile>  $files  configurations écrites sur disque, avec leur contenu
      * @param  string|null  $caveat  ce que l'on ne sait pas et qu'il faut vérifier
      */
     public function __construct(
@@ -33,17 +38,19 @@ final readonly class ChecklistItem
         public string $title,
         public string $body,
         public ?string $command = null,
-        public ?string $file = null,
+        public array $files = [],
         public ?string $caveat = null,
         public bool $warning = false,
     ) {}
 
     /**
      * Une tâche ordinaire : à faire, sans urgence particulière.
+     *
+     * @param  list<ChecklistFile>  $files
      */
-    public static function task(string $key, string $title, string $body, ?string $command = null, ?string $file = null, ?string $caveat = null): self
+    public static function task(string $key, string $title, string $body, ?string $command = null, array $files = [], ?string $caveat = null): self
     {
-        return new self($key, $title, $body, $command, $file, $caveat);
+        return new self($key, $title, $body, $command, $files, $caveat);
     }
 
     /**
@@ -55,6 +62,6 @@ final readonly class ChecklistItem
      */
     public static function warning(string $key, string $title, string $body, ?string $command = null): self
     {
-        return new self($key, $title, $body, $command, null, null, true);
+        return new self($key, $title, $body, $command, [], null, true);
     }
 }

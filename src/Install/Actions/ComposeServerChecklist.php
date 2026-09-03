@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Baobab\Install\Actions;
 
+use Baobab\Install\ChecklistFile;
 use Baobab\Install\ChecklistItem;
 use Baobab\Install\HostingProfile;
 use Baobab\Install\WebServer;
 use Illuminate\Filesystem\Filesystem;
+use Throwable;
 
 /**
  * La checklist des tâches serveur (spec 15 §7).
@@ -128,11 +130,11 @@ final class ComposeServerChecklist
         $written = [];
 
         if ($profile->webServer !== WebServer::Nginx) {
-            $written['.htaccess'] = $this->writeConfig($stateDirectory, 'baobab-htaccess.conf', $this->htaccess());
+            $written[] = $this->writeConfig($stateDirectory, 'Apache', 'baobab-htaccess.conf', $this->htaccess());
         }
 
         if ($profile->webServer !== WebServer::Apache) {
-            $written['Nginx'] = $this->writeConfig($stateDirectory, 'baobab-nginx.conf', $this->nginx($publicPath));
+            $written[] = $this->writeConfig($stateDirectory, 'Nginx', 'baobab-nginx.conf', $this->nginx($publicPath));
         }
 
         $body = match ($profile->webServer) {
@@ -151,7 +153,7 @@ final class ComposeServerChecklist
             'server.config',
             'Durcir la configuration du serveur web',
             $body,
-            file: implode(' · ', $written),
+            files: $written,
         );
     }
 
@@ -266,12 +268,26 @@ final class ComposeServerChecklist
         return true;
     }
 
-    private function writeConfig(string $directory, string $name, string $contents): string
+    /**
+     * Écrit une configuration, **sous garde**.
+     *
+     * Un `storage/` non inscriptible n'a rien d'exceptionnel sur un mutualisé,
+     * et cette action est appelée par l'écran qui annonce que le site est
+     * installé : une exception y transformerait une réussite en page blanche.
+     * L'échec se dit donc dans l'objet — `path` reste `null` — et le contenu,
+     * lui, reste affiché : c'est justement le cas où l'écran est le seul moyen
+     * de récupérer les règles.
+     */
+    private function writeConfig(string $directory, string $label, string $name, string $contents): ChecklistFile
     {
-        $this->files->ensureDirectoryExists($directory);
-        $this->files->put($directory.'/'.$name, $contents);
+        try {
+            $this->files->ensureDirectoryExists($directory);
+            $this->files->put($directory.'/'.$name, $contents);
+        } catch (Throwable) {
+            return new ChecklistFile($label, $contents);
+        }
 
-        return $directory.'/'.$name;
+        return new ChecklistFile($label, $contents, $directory.'/'.$name);
     }
 
     /**
@@ -280,6 +296,27 @@ final class ComposeServerChecklist
      * `spec 06 §3.2` est non négociable sur le dernier point : « aucun fichier
      * exécutable, PHP et assimilés refusés quelle que soit la configuration ».
      * Un média téléversé est un fichier que quelqu'un d'extérieur a choisi.
+     *
+     * **Ces règles vont dans un `.htaccess`, et ce contexte interdit plus de
+     * choses qu'il n'y paraît.** La première version, livrée en C3b1, refusait
+     * l'exécution dans le stockage par un bloc `<Directory>` assorti d'un
+     * `php_flag engine off` : deux erreurs, trouvées en recette le
+     * 3 septembre 2026 sur un mutualisé réel, où suivre notre propre consigne
+     * mettait **tout le site en erreur 500**.
+     *
+     *  - `<Directory>` n'est admis qu'en configuration serveur ou en vhost.
+     *    Dans un `.htaccess`, Apache répond `<Directory not allowed here` et
+     *    refuse de servir quoi que ce soit.
+     *  - `php_flag` n'existe qu'avec PHP en module Apache. En FPM, CGI ou
+     *    LSAPI — le cas de la quasi-totalité des mutualisés d'aujourd'hui —
+     *    la directive est inconnue, et une directive inconnue est fatale.
+     *
+     * La forme retenue est une **règle de réécriture**, admise en `.htaccess`
+     * et indépendante du SAPI : elle refuse la requête avant qu'aucun
+     * gestionnaire ne la voie. Elle s'ajoute *après* les règles de Laravel
+     * sans les gêner : celles-ci ne détournent vers le contrôleur frontal que
+     * ce qui n'est **pas** un fichier existant, or c'est précisément un
+     * fichier existant que l'on veut refuser ici.
      */
     private function htaccess(): string
     {
@@ -296,16 +333,23 @@ final class ComposeServerChecklist
         # Fichiers qui ne doivent jamais être servis, même déplacés par erreur
         # dans la racine web.
         <FilesMatch "^(\.env.*|composer\.(json|lock)|package(-lock)?\.json|.*\.md|.*\.sqlite)$">
-            Require all denied
+            <IfModule mod_authz_core.c>
+                Require all denied
+            </IfModule>
+            <IfModule !mod_authz_core.c>
+                Order allow,deny
+                Deny from all
+            </IfModule>
         </FilesMatch>
 
         # Le stockage des médias sert des fichiers, il n'en exécute aucun
-        # (spec 06 §3.2).
-        <Directory "*/storage/*">
-            php_flag engine off
-            RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .phar
-            AddType text/plain .php .phtml .phar
-        </Directory>
+        # (spec 06 §3.2). Une règle de réécriture, et non une section Directory
+        # ni un réglage PHP réservé au module Apache : aucun des deux n'est
+        # admis ici, et Apache y répond par une erreur 500 sur tout le site.
+        <IfModule mod_rewrite.c>
+            RewriteEngine On
+            RewriteRule ^storage/.+\.(php|phtml|phar|phps|php[0-9]|inc|hphp)$ - [F,L]
+        </IfModule>
         APACHE;
     }
 

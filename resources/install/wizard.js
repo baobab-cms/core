@@ -78,22 +78,47 @@
         });
     }
 
-    function finish(adminUrl) {
-        var done = document.createElement('p');
-        done.className = 'lede is-finished';
-        done.textContent = 'Votre site est installé. L’installateur vient de se refermer : cette adresse ne répondra plus.';
+    /*
+     * La fin de l'installation — **rendue par le serveur, insérée ici**
+     * (arbitrage D1, suivi n° 238).
+     *
+     * C'est la seule entorse de ce fichier à la règle du `textContent`, et
+     * elle est raisonnée : ce fragment est un gabarit Blade, échappé par
+     * Blade, que la page sans JavaScript rend à l'identique. L'alternative
+     * était de reconstruire ici la checklist du §7 — six items, des lignes de
+     * cron, deux configurations serveur — en double de celle du Blade, et deux
+     * écritures d'une même liste finissent toujours par ne plus dire la même
+     * chose. Sur un mutualisé, c'est précisément ce que personne ne peut
+     * rattraper : pas de shell pour vérifier laquelle a raison.
+     *
+     * Repli si le serveur n'a rien rendu : la porte de sortie, et rien d'autre
+     * — un écran de fin muet vaut mieux qu'un écran resté sur sa progression.
+     */
+    function finish(html, adminUrl) {
+        var block = document.createElement('div');
+        block.className = 'is-finished';
 
-        var link = document.createElement('a');
-        link.className = 'button button--link';
-        link.href = adminUrl || '/admin';
-        link.textContent = 'Aller à l’administration';
+        if (html) {
+            block.innerHTML = html;
+        } else {
+            var done = document.createElement('p');
+            done.className = 'lede';
+            done.textContent = 'Votre site est installé. L’installateur vient de se refermer : cette adresse ne répondra plus.';
 
-        var wrapper = document.createElement('p');
-        wrapper.className = 'actions';
-        wrapper.appendChild(link);
+            var link = document.createElement('a');
+            link.className = 'button button--link';
+            link.href = adminUrl || '/admin';
+            link.textContent = 'Aller à l’administration';
 
-        run.parentNode.insertBefore(done, run.nextSibling);
-        done.parentNode.insertBefore(wrapper, done.nextSibling);
+            var wrapper = document.createElement('p');
+            wrapper.className = 'actions';
+            wrapper.appendChild(link);
+
+            block.appendChild(done);
+            block.appendChild(wrapper);
+        }
+
+        run.parentNode.insertBefore(block, run.nextSibling);
     }
 
     function fail(message) {
@@ -194,7 +219,7 @@
                      * finalise est la dernière que nous verrons — on rend la
                      * fin avec elle.
                      */
-                    finish(payload.adminUrl);
+                    finish(payload.html, payload.adminUrl);
 
                     return;
                 }

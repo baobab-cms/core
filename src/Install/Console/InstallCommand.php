@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Install\Console;
 
+use Baobab\Install\Actions\ComposeServerChecklist;
 use Baobab\Install\DatabaseCredentials;
 use Baobab\Install\EnvFile;
 use Baobab\Install\Exceptions\InstallationStepFailed;
@@ -57,6 +58,7 @@ final class InstallCommand extends Command
         InstallationPipeline $pipeline,
         InstallationState $state,
         Filesystem $files,
+        ComposeServerChecklist $checklist,
     ): int {
         $interactive = ! $this->option('no-interaction');
         $ui = new InstallerOutput($this->output, quiet: ! $interactive);
@@ -112,7 +114,7 @@ final class InstallCommand extends Command
         $ui->done();
         $ui->banner();
 
-        $this->reportSuccess($ui, $summary, $input);
+        $this->reportSuccess($ui, $summary, $input, $checklist);
 
         return self::SUCCESS;
     }
@@ -252,7 +254,7 @@ final class InstallCommand extends Command
      * action ; sur un terminal de 24 lignes, c'est elle qui doit rester
      * visible quand la bannière sort par le haut.
      */
-    private function reportSuccess(InstallerOutput $ui, InstallationSummary $summary, InstallationInput $input): void
+    private function reportSuccess(InstallerOutput $ui, InstallationSummary $summary, InstallationInput $input, ComposeServerChecklist $checklist): void
     {
         if ($summary->wasResumed()) {
             $ui->line('  <fg=gray>Reprise : '.count($summary->skipped).' étape(s) déjà faites n\'ont pas été rejouées.</>');
@@ -274,5 +276,25 @@ final class InstallCommand extends Command
         }
 
         $ui->line('');
+
+        /*
+         * Le profil est celui du `summary`, donc celui **constaté à la
+         * finalisation** : `symlink()` peut exister et échouer quand même, et
+         * la checklist ne doit pas proposer une manœuvre que l'hébergement
+         * vient de refuser.
+         *
+         * Écriture des configurations sous garde côté action ; une checklist
+         * qui échoue ne doit pas faire retourner un code d'erreur à une
+         * installation réussie.
+         */
+        $ui->checklist(($checklist)(
+            $summary->profile,
+            base_path(),
+            public_path(),
+            $input->url,
+            (string) config('baobab.install.state_path', storage_path('app/baobab')),
+            (bool) config('app.debug'),
+            $input->appEnv,
+        ));
     }
 }

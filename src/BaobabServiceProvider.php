@@ -82,6 +82,7 @@ use Baobab\Facades\Hook;
 use Baobab\Hooks\HookRegistry;
 use Baobab\Install\Console\CheckCommand;
 use Baobab\Install\Console\InstallCommand;
+use Baobab\Install\Http\Middleware\RedirectToInstaller;
 use Baobab\Install\InstallationState;
 use Baobab\Install\InstallDraft;
 use Baobab\Install\InstallPaths;
@@ -563,9 +564,24 @@ class BaobabServiceProvider extends ServiceProvider
         );
     }
 
+    /**
+     * `RedirectToInstaller` en **tête** du groupe, et c'est le point.
+     *
+     * *Trouvé en recette le 3 septembre 2026, sur une archive décompressée.*
+     * Le détour livré en C3a ne couvrait que la racine `/` : `/admin` partait
+     * vers `/login`, qui rend le layout invité, qui interroge la base — et le
+     * visiteur recevait une exception de base de données au lieu de
+     * l'installateur. Or `/admin` est précisément l'adresse que l'écran final
+     * de l'installation lui a donnée, donc celle qu'il rouvre ensuite.
+     *
+     * Placé avant `auth:baobab` : authentifier sur une base qui n'existe pas
+     * ne peut que lever. La garde du middleware reste celle de la C3a — pas de
+     * lock **et** base hors d'atteinte —, si bien qu'un site monté à la main,
+     * qui n'a jamais eu de lock, garde son écran de connexion.
+     */
     private function loadAdminRoutes(): void
     {
-        Route::middleware(['web', 'auth:baobab', 'verified', 'can:baobab.admin.access', ImpersonationGuard::class])
+        Route::middleware([RedirectToInstaller::class, 'web', 'auth:baobab', 'verified', 'can:baobab.admin.access', ImpersonationGuard::class])
             ->prefix($this->app->make('config')->get('baobab.admin.path', 'admin'))
             ->name('admin.')
             ->group(__DIR__.'/../routes/admin.php');

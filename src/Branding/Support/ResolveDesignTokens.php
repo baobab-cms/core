@@ -7,6 +7,7 @@ namespace Baobab\Branding\Support;
 use Baobab\Branding\Models\BrandingSetting;
 use Baobab\Facades\Hook;
 use Baobab\Rendering\ActiveThemeResolver;
+use Throwable;
 
 /**
  * Cascade de résolution des design tokens (spec 18 §3) : défauts Core →
@@ -27,9 +28,7 @@ final class ResolveDesignTokens
     {
         $resolved = $this->baseline();
 
-        /** @var array<string, array<string, string>> $adminTokens */
-        $adminTokens = BrandingSetting::current()->tokens ?? [];
-        $resolved = $this->mergeGroup($resolved, $adminTokens);
+        $resolved = $this->mergeGroup($resolved, $this->adminTokens());
 
         /** @var array<string, array<string, string>> $filtered */
         $filtered = Hook::filter('baobab.branding.tokens', $resolved);
@@ -58,6 +57,9 @@ final class ResolveDesignTokens
     {
         $resolved = DesignTokenSchema::CORE_DEFAULTS;
 
+        // `current()` porte déjà sa propre garde de base : une table `modules`
+        // hors d'atteinte y rend `null` plutôt que de lever. Seule la lecture
+        // des surcharges d'apparence manquait de la sienne.
         $theme = $this->themeResolver->current();
 
         if ($theme !== null) {
@@ -67,6 +69,36 @@ final class ResolveDesignTokens
         }
 
         return $resolved;
+    }
+
+    /**
+     * Les surcharges d'apparence — **ou rien, si la base ne répond pas**.
+     *
+     * *Trouvé en recette le 3 septembre 2026, sur une archive décompressée.*
+     * `layouts/guest.blade.php` rend `<x-baobab::design-tokens />`, donc cette
+     * cascade : sur un site dont la base est hors d'atteinte, l'**écran de
+     * connexion** mourait d'une exception de base de données. C'est l'écran
+     * par lequel on vient réparer un site en panne — il ne peut pas dépendre
+     * d'un réglage d'apparence.
+     *
+     * Le repli n'est pas une dégradation silencieuse d'un résultat : les
+     * défauts du Core et ceux du thème sont un rendu **complet et correct**,
+     * simplement sans les personnalisations que l'administrateur a choisies.
+     * Personne ne remarque qu'un vert n'est pas le sien sur une page qui,
+     * autrement, ne s'afficherait pas du tout.
+     *
+     * @return array<string, array<string, string>>
+     */
+    private function adminTokens(): array
+    {
+        try {
+            /** @var array<string, array<string, string>> $tokens */
+            $tokens = BrandingSetting::current()->tokens ?? [];
+
+            return $tokens;
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     /**
