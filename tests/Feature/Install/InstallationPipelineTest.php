@@ -82,7 +82,7 @@ it('enchaîne les étapes dans l\x27ordre, et note celles qui ont un effet', fun
     // avec l algorithme du site, pas avec celui d avant (n° 220).
     // `theme` vient APRÈS `site` et AVANT `finalization` : l'activation
     // publie des assets et enregistre des emplacements de menus, que le
-    // `optimize()` de la finalisation doit voir (n° 246).
+    // `optimize()` de la finalisation doit voir (n° 247).
     expect($vues)->toBe(['requirements', 'database', 'migrations', 'hashing', 'account', 'site', 'theme', 'finalization'])
         ->and($resume->wasResumed())->toBeFalse()
         ->and($this->state->isInstalled())->toBeTrue()

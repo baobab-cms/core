@@ -18,7 +18,7 @@ use Throwable;
  * et la bande admin annonce « aucun thème actif ». C'était la raison déclarée
  * de faire passer le M8 point 10 avant le point 3, et rien ne l'honorait :
  * le mot « thème » n'apparaissait nulle part dans l'installateur (suivi
- * n° 246).
+ * n° 247).
  *
  * **Le Core ne nomme jamais un thème en dur.** La dépendance du projet est
  * descendante — thèmes → modules → core — donc le nom vit dans la

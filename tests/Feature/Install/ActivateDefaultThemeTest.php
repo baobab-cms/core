@@ -5,7 +5,7 @@ use Baobab\Modules\Models\Module;
 
 /**
  * Spec 15 §4 étape 7 — l'installation active le thème livré avec la
- * distribution (suivi n° 246, arbitrage D-A).
+ * distribution (suivi n° 247, arbitrage D-A).
  *
  * Ce que ces tests gardent avant tout, c'est que l'étape **ne fait jamais
  * échouer une installation** : les pages de repli du Core existent pour
