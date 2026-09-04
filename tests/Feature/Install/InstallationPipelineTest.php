@@ -83,7 +83,7 @@ it('enchaîne les étapes dans l\x27ordre, et note celles qui ont un effet', fun
     // `theme` vient APRÈS `site` et AVANT `finalization` : l'activation
     // publie des assets et enregistre des emplacements de menus, que le
     // `optimize()` de la finalisation doit voir (n° 247).
-    expect($vues)->toBe(['requirements', 'database', 'migrations', 'hashing', 'account', 'site', 'theme', 'finalization'])
+    expect($vues)->toBe(['requirements', 'database', 'migrations', 'hashing', 'account', 'site', 'theme', 'demo', 'finalization'])
         ->and($resume->wasResumed())->toBeFalse()
         ->and($this->state->isInstalled())->toBeTrue()
         ->and($resume->superAdmin?->user->email)->toBe('admin@exemple.fr')
@@ -104,7 +104,7 @@ it('reprend là où une coupure a laissé l\'installation, sans rejouer ce qui e
         $vues[] = $step;
     });
 
-    expect($vues)->toBe(['requirements', 'hashing', 'account', 'site', 'theme', 'finalization'])
+    expect($vues)->toBe(['requirements', 'hashing', 'account', 'site', 'theme', 'demo', 'finalization'])
         ->and($resume->wasResumed())->toBeTrue()
         ->and($resume->skipped)->toBe(['database', 'migrations']);
 });

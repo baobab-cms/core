@@ -16,6 +16,7 @@ use Baobab\Install\InstallPaths;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 
+use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\password;
 use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
@@ -50,7 +51,8 @@ final class InstallCommand extends Command
         {--url= : URL publique du site}
         {--timezone= : Fuseau horaire (défaut UTC)}
         {--closed-registration : Ferme l\'inscription front, ouverte par défaut}
-        {--telemetry : Transmettre des statistiques anonymes ; rien n\'est transmis sans ce drapeau}';
+        {--telemetry : Transmettre des statistiques anonymes ; rien n\'est transmis sans ce drapeau}
+        {--demo-content : Poser un contenu de démonstration (deux pages, trois articles, un menu)}';
 
     protected $description = 'Installe Baobab : prérequis, base, migrations, compte, site, finalisation.';
 
@@ -159,6 +161,18 @@ final class InstallCommand extends Command
             // n'est consenti — c'est le défaut de l'entrée comme celui de la
             // colonne (suivi n° 229, arbitrage A4).
             telemetry: (bool) $this->option('telemetry'),
+            // **Invite et non seul drapeau**, à la différence de la
+            // télémétrie : le §8 point 2 écarte délibérément toute invite
+            // pour un opt-in dont la qualité du consentement compte (une
+            // question posée en milieu d'installation console obtient
+            // surtout des « oui » distraits, suivi n° 229 arbitrage A4).
+            // Le contenu de démonstration n'a pas cet enjeu — c'est un choix
+            // de confort, pas un consentement — et le §8 point 1 le veut
+            // « proposé à l'installation » : `confirm()` le tient à la
+            // lettre (suivi n° 252).
+            demoContent: $this->option('demo-content')
+                ? true
+                : ($interactive ? confirm('Poser un contenu de démonstration (deux pages, trois articles) ?', default: false) : false),
             appEnv: (string) config('app.env', 'production'),
             version: $this->version(),
             // Interrupteur d exploitation autant que de test : certains

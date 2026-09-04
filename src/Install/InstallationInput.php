@@ -33,6 +33,12 @@ final readonly class InstallationInput
          * chose (suivi n° 229, arbitrage A4).
          */
         public bool $telemetry = false,
+        /**
+         * Contenu de démonstration (§8 point 1), **faux par défaut** — même
+         * motif que la télémétrie : une case décochée ne doit jamais valoir
+         * un « oui » silencieux.
+         */
+        public bool $demoContent = false,
         public string $appEnv = 'production',
         public string $version = 'dev',
         /**

@@ -75,7 +75,7 @@ it('n\'avance que d\'une étape par appel, dans l\'ordre de la séquence', funct
     // Le même ordre que la console, et pour la même raison : le hachage précède
     // le compte, sans quoi le premier compte serait haché autrement que le
     // reste du site (n° 220).
-    expect($vues)->toBe(['database', 'migrations', 'hashing', 'account', 'site', 'theme', 'finalization'])
+    expect($vues)->toBe(['database', 'migrations', 'hashing', 'account', 'site', 'theme', 'demo', 'finalization'])
         ->and($this->state->isInstalled())->toBeTrue();
 });
 
@@ -113,11 +113,11 @@ it('ne rend plus rien une fois le site installé', function () {
 });
 
 it('dit ce qu\'il reste à faire, d\'après l\'avancement réel', function () {
-    expect($this->pipeline->remainingSteps())->toBe(['database', 'migrations', 'hashing', 'account', 'site', 'theme', 'finalization']);
+    expect($this->pipeline->remainingSteps())->toBe(['database', 'migrations', 'hashing', 'account', 'site', 'theme', 'demo', 'finalization']);
 
     $this->state->recordStep(InstallationPipeline::STEP_DATABASE);
 
-    expect($this->pipeline->remainingSteps())->toBe(['migrations', 'hashing', 'account', 'site', 'theme', 'finalization']);
+    expect($this->pipeline->remainingSteps())->toBe(['migrations', 'hashing', 'account', 'site', 'theme', 'demo', 'finalization']);
 });
 
 /**

@@ -1,5 +1,7 @@
 <?php
 
+use Baobab\ContentTypes\Models\ContentType;
+use Baobab\Demo\Models\DemoContent;
 use Baobab\Install\Capability;
 use Baobab\Install\HostingProfile;
 use Baobab\Install\InstallationPipeline;
@@ -10,6 +12,7 @@ use Baobab\Users\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 /**
  * Spec 15 §5 — `baobab:install`, l'adaptateur console.
@@ -91,6 +94,46 @@ it('installe de bout en bout sans poser une seule question', function () {
         ->and(User::query()->where('email', 'admin@exemple.fr')->exists())->toBeTrue()
         ->and(RegistrationSetting::isOpen())->toBeFalse()
         ->and($this->files->get($this->repertoire.'/.env'))->toContain('APP_URL=https://monsite.fr');
+});
+
+/**
+ * Le drapeau seul suffit en mode non interactif — `confirm()` ne se pose
+ * qu'en interactif (spec 15 §8 point 1, suivi n° 252).
+ */
+it('pose le contenu de démonstration avec --demo-content', function () {
+    config(['baobab.content_types.modules_path' => generatedModulesPath()]);
+    config(['baobab.modules.paths' => ['local' => [generatedModulesPath().'/*']]]);
+    File::deleteDirectory(generatedModulesPath());
+
+    $this->artisan('baobab:install', [
+        '--no-interaction' => true,
+        '--db-connection' => 'sqlite',
+        '--db-database' => ':memory:',
+        '--admin-email' => 'admin@exemple.fr',
+        '--admin-name' => 'Privat',
+        '--site-name' => 'Mon site',
+        '--url' => 'https://monsite.fr',
+        '--demo-content' => true,
+    ])->assertExitCode(0);
+
+    expect(ContentType::where('key', 'Page')->exists())->toBeTrue()
+        ->and(DemoContent::query()->exists())->toBeTrue();
+
+    File::deleteDirectory(generatedModulesPath());
+});
+
+it('ne pose rien sans --demo-content, en mode non interactif', function () {
+    $this->artisan('baobab:install', [
+        '--no-interaction' => true,
+        '--db-connection' => 'sqlite',
+        '--db-database' => ':memory:',
+        '--admin-email' => 'admin@exemple.fr',
+        '--admin-name' => 'Privat',
+        '--site-name' => 'Mon site',
+        '--url' => 'https://monsite.fr',
+    ])->assertExitCode(0);
+
+    expect(ContentType::where('key', 'Page')->exists())->toBeFalse();
 });
 
 /**

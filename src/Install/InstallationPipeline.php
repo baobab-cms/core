@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Install;
 
+use Baobab\Demo\Actions\SeedDemoContent;
 use Baobab\Install\Actions\ActivateDefaultTheme;
 use Baobab\Install\Actions\CheckRequirements;
 use Baobab\Install\Actions\ConfigureDatabase;
@@ -13,6 +14,7 @@ use Baobab\Install\Actions\CreateSuperAdmin;
 use Baobab\Install\Actions\FinalizeInstallation;
 use Baobab\Install\Actions\RunMigrations;
 use Baobab\Install\Exceptions\InstallationStepFailed;
+use Baobab\Users\Models\User;
 use Closure;
 
 /**
@@ -48,6 +50,8 @@ final readonly class InstallationPipeline
 
     public const STEP_THEME = 'theme';
 
+    public const STEP_DEMO = 'demo';
+
     public const STEP_FINALIZATION = 'finalization';
 
     /** Les étapes à effet de bord, dans l'ordre. L'étape 1 n'y figure pas : voir le docblock. */
@@ -58,6 +62,7 @@ final readonly class InstallationPipeline
         self::STEP_ACCOUNT,
         self::STEP_SITE,
         self::STEP_THEME,
+        self::STEP_DEMO,
         self::STEP_FINALIZATION,
     ];
 
@@ -73,6 +78,7 @@ final readonly class InstallationPipeline
         self::STEP_ACCOUNT => 'Compte',
         self::STEP_SITE => 'Site',
         self::STEP_THEME => 'Thème',
+        self::STEP_DEMO => 'Contenu de démonstration',
         self::STEP_FINALIZATION => 'Finalisation',
     ];
 
@@ -85,6 +91,7 @@ final readonly class InstallationPipeline
         private CreateSuperAdmin $createSuperAdmin,
         private ConfigureSite $configureSite,
         private ActivateDefaultTheme $activateDefaultTheme,
+        private SeedDemoContent $seedDemoContent,
         private FinalizeInstallation $finalizeInstallation,
     ) {}
 
@@ -283,6 +290,20 @@ final readonly class InstallationPipeline
                 self::LABELS[$step],
                 details: ($this->activateDefaultTheme)(),
             ),
+            // Après le thème, avant la finalisation : les contenus posés
+            // doivent exister avant que `optimize()` ne mette les vues en
+            // cache. Toujours exécutée — jamais absente de la séquence —
+            // mais **ne fait rien** si `$input->demoContent` est faux : la
+            // rendre conditionnelle dans `RESUMABLE_STEPS` lui-même aurait
+            // forcé `remainingSteps()`, appelée sans connaître l'entrée
+            // (WizardController), à deviner ce que le brouillon contient.
+            self::STEP_DEMO => new StepOutcome(
+                $step,
+                self::LABELS[$step],
+                details: $input->demoContent
+                    ? ($this->seedDemoContent)($this->resolveSuperAdmin($input))
+                    : ['Contenu de démonstration non demandé.'],
+            ),
             self::STEP_FINALIZATION => new StepOutcome(
                 $step,
                 self::LABELS[$step],
@@ -307,6 +328,21 @@ final readonly class InstallationPipeline
         ($this->configureSite)($env, $input->siteName, $input->url, $input->timezone, $input->registrationOpen, $input->telemetry);
 
         return new StepOutcome($step, self::LABELS[$step]);
+    }
+
+    /**
+     * L'acteur qui posera le contenu de démonstration.
+     *
+     * L'étape 5 (le compte) le crée, mais `execute()` ne porte que ce
+     * qu'`InstallationInput` transmet — pas ce que les étapes précédentes
+     * ont produit dans le wizard, où chacune est une requête distincte
+     * (suivi n° 246). L'adresse e-mail est unique et déjà validée à la
+     * création : la relire est le seul chemin qui marche identiquement dans
+     * les deux interfaces.
+     */
+    private function resolveSuperAdmin(InstallationInput $input): User
+    {
+        return User::where('email', $input->adminEmail)->firstOrFail();
     }
 
     /**

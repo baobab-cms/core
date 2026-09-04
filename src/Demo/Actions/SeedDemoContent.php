@@ -18,6 +18,7 @@ use Baobab\Modules\ModuleAutoloader;
 use Baobab\Rendering\Actions\UpdateReadingSettings;
 use Baobab\Rendering\Models\ReadingSetting;
 use Baobab\Users\Models\User;
+use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 
@@ -38,6 +39,12 @@ use Illuminate\Http\UploadedFile;
  * chargeable, et `SaveContentEntry` — qui résout `modelClass()` — échouerait
  * dessus. C'est le même geste que font les tests d'admin après chaque
  * `BuildContentType`.
+ *
+ * **Rejouable après un retrait, sans reconstruire les types.** `RemoveDemoContent`
+ * (D2b) laisse `Page` et `Article` en place (arbitrage D-D) : les reconstruire
+ * ici lèverait `DuplicateContentTypeException`. Elle les **réutilise** donc, et
+ * ne se considère « déjà en place » que si des entrées de démonstration y
+ * vivent encore — jamais à la seule existence du type (suivi n° 252).
  */
 final class SeedDemoContent
 {
@@ -63,14 +70,19 @@ final class SeedDemoContent
      */
     public function __invoke(User $actor): array
     {
-        // Rejouer par-dessus créerait un second jeu de contenus sans que rien
-        // ne le dise, et les slugs entreraient en collision.
-        if (DemoContent::query()->exists()) {
+        $page = $this->resolveType('Page', fn (): string => $this->pageBlueprint());
+        $article = $this->resolveType('Article', fn (): string => $this->articleBlueprint());
+
+        // Rejouer par-dessus des entrées déjà présentes créerait un second
+        // jeu de contenus sans que rien ne le dise, et les slugs entreraient
+        // en collision. Les Content Types, eux, sont de l'infrastructure :
+        // ils survivent à un retrait (suivi n° 247, arbitrage D-D) et se
+        // réutilisent ici plutôt que de se reconstruire — sans quoi rejouer
+        // après un retrait lèverait `DuplicateContentTypeException` (suivi
+        // n° 252, révision de la garde livrée en D2a).
+        if ($this->isLive($page) || $this->isLive($article)) {
             return ['Le contenu de démonstration est déjà en place.'];
         }
-
-        $page = $this->buildType($this->pageBlueprint());
-        $article = $this->buildType($this->articleBlueprint());
 
         $home = $this->createEntry($page, $actor, $this->homePage());
         $about = $this->createEntry($page, $actor, $this->aboutPage());
@@ -96,6 +108,31 @@ final class SeedDemoContent
     }
 
     /**
+     * Le Content Type d'une clé donnée, réutilisé s'il existe déjà — d'un
+     * retrait précédent ou d'une reprise d'installation — construit sinon.
+     *
+     * @param  Closure(): string  $blueprintJson  différé : inutile de composer
+     *                                            le blueprint quand le type
+     *                                            existe déjà
+     */
+    private function resolveType(string $key, Closure $blueprintJson): ContentType
+    {
+        $existing = ContentType::where('key', $key)->first();
+
+        if ($existing instanceof ContentType) {
+            $module = Module::find($existing->module_id);
+
+            if ($module instanceof Module) {
+                $this->autoloader->registerFor($module);
+            }
+
+            return $existing;
+        }
+
+        return $this->buildType($blueprintJson());
+    }
+
+    /**
      * Construit un Content Type **et rend son modèle chargeable** dans le
      * processus courant — voir le docblock de la classe.
      */
@@ -113,6 +150,17 @@ final class SeedDemoContent
         DemoContent::markCreated($type);
 
         return $type->fresh() ?? $type;
+    }
+
+    /**
+     * Le contenu de démonstration est-il actuellement posé sous ce type ?
+     *
+     * Distinct de « le type existe » : un type peut survivre à un retrait
+     * (arbitrage D-D) sans qu'aucune entrée de démonstration n'y vive plus.
+     */
+    private function isLive(ContentType $type): bool
+    {
+        return DemoContent::where('demoable_type', $type->modelClass())->exists();
     }
 
     /**
