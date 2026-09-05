@@ -183,9 +183,11 @@ Route::middleware('can:baobab.system.forms.manage')
         Route::get('/', [FormsController::class, 'index'])->name('index');
         Route::get('/create', [FormsController::class, 'create'])->name('create');
         Route::post('/', [FormsController::class, 'store'])->name('store');
+        Route::post('/import', [FormsController::class, 'import'])->name('import');
         Route::get('/{form}', [FormsController::class, 'edit'])->name('edit');
         Route::put('/{form}', [FormsController::class, 'update'])->name('update');
         Route::put('/{form}/settings', [FormsController::class, 'updateSettings'])->name('settings.update');
+        Route::get('/{form}/export', [FormsController::class, 'export'])->name('export');
         Route::delete('/{form}', [FormsController::class, 'destroy'])->name('destroy');
     });
 

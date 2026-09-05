@@ -3,6 +3,10 @@
         {{ __('baobab::admin.forms.edit_action') }}
     </a>
 
+    <a href="{{ route('admin.forms.export', ['form' => $form->id]) }}" class="text-primary hover:underline">
+        {{ __('baobab::admin.forms.export_action') }}
+    </a>
+
     <form
         method="POST"
         action="{{ route('admin.forms.destroy', ['form' => $form->id]) }}"

@@ -30,6 +30,8 @@ use Baobab\Console\Commands\ContentTypeMakeCommand;
 use Baobab\Console\Commands\ContentUnpublishDueCommand;
 use Baobab\Console\Commands\DesignTokensCompileCommand;
 use Baobab\Console\Commands\FontsListCommand;
+use Baobab\Console\Commands\FormExportCommand;
+use Baobab\Console\Commands\FormImportCommand;
 use Baobab\Console\Commands\FormSubmissionsPurgeCommand;
 use Baobab\Console\Commands\GraphqlCompileCommand;
 use Baobab\Console\Commands\HookListCommand;
@@ -442,6 +444,8 @@ class BaobabServiceProvider extends ServiceProvider
                 MailTemplatesCommand::class,
                 MailLogPurgeCommand::class,
                 FormSubmissionsPurgeCommand::class,
+                FormExportCommand::class,
+                FormImportCommand::class,
                 NotifyTestCommand::class,
                 NotificationsPurgeCommand::class,
                 ThemeActivateCommand::class,

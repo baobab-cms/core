@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Baobab\Admin\Forms\Http\Controllers;
 
 use Baobab\Forms\Actions\DeleteForm;
+use Baobab\Forms\Actions\ExportForm;
+use Baobab\Forms\Actions\ImportForm;
 use Baobab\Forms\Actions\SaveForm;
 use Baobab\Forms\Exceptions\DuplicateFormSlugException;
 use Baobab\Forms\Exceptions\InvalidFormBlueprintException;
+use Baobab\Forms\Exceptions\InvalidFormExportException;
 use Baobab\Forms\Models\Form;
 use Baobab\Forms\Support\FormFieldsNormalizer;
 use Baobab\Forms\Support\FormFieldTypes;
@@ -15,6 +18,8 @@ use Baobab\Forms\Support\FormSettingsNormalizer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Écran « Formulaires » (spec 14 §3, M8 point 6). Shell (Pass B1) : liste,
@@ -141,6 +146,33 @@ final class FormsController
         return redirect()->route('admin.forms.edit', $form);
     }
 
+    public function export(Form $form, ExportForm $action): Response
+    {
+        return response($action($form))
+            ->header('Content-Type', 'application/json')
+            ->header('Content-Disposition', "attachment; filename=\"{$form->slug}.json\"");
+    }
+
+    public function import(Request $request, ImportForm $action): RedirectResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:1024'],
+        ]);
+
+        /** @var UploadedFile $file */
+        $file = $request->file('file');
+
+        try {
+            $form = $action((string) file_get_contents((string) $file->getRealPath()));
+        } catch (InvalidFormExportException|InvalidFormBlueprintException $exception) {
+            return back()->withErrors(['file' => $exception->getMessage()]);
+        }
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.forms.imported')]);
+
+        return redirect()->route('admin.forms.edit', $form);
+    }
+
     public function destroy(Form $form, DeleteForm $action): RedirectResponse
     {
         $action($form);
@@ -162,10 +194,18 @@ final class FormsController
         return array_map(function (array $field): array {
             /** @var list<string> $choices */
             $choices = (array) ($field['options']['choices'] ?? []);
+            // `consent` affiche son texte légal en priorité (§2.2) ; tous les
+            // autres retombent sur le libellé saisi puis sur la clé.
+            $label = (string) ($field['type'] === 'consent' ? ($field['options']['text'] ?? $field['label'] ?? $field['key']) : ($field['label'] ?? $field['key']));
 
             return [
                 ...$field,
                 'choice_options' => array_combine($choices, $choices),
+                // Convention de formulaire : un astérisque à côté du libellé
+                // signale un champ requis — absent tant que ce n'est pas
+                // calculé ici (les composants `field.*` ne le déduisent pas
+                // de `required`, qu'ils ne reçoivent même pas).
+                'display_label' => ($field['required'] ?? false) ? "{$label} *" : $label,
             ];
         }, (array) ($form->blueprint['fields'] ?? []));
     }

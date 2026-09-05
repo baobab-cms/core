@@ -94,51 +94,51 @@
                 @foreach ($previewFields as $field)
                     @switch($field['type'])
                         @case('email')
-                            <x-baobab::field.email :name="$field['key']" :label="$field['label'] ?? $field['key']" :placeholder="$field['placeholder']" />
+                            <x-baobab::field.email :name="$field['key']" :label="$field['display_label']" :placeholder="$field['placeholder']" />
                             @break
 
                         @case('tel')
-                            <x-baobab::field.tel :name="$field['key']" :label="$field['label'] ?? $field['key']" :placeholder="$field['placeholder']" />
+                            <x-baobab::field.tel :name="$field['key']" :label="$field['display_label']" :placeholder="$field['placeholder']" />
                             @break
 
                         @case('url')
-                            <x-baobab::field.url :name="$field['key']" :label="$field['label'] ?? $field['key']" :placeholder="$field['placeholder']" />
+                            <x-baobab::field.url :name="$field['key']" :label="$field['display_label']" :placeholder="$field['placeholder']" />
                             @break
 
                         @case('number')
-                            <x-baobab::field.integer :name="$field['key']" :label="$field['label'] ?? $field['key']" :placeholder="$field['placeholder']" />
+                            <x-baobab::field.integer :name="$field['key']" :label="$field['display_label']" :placeholder="$field['placeholder']" />
                             @break
 
                         @case('date')
-                            <x-baobab::field.date :name="$field['key']" :label="$field['label'] ?? $field['key']" />
+                            <x-baobab::field.date :name="$field['key']" :label="$field['display_label']" />
                             @break
 
                         @case('textarea')
-                            <x-baobab::field.textarea :name="$field['key']" :label="$field['label'] ?? $field['key']" :placeholder="$field['placeholder']" />
+                            <x-baobab::field.textarea :name="$field['key']" :label="$field['display_label']" :placeholder="$field['placeholder']" />
                             @break
 
                         @case('select')
-                            <x-baobab::field.select :name="$field['key']" :label="$field['label'] ?? $field['key']" :options="$field['choice_options']" />
+                            <x-baobab::field.select :name="$field['key']" :label="$field['display_label']" :options="$field['choice_options']" />
                             @break
 
                         @case('radio')
-                            <x-baobab::field.radio :name="$field['key']" :label="$field['label'] ?? $field['key']" :options="$field['choice_options']" />
+                            <x-baobab::field.radio :name="$field['key']" :label="$field['display_label']" :options="$field['choice_options']" />
                             @break
 
                         @case('checkbox')
-                            <x-baobab::field.checkbox :name="$field['key']" :label="$field['label'] ?? $field['key']" />
+                            <x-baobab::field.checkbox :name="$field['key']" :label="$field['display_label']" />
                             @break
 
                         @case('checkboxes')
-                            <x-baobab::field.multiselect :name="$field['key']" :label="$field['label'] ?? $field['key']" :options="$field['choice_options']" />
+                            <x-baobab::field.multiselect :name="$field['key']" :label="$field['display_label']" :options="$field['choice_options']" />
                             @break
 
                         @case('consent')
-                            <x-baobab::field.checkbox :name="$field['key']" :label="$field['options']['text'] ?? $field['label'] ?? $field['key']" />
+                            <x-baobab::field.checkbox :name="$field['key']" :label="$field['display_label']" />
                             @break
 
                         @default
-                            <x-baobab::field.text :name="$field['key']" :label="$field['label'] ?? $field['key']" :placeholder="$field['placeholder']" />
+                            <x-baobab::field.text :name="$field['key']" :label="$field['display_label']" :placeholder="$field['placeholder']" />
                     @endswitch
 
                     {{-- Aucun composant field.* ne porte de zone d'aide : construits

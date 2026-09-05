@@ -4,6 +4,7 @@ use Baobab\Access\Actions\GrantPermission;
 use Baobab\Forms\Actions\SaveForm;
 use Baobab\Forms\Models\Form;
 use Baobab\Users\Models\User;
+use Illuminate\Http\UploadedFile;
 
 /**
  * @param  list<string>  $permissions
@@ -116,6 +117,24 @@ it('renders the placeholder and the help text in the preview', function () {
         ->assertSee('Nous ne le partagerons jamais.');
 });
 
+it('marks a required field with an asterisk in the preview, and leaves an optional one alone', function () {
+    $user = formsActor(['baobab.system.forms.manage']);
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [
+            ['key' => 'email', 'type' => 'email', 'label' => 'E-mail', 'required' => true],
+            ['key' => 'company', 'type' => 'text', 'label' => 'Société', 'required' => false],
+        ],
+    ]);
+
+    $response = $this->actingAs($user, 'baobab')->get(route('admin.forms.edit', ['form' => $form->id]));
+
+    $response->assertOk()
+        ->assertSeeInOrder(['E-mail *'])
+        ->assertDontSee('Société *');
+});
+
 it('updates the title and the fields from the builder payload', function () {
     $user = formsActor(['baobab.system.forms.manage']);
     $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
@@ -199,6 +218,43 @@ it('rejects a settings update with an invalid retention', function () {
         ->assertSessionHasErrors('retention_days');
 
     expect($form->fresh()->version)->toBe(1);
+});
+
+it('downloads a form export as an attachment', function () {
+    $user = formsActor(['baobab.system.forms.manage']);
+    $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
+
+    $response = $this->actingAs($user, 'baobab')->get(route('admin.forms.export', ['form' => $form->id]));
+
+    $response->assertOk()
+        ->assertHeader('Content-Type', 'application/json')
+        ->assertHeader('Content-Disposition', 'attachment; filename="contact.json"');
+
+    expect(json_decode($response->getContent(), true)['slug'])->toBe('contact');
+});
+
+it('imports a form uploaded from the index screen', function () {
+    $user = formsActor(['baobab.system.forms.manage']);
+
+    $file = UploadedFile::fake()->createWithContent('contact.json', json_encode([
+        'source' => 'admin', 'format_version' => 1, 'slug' => 'contact', 'title' => 'Contact',
+        'fields' => [], 'settings' => [], 'store_submissions' => true, 'retention_days' => 365, 'retain_ip' => false,
+    ]));
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.forms.import'), ['file' => $file])
+        ->assertRedirect();
+
+    expect(Form::where('slug', 'contact')->exists())->toBeTrue();
+});
+
+it('rejects an import that is not valid JSON, as a form error rather than a 500', function () {
+    $user = formsActor(['baobab.system.forms.manage']);
+    $file = UploadedFile::fake()->createWithContent('bad.json', 'not json');
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.forms.import'), ['file' => $file])
+        ->assertSessionHasErrors('file');
 });
 
 it('deletes a form', function () {
