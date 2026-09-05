@@ -30,4 +30,9 @@ return [
     // Bande admin — diagnostic réservé à qui peut agir (§6.5).
     'no_active_theme_notice' => 'Aucun thème actif : le rendu de repli du Core est servi.',
     'no_active_theme_action' => 'Choisir un thème',
+
+    // Formulaires publics (spec 14 §4, M8 point 6 Pass C1) — `<x-baobab::form-embed>`.
+    'form_confirmation_default' => 'Merci, votre message a bien été envoyé.',
+    'form_consent_privacy_link' => 'Voir la politique de confidentialité',
+    'form_submit_action' => 'Envoyer',
 ];

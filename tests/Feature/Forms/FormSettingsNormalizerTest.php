@@ -57,3 +57,14 @@ it('falls back to none for an unknown provider rather than trusting arbitrary in
 
     expect($normalized['anti_spam']['captcha']['provider'])->toBe('none');
 });
+
+it('normalizes an empty confirmation message to null (Pass C1)', function () {
+    expect(FormSettingsNormalizer::normalize([])['confirmation'])->toBe(['message' => null])
+        ->and(FormSettingsNormalizer::normalize(['confirmation_message' => '   '])['confirmation'])->toBe(['message' => null]);
+});
+
+it('trims the configured confirmation message', function () {
+    $normalized = FormSettingsNormalizer::normalize(['confirmation_message' => '  Merci !  ']);
+
+    expect($normalized['confirmation'])->toBe(['message' => 'Merci !']);
+});

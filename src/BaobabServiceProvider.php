@@ -323,6 +323,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerApiDocsRoutes();
         $this->configureScout();
         $this->registerThemePreviewRoutes();
+        $this->registerFormRoutes();
 
         // Doit précéder registerPublicRoutes() : Laravel matche les routes
         // dans l'ordre d'enregistrement, et la route générique publique
@@ -915,6 +916,32 @@ class BaobabServiceProvider extends ServiceProvider
     private function registerThemePreviewRoutes(): void
     {
         Route::middleware('web')->group(__DIR__.'/../routes/theme-preview.php');
+    }
+
+    /**
+     * `POST /baobab/forms/{form:slug}` (spec 14 §4, M8 point 6 Pass C1) —
+     * endpoint public de soumission, patron `registerThemePreviewRoutes()` :
+     * chargé avant `registerPublicRoutes()` par précaution symétrique, même si
+     * `/baobab/*` (segment réservé, `baobab.rendering.reserved_prefixes`) ne
+     * peut de toute façon pas collisionner avec `/{prefix}/{slug?}`.
+     */
+    private function registerFormRoutes(): void
+    {
+        $this->registerFormRateLimiter();
+
+        Route::middleware('web')->group(__DIR__.'/../routes/forms.php');
+    }
+
+    /**
+     * Limiteur nommé (patron `baobab-install-gate`) : seul un limiteur nommé
+     * peut personnaliser sa réponse plutôt qu'un 429 nu — pas fait ici (pas de
+     * `->response()`, contrairement à l'installateur) faute d'écran dédié à
+     * habiller, mais nommer le limiteur coûte rien et garde la porte ouverte.
+     * Clé par IP : un soumetteur de formulaire public est toujours anonyme.
+     */
+    private function registerFormRateLimiter(): void
+    {
+        RateLimiter::for('baobab-forms-submit', fn (Request $request): Limit => Limit::perMinute(10)->by((string) $request->ip()));
     }
 
     /**

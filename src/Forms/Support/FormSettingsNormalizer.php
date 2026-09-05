@@ -17,6 +17,11 @@ namespace Baobab\Forms\Support;
  * formulaire. Seul le niveau 3 (captcha, optionnel par formulaire) a une
  * configuration. La Pass D branchera l'exécution réelle sur ce que cette
  * classe produit — aucune vérification de captcha, aucun envoi n'a lieu ici.
+ *
+ * `confirmation.message` ajouté en Pass C1 (spec 14 §4, « message de
+ * confirmation configurable ») : chaîne vide ou absente → le contrôleur
+ * public retombe sur le texte par défaut (`rendering.form_confirmation_default`),
+ * jamais stocké ici.
  */
 final class FormSettingsNormalizer
 {
@@ -36,6 +41,9 @@ final class FormSettingsNormalizer
         }
 
         return [
+            'confirmation' => [
+                'message' => self::nullableString($input['confirmation_message'] ?? null),
+            ],
             'suites' => [
                 'email_notification' => [
                     'enabled' => (bool) ($input['suites']['email_notification']['enabled'] ?? false),

@@ -48,6 +48,13 @@
         --}}
         <x-baobab::card class="mt-6">
             <x-baobab::form method="PUT" action="{{ route('admin.forms.settings.update', ['form' => $form->id]) }}">
+                <h2 class="mb-3 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.forms.confirmation_title') }}</h2>
+                <p class="mb-4 text-xs text-muted">{{ __('baobab::admin.forms.confirmation_hint') }}</p>
+
+                <div class="mb-4 space-y-2">
+                    <x-baobab::field.textarea name="confirmation_message" :label="__('baobab::admin.forms.confirmation_message')" :placeholder="__('baobab::admin.forms.confirmation_message_placeholder')" :value="$settingsForm['confirmation_message']" />
+                </div>
+
                 <h2 class="mb-3 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.forms.suites_title') }}</h2>
 
                 <div class="mb-4 space-y-2">
@@ -91,64 +98,7 @@
             @if ($previewFields === [])
                 <p class="text-sm text-muted">{{ __('baobab::admin.forms.preview_empty') }}</p>
             @else
-                @foreach ($previewFields as $field)
-                    @switch($field['type'])
-                        @case('email')
-                            <x-baobab::field.email :name="$field['key']" :label="$field['display_label']" :placeholder="$field['placeholder']" />
-                            @break
-
-                        @case('tel')
-                            <x-baobab::field.tel :name="$field['key']" :label="$field['display_label']" :placeholder="$field['placeholder']" />
-                            @break
-
-                        @case('url')
-                            <x-baobab::field.url :name="$field['key']" :label="$field['display_label']" :placeholder="$field['placeholder']" />
-                            @break
-
-                        @case('number')
-                            <x-baobab::field.integer :name="$field['key']" :label="$field['display_label']" :placeholder="$field['placeholder']" />
-                            @break
-
-                        @case('date')
-                            <x-baobab::field.date :name="$field['key']" :label="$field['display_label']" />
-                            @break
-
-                        @case('textarea')
-                            <x-baobab::field.textarea :name="$field['key']" :label="$field['display_label']" :placeholder="$field['placeholder']" />
-                            @break
-
-                        @case('select')
-                            <x-baobab::field.select :name="$field['key']" :label="$field['display_label']" :options="$field['choice_options']" />
-                            @break
-
-                        @case('radio')
-                            <x-baobab::field.radio :name="$field['key']" :label="$field['display_label']" :options="$field['choice_options']" />
-                            @break
-
-                        @case('checkbox')
-                            <x-baobab::field.checkbox :name="$field['key']" :label="$field['display_label']" />
-                            @break
-
-                        @case('checkboxes')
-                            <x-baobab::field.multiselect :name="$field['key']" :label="$field['display_label']" :options="$field['choice_options']" />
-                            @break
-
-                        @case('consent')
-                            <x-baobab::field.checkbox :name="$field['key']" :label="$field['display_label']" />
-                            @break
-
-                        @default
-                            <x-baobab::field.text :name="$field['key']" :label="$field['display_label']" :placeholder="$field['placeholder']" />
-                    @endswitch
-
-                    {{-- Aucun composant field.* ne porte de zone d'aide : construits
-                         pour les fiches Content Type, qui n'en ont pas (spec 02).
-                         Rendue ici, hors du composant, plutôt que d'en modifier
-                         quatorze pour un seul appelant. --}}
-                    @if ($field['help_text'])
-                        <p class="-mt-3 mb-4 text-xs text-muted">{{ $field['help_text'] }}</p>
-                    @endif
-                @endforeach
+                <x-baobab::forms.fields :fields="$previewFields" />
             @endif
         </x-baobab::card>
     </x-baobab::page>

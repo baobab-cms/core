@@ -195,6 +195,7 @@ it('updates the settings without touching the existing fields', function () {
             'captcha_provider' => 'turnstile',
             'captcha_site_key' => '0x123',
             'captcha_secret_key' => '0xabc',
+            'confirmation_message' => '  Merci, on revient vers vous sous 48h.  ',
         ])
         ->assertRedirect(route('admin.forms.edit', ['form' => $form->id]));
 
@@ -204,6 +205,7 @@ it('updates the settings without touching the existing fields', function () {
         ->and($form->retain_ip)->toBeTrue()
         ->and($form->settings['suites']['email_notification'])->toBe(['enabled' => true, 'recipients' => ['jane@example.com', 'john@example.com']])
         ->and($form->settings['anti_spam']['captcha']['provider'])->toBe('turnstile')
+        ->and($form->settings['confirmation'])->toBe(['message' => 'Merci, on revient vers vous sous 48h.'])
         ->and($form->blueprint['fields'])->toHaveCount(1)
         ->and($form->blueprint['fields'][0]['key'])->toBe('email')
         ->and($form->version)->toBe(2);

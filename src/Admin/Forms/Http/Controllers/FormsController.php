@@ -12,6 +12,7 @@ use Baobab\Forms\Exceptions\DuplicateFormSlugException;
 use Baobab\Forms\Exceptions\InvalidFormBlueprintException;
 use Baobab\Forms\Exceptions\InvalidFormExportException;
 use Baobab\Forms\Models\Form;
+use Baobab\Forms\Support\FormFieldPresenter;
 use Baobab\Forms\Support\FormFieldsNormalizer;
 use Baobab\Forms\Support\FormFieldTypes;
 use Baobab\Forms\Support\FormSettingsNormalizer;
@@ -120,6 +121,7 @@ final class FormsController
             'store_submissions' => ['nullable', 'boolean'],
             'retention_days' => ['required', 'integer', 'min:1'],
             'retain_ip' => ['nullable', 'boolean'],
+            'confirmation_message' => ['nullable', 'string', 'max:1000'],
             'suites' => ['nullable', 'array'],
             'suites.email_notification.enabled' => ['nullable', 'boolean'],
             'suites.email_notification.recipients' => ['nullable', 'string'],
@@ -183,31 +185,15 @@ final class FormsController
     }
 
     /**
-     * Champs prêts pour l'aperçu (admin.forms.edit) — même règle que
-     * `ContentController::formFieldsForView()` : tout le calcul ici, la vue
-     * ne fait que lire.
+     * Champs prêts pour l'aperçu (admin.forms.edit) — délègue à
+     * `FormFieldPresenter`, partagé avec le rendu public (Pass C1) : les deux
+     * consomment le même composant `<x-baobab::forms.fields>` (spec 14 §3).
      *
      * @return list<array<string, mixed>>
      */
     private function previewFields(Form $form): array
     {
-        return array_map(function (array $field): array {
-            /** @var list<string> $choices */
-            $choices = (array) ($field['options']['choices'] ?? []);
-            // `consent` affiche son texte légal en priorité (§2.2) ; tous les
-            // autres retombent sur le libellé saisi puis sur la clé.
-            $label = (string) ($field['type'] === 'consent' ? ($field['options']['text'] ?? $field['label'] ?? $field['key']) : ($field['label'] ?? $field['key']));
-
-            return [
-                ...$field,
-                'choice_options' => array_combine($choices, $choices),
-                // Convention de formulaire : un astérisque à côté du libellé
-                // signale un champ requis — absent tant que ce n'est pas
-                // calculé ici (les composants `field.*` ne le déduisent pas
-                // de `required`, qu'ils ne reçoivent même pas).
-                'display_label' => ($field['required'] ?? false) ? "{$label} *" : $label,
-            ];
-        }, (array) ($form->blueprint['fields'] ?? []));
+        return FormFieldPresenter::present((array) ($form->blueprint['fields'] ?? []));
     }
 
     /**
@@ -225,6 +211,7 @@ final class FormsController
             'store_submissions' => $form->store_submissions,
             'retention_days' => $form->retention_days,
             'retain_ip' => $form->retain_ip,
+            'confirmation_message' => $settings['confirmation']['message'] ?? null,
             'email_notification_enabled' => (bool) ($settings['suites']['email_notification']['enabled'] ?? false),
             'email_notification_recipients' => implode("\n", (array) ($settings['suites']['email_notification']['recipients'] ?? [])),
             'acknowledgement_enabled' => (bool) ($settings['suites']['acknowledgement']['enabled'] ?? false),
