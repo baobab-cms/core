@@ -1,10 +1,14 @@
 <?php
 
+use Baobab\ContentTypes\Fields\Types\EmailField;
 use Baobab\ContentTypes\Fields\Types\RichTextField;
 use Baobab\ContentTypes\Fields\Types\SlugField;
+use Baobab\ContentTypes\Fields\Types\TelField;
 use Baobab\ContentTypes\Fields\Types\TextareaField;
 use Baobab\ContentTypes\Fields\Types\TextField;
+use Baobab\ContentTypes\Fields\Types\UrlField;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Validator;
 use Mews\Purifier\Casts\CleanHtml;
 
 // ── text ─────────────────────────────────────────────────────────────────────
@@ -115,4 +119,49 @@ it('SlugField builds a unique string column', function () {
     expect($field->columnDefinition('slug', []))->toBe("\$table->string('slug')->unique();")
         ->and($field->rules('slug', []))->toBe(['string', 'alpha_dash'])
         ->and($field->cast([]))->toBeNull();
+});
+
+// ── email ────────────────────────────────────────────────────────────────────
+
+it('EmailField builds a string column and validates a real address', function () {
+    $field = new EmailField;
+
+    expect($field->columnDefinition('contact', []))->toBe("\$table->string('contact', 255);")
+        ->and($field->cast([]))->toBeNull();
+
+    $valid = Validator::make(['contact' => 'jane@example.com'], ['contact' => $field->rules('contact', [])]);
+    $invalid = Validator::make(['contact' => 'not-an-email'], ['contact' => $field->rules('contact', [])]);
+
+    expect($valid->fails())->toBeFalse()
+        ->and($invalid->fails())->toBeTrue();
+});
+
+// ── tel ──────────────────────────────────────────────────────────────────────
+
+it('TelField builds a string column and rejects letters', function () {
+    $field = new TelField;
+
+    expect($field->columnDefinition('phone', []))->toBe("\$table->string('phone', 32);")
+        ->and($field->cast([]))->toBeNull();
+
+    $valid = Validator::make(['phone' => '+33 6 12 34 56 78'], ['phone' => $field->rules('phone', [])]);
+    $invalid = Validator::make(['phone' => 'call me maybe'], ['phone' => $field->rules('phone', [])]);
+
+    expect($valid->fails())->toBeFalse()
+        ->and($invalid->fails())->toBeTrue();
+});
+
+// ── url ──────────────────────────────────────────────────────────────────────
+
+it('UrlField builds a string column and validates a real URL', function () {
+    $field = new UrlField;
+
+    expect($field->columnDefinition('website', []))->toBe("\$table->string('website', 2048);")
+        ->and($field->cast([]))->toBeNull();
+
+    $valid = Validator::make(['website' => 'https://example.com'], ['website' => $field->rules('website', [])]);
+    $invalid = Validator::make(['website' => 'not a url'], ['website' => $field->rules('website', [])]);
+
+    expect($valid->fails())->toBeFalse()
+        ->and($invalid->fails())->toBeTrue();
 });

@@ -30,6 +30,7 @@ it('resolves the 14 core field types registered at boot', function () {
 
     foreach ([
         'text', 'textarea', 'richtext', 'slug',
+        'email', 'tel', 'url',
         'integer', 'decimal', 'boolean',
         'date', 'datetime', 'time',
         'select', 'multiselect', 'radio',

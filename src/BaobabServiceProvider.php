@@ -30,6 +30,7 @@ use Baobab\Console\Commands\ContentTypeMakeCommand;
 use Baobab\Console\Commands\ContentUnpublishDueCommand;
 use Baobab\Console\Commands\DesignTokensCompileCommand;
 use Baobab\Console\Commands\FontsListCommand;
+use Baobab\Console\Commands\FormSubmissionsPurgeCommand;
 use Baobab\Console\Commands\GraphqlCompileCommand;
 use Baobab\Console\Commands\HookListCommand;
 use Baobab\Console\Commands\MailLogPurgeCommand;
@@ -64,6 +65,7 @@ use Baobab\ContentTypes\Fields\Types\BooleanField;
 use Baobab\ContentTypes\Fields\Types\DateField;
 use Baobab\ContentTypes\Fields\Types\DateTimeField;
 use Baobab\ContentTypes\Fields\Types\DecimalField;
+use Baobab\ContentTypes\Fields\Types\EmailField;
 use Baobab\ContentTypes\Fields\Types\FileField;
 use Baobab\ContentTypes\Fields\Types\GalleryField;
 use Baobab\ContentTypes\Fields\Types\ImageField;
@@ -74,9 +76,11 @@ use Baobab\ContentTypes\Fields\Types\RadioField;
 use Baobab\ContentTypes\Fields\Types\RichTextField;
 use Baobab\ContentTypes\Fields\Types\SelectField;
 use Baobab\ContentTypes\Fields\Types\SlugField;
+use Baobab\ContentTypes\Fields\Types\TelField;
 use Baobab\ContentTypes\Fields\Types\TextareaField;
 use Baobab\ContentTypes\Fields\Types\TextField;
 use Baobab\ContentTypes\Fields\Types\TimeField;
+use Baobab\ContentTypes\Fields\Types\UrlField;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
 use Baobab\Hooks\HookRegistry;
@@ -437,6 +441,7 @@ class BaobabServiceProvider extends ServiceProvider
                 MailTestCommand::class,
                 MailTemplatesCommand::class,
                 MailLogPurgeCommand::class,
+                FormSubmissionsPurgeCommand::class,
                 NotifyTestCommand::class,
                 NotificationsPurgeCommand::class,
                 ThemeActivateCommand::class,
@@ -461,6 +466,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerNotFoundPurgeSchedule();
 
         $this->registerMailLogPurgeSchedule();
+
+        $this->registerFormSubmissionsPurgeSchedule();
 
         $this->registerSchedulerTasks();
     }
@@ -522,6 +529,20 @@ class BaobabServiceProvider extends ServiceProvider
             $schedule = $this->app->make(Schedule::class);
 
             $schedule->command(MailLogPurgeCommand::class)->daily();
+        });
+    }
+
+    /**
+     * `baobab:forms:purge` (spec 14 §6.4) — même patron que
+     * `registerMailLogPurgeSchedule()`.
+     */
+    private function registerFormSubmissionsPurgeSchedule(): void
+    {
+        $this->app->booted(function (): void {
+            /** @var Schedule $schedule */
+            $schedule = $this->app->make(Schedule::class);
+
+            $schedule->command(FormSubmissionsPurgeCommand::class)->daily();
         });
     }
 
@@ -1745,6 +1766,9 @@ class BaobabServiceProvider extends ServiceProvider
             TextareaField::class,
             RichTextField::class,
             SlugField::class,
+            EmailField::class,
+            TelField::class,
+            UrlField::class,
             IntegerField::class,
             DecimalField::class,
             BooleanField::class,

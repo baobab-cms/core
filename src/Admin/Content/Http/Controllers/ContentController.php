@@ -938,6 +938,9 @@ final class ContentController
                     'date' => 'date',
                     'datetime', 'unpublish_at' => 'datetime-local',
                     'time' => 'time',
+                    'email' => 'email',
+                    'tel' => 'tel',
+                    'url' => 'url',
                     default => 'text',
                 },
                 'auto_slug_handler' => $isTitleSource
