@@ -13,6 +13,7 @@ use Baobab\Admin\Content\Http\Controllers\ContentController;
 use Baobab\Admin\Content\Http\Controllers\ContentTypesController;
 use Baobab\Admin\Content\Http\Controllers\TrashController;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
+use Baobab\Admin\Demo\Http\Controllers\DemoContentController;
 use Baobab\Admin\Mail\Http\Controllers\MailLogController;
 use Baobab\Admin\Mail\Http\Controllers\MailTemplatesController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
@@ -263,6 +264,14 @@ Route::middleware('can:baobab.system.modules.manage')
                 Route::post('/update', [ModulesController::class, 'update'])->name('update');
                 Route::delete('/', [ModulesController::class, 'uninstall'])->name('uninstall');
             });
+    });
+
+Route::middleware('can:baobab.system.demo_content.manage')
+    ->prefix('demo-content')
+    ->name('demo-content.')
+    ->group(function (): void {
+        Route::get('/', [DemoContentController::class, 'index'])->name('index');
+        Route::delete('/', [DemoContentController::class, 'destroy'])->name('destroy');
     });
 
 Route::middleware('can:baobab.users.impersonate')

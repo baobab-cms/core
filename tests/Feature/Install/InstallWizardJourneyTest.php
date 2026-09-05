@@ -4,6 +4,7 @@ use Baobab\Install\InstallationState;
 use Baobab\Install\InstallDraft;
 use Baobab\Install\InstallPaths;
 use Baobab\Install\InstallToken;
+use Baobab\Rendering\Models\ReadingSetting;
 use Illuminate\Config\Repository;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
@@ -231,6 +232,27 @@ it('retient la télémétrie quand la case est cochée', function () {
     expect(app(InstallDraft::class)->section(InstallDraft::SECTION_SITE)['telemetry'])->toBeTrue();
 });
 
+it('ne retient pas le contenu de démonstration par défaut', function () {
+    ouvrirSessionInstall();
+    saisirBase();
+    saisirCompte();
+    saisirSite();
+
+    expect(app(InstallDraft::class)->section(InstallDraft::SECTION_SITE)['demo_content'])->toBeFalse();
+});
+
+it('retient le contenu de démonstration quand la case est cochée, jusque dans l\'entrée du pipeline', function () {
+    ouvrirSessionInstall();
+    saisirBase();
+    saisirCompte();
+    saisirSite(['demo_content' => '1']);
+
+    $draft = app(InstallDraft::class);
+
+    expect($draft->section(InstallDraft::SECTION_SITE)['demo_content'])->toBeTrue()
+        ->and($draft->toInput('dev')->demoContent)->toBeTrue();
+});
+
 /**
  * §8 point 3 : SQLite est interdit en production, et l'option y est **absente**
  * plutôt que grisée — une option grisée invite à chercher comment la forcer.
@@ -304,6 +326,46 @@ it('mène l\'installation de bout en bout, puis oublie les secrets', function ()
         ->and($fin->json('adminUrl'))->toBe('https://monsite.fr/admin')
         ->and($this->state->isInstalled())->toBeTrue()
         ->and(app(InstallDraft::class)->has(InstallDraft::SECTION_ACCOUNT))->toBeFalse();
+});
+
+/**
+ * Régression D3 (suivi n° 255 en cours) — recette sur mutualisé réel du
+ * 4 septembre 2026 : `/` a d'abord semblé planter après une installation avec
+ * la case démonstration cochée. Reproduit ici en HTTP plutôt qu'en Action
+ * isolée, parce que le n° 252 (InstallCommandTest) ne vérifiait que la
+ * présence des lignes, jamais l'état de `ReadingSetting` ni le rendu public
+ * — exactement le trou par lequel ce défaut serait passé s'il avait été réel.
+ * Conclusion de l'investigation : le pipeline pose bien `page_entry_id`, la
+ * racine se rend sans erreur ; la cause du symptôme observé était ailleurs
+ * (état résiduel de l'hébergement de recette, pas ce code).
+ */
+it('pose un contenu de démonstration exploitable : ReadingSetting complet, racine sans erreur', function () {
+    config(['baobab.content_types.modules_path' => generatedModulesPath()]);
+    config(['baobab.modules.paths' => ['local' => [generatedModulesPath().'/*']]]);
+    test()->files->deleteDirectory(generatedModulesPath());
+
+    ouvrirSessionInstall();
+    saisirBase();
+    saisirCompte();
+    saisirSite(['demo_content' => '1']);
+
+    for ($appels = 0; $appels < 10; $appels++) {
+        $reponse = $this->postJson('/install/step')->assertOk();
+
+        if ($reponse->json('done') === true) {
+            break;
+        }
+    }
+
+    $setting = ReadingSetting::current();
+
+    expect($setting->mode)->toBe('static_page')
+        ->and($setting->page_content_type_key)->toBe('Page')
+        ->and($setting->page_entry_id)->not->toBeNull();
+
+    $this->get('/')->assertOk()->assertSee('Bienvenue');
+
+    test()->files->deleteDirectory(generatedModulesPath());
 });
 
 /**

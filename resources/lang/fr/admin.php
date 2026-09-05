@@ -69,6 +69,7 @@ return [
         'content_types' => 'Types de contenu',
         'modules' => 'Modules',
         'mails' => 'E-mails',
+        'demo_content' => 'Contenu de démonstration',
         'toggle_collapse' => 'Réduire/étendre la barre latérale',
     ],
 
@@ -1024,6 +1025,20 @@ return [
         'uninstalled' => 'Module désinstallé. Ses données sont restées en base.',
         'uninstalled_purged' => 'Module désinstallé et données supprimées.',
         'updated' => 'Module à jour. Migrations en attente jouées, permissions, menus et déclarations relus.',
+    ],
+
+    'demo_content' => [
+        'title' => 'Contenu de démonstration',
+        'intro' => 'Deux pages, trois articles et un menu, posés à l\'installation si la case était cochée — ou depuis cet écran, à tout moment.',
+
+        'present_title' => 'Le contenu de démonstration est en place.',
+        'present_description' => 'Le retrait est définitif : les contenus créés sont supprimés, et les réglages qu\'il avait modifiés (page d\'accueil, menu) reviennent à leur valeur d\'avant — sauf si vous les avez changés depuis.',
+        'absent_title' => 'Aucun contenu de démonstration en place.',
+        'absent_description' => 'Il n\'a pas été installé, ou il a déjà été retiré. Rien à faire ici.',
+
+        'remove_action' => 'Retirer le contenu de démonstration',
+        'remove_confirm_title' => 'Retirer le contenu de démonstration ?',
+        'remove_confirm_description' => 'Les pages, articles et le menu posés par la démonstration sont supprimés définitivement, sans passer par la corbeille. Les réglages qu\'elle avait modifiés reviennent à leur valeur d\'avant, seulement s\'ils portent encore ce qu\'elle y avait mis. Les Content Types Page et Article restent, avec le reste de votre contenu.',
     ],
 
     'themes' => [

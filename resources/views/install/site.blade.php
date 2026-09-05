@@ -51,6 +51,23 @@
             </span>
         </label>
 
+        {{--
+            Contenu de démonstration (§8 point 1) : décoché par défaut, même
+            motif que la télémétrie — une case ignorée ne doit jamais valoir
+            un « oui » silencieux. Retirable à tout moment depuis l'admin.
+        --}}
+        <label class="choice">
+            <input type="checkbox" name="demo_content" value="1" @checked($values['demo_content'] ?? false)>
+            <span>
+                Installer un contenu de démonstration
+                <span class="choice__hint">
+                    Deux pages, trois articles et un menu, pour voir le site
+                    habillé tout de suite. Retirable en un geste depuis
+                    l'administration.
+                </span>
+            </span>
+        </label>
+
         <div class="actions">
             <a class="button button--ghost" href="{{ route('baobab.install.account') }}">Retour</a>
             <button class="button" type="submit">Installer</button>

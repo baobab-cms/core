@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Baobab\Demo\Models;
 
+use Baobab\ContentTypes\Models\ContentType;
+use Baobab\Modules\Models\Module;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
@@ -73,6 +76,25 @@ class DemoContent extends Model
             ['setting_key' => $key],
             ['previous_value' => $previous],
         );
+    }
+
+    /**
+     * Reste-t-il du contenu de démonstration à retirer ?
+     *
+     * Les marques posées sur un Content Type ou un module sont de la
+     * provenance **permanente** (arbitrage D-D, suivi n° 247/252) : elles
+     * survivent à tout retrait et ne comptent donc jamais comme « présent »
+     * — sans quoi l'écran de retrait resterait actionnable après un retrait
+     * complet.
+     */
+    public static function isPresent(): bool
+    {
+        return self::query()
+            ->where(function (Builder $query): void {
+                $query->whereNull('demoable_type')
+                    ->orWhereNotIn('demoable_type', [ContentType::class, Module::class]);
+            })
+            ->exists();
     }
 
     /**

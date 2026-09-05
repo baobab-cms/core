@@ -175,6 +175,10 @@ final class WizardController
             // et la page de documentation publique qu'exige le §8.2 partent en
             // brique séparée (arbitrage du n° 223).
             'telemetry' => $request->boolean('telemetry'),
+            // Contenu de démonstration — spec 15 §8 point 1 : même parti pris,
+            // décoché par défaut. La D2 sait déjà le poser et le retirer ; la
+            // D3 lui donne enfin sa case côté wizard (suivi n° 247).
+            'demo_content' => $request->boolean('demo_content'),
         ]);
 
         return redirect()->route('baobab.install.run');

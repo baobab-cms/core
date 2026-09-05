@@ -1717,6 +1717,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            if ($user->can('baobab.system.demo_content.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -20,
+                    label: __('baobab::admin.sidebar.demo_content'),
+                    icon: 'bi-collection-play',
+                    url: route('admin.demo-content.index'),
+                    order: -7,
+                );
+            }
+
             return $items->concat($coreItems);
         });
     }

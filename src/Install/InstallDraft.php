@@ -131,6 +131,9 @@ final class InstallDraft
             // base : jusqu'au 2 septembre 2026 elle s'arrêtait au brouillon,
             // que `forget()` efface à la finalisation (suivi n° 229).
             telemetry: (bool) ($site['telemetry'] ?? false),
+            // Même trajet que la télémétrie, un pas de temps plus tard
+            // (suivi n° 247) : la case de l'écran « site » jusqu'au pipeline.
+            demoContent: (bool) ($site['demo_content'] ?? false),
             version: $version,
             optimize: $optimize,
         );
