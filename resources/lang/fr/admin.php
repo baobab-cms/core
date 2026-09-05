@@ -70,6 +70,7 @@ return [
         'modules' => 'Modules',
         'mails' => 'E-mails',
         'demo_content' => 'Contenu de démonstration',
+        'forms' => 'Formulaires',
         'toggle_collapse' => 'Réduire/étendre la barre latérale',
     ],
 
@@ -608,6 +609,22 @@ return [
         'imported' => ':imported redirection(s) importée(s), :skipped ignorée(s).',
         'empty' => 'Aucune redirection.',
         'not_found_empty' => 'Aucune 404 enregistrée.',
+    ],
+
+    'forms' => [
+        'title' => 'Formulaires',
+        'create_title' => 'Nouveau formulaire',
+        'title_label' => 'Titre',
+        'slug_label' => 'Identifiant (slug)',
+        'slug_help' => 'Utilisé dans l\'URL de soumission et pour retrouver le formulaire (baobab:forms:export/import). Non modifiable après coup depuis cet écran.',
+        'save_action' => 'Enregistrer',
+        'delete_action' => 'Supprimer',
+        'delete_confirm_title' => 'Supprimer ce formulaire et toutes ses soumissions ?',
+        'column_title' => 'Titre',
+        'column_slug' => 'Slug',
+        'column_version' => 'Version',
+        'created' => 'Formulaire créé.',
+        'deleted' => 'Formulaire supprimé.',
     ],
 
     'webhooks' => [

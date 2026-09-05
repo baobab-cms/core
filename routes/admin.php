@@ -14,6 +14,7 @@ use Baobab\Admin\Content\Http\Controllers\ContentTypesController;
 use Baobab\Admin\Content\Http\Controllers\TrashController;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
 use Baobab\Admin\Demo\Http\Controllers\DemoContentController;
+use Baobab\Admin\Forms\Http\Controllers\FormsController;
 use Baobab\Admin\Mail\Http\Controllers\MailLogController;
 use Baobab\Admin\Mail\Http\Controllers\MailTemplatesController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
@@ -173,6 +174,16 @@ Route::middleware('can:baobab.system.webhooks.manage')
         Route::delete('/{subscription}', [WebhookSubscriptionsController::class, 'destroy'])->name('destroy');
         Route::get('/{subscription}/deliveries', [WebhookDeliveriesController::class, 'index'])->name('deliveries.index');
         Route::post('/deliveries/{delivery}/redeliver', [WebhookDeliveriesController::class, 'redeliver'])->name('deliveries.redeliver');
+    });
+
+Route::middleware('can:baobab.system.forms.manage')
+    ->prefix('forms')
+    ->name('forms.')
+    ->group(function (): void {
+        Route::get('/', [FormsController::class, 'index'])->name('index');
+        Route::get('/create', [FormsController::class, 'create'])->name('create');
+        Route::post('/', [FormsController::class, 'store'])->name('store');
+        Route::delete('/{form}', [FormsController::class, 'destroy'])->name('destroy');
     });
 
 Route::middleware('can:baobab.system.themes.manage')

@@ -1748,6 +1748,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            if ($user->can('baobab.system.forms.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -21,
+                    label: __('baobab::admin.sidebar.forms'),
+                    icon: 'bi-ui-checks-grid',
+                    url: route('admin.forms.index'),
+                    order: -6,
+                );
+            }
+
             return $items->concat($coreItems);
         });
     }
