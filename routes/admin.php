@@ -15,6 +15,7 @@ use Baobab\Admin\Content\Http\Controllers\TrashController;
 use Baobab\Admin\Content\Http\Controllers\ValidationQueueController;
 use Baobab\Admin\Demo\Http\Controllers\DemoContentController;
 use Baobab\Admin\Forms\Http\Controllers\FormsController;
+use Baobab\Admin\Forms\Http\Controllers\FormSubmissionsController;
 use Baobab\Admin\Mail\Http\Controllers\MailLogController;
 use Baobab\Admin\Mail\Http\Controllers\MailTemplatesController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
@@ -189,6 +190,21 @@ Route::middleware('can:baobab.system.forms.manage')
         Route::put('/{form}/settings', [FormsController::class, 'updateSettings'])->name('settings.update');
         Route::get('/{form}/export', [FormsController::class, 'export'])->name('export');
         Route::delete('/{form}', [FormsController::class, 'destroy'])->name('destroy');
+    });
+
+Route::prefix('forms/{form}/submissions')
+    ->name('forms.submissions.')
+    ->group(function (): void {
+        Route::get('/', [FormSubmissionsController::class, 'index'])
+            ->middleware('can:baobab.system.forms.submissions_view')->name('index');
+        Route::get('/export', [FormSubmissionsController::class, 'export'])
+            ->middleware('can:baobab.system.forms.submissions_export')->name('export');
+        Route::get('/{submission}', [FormSubmissionsController::class, 'show'])
+            ->middleware('can:baobab.system.forms.submissions_view')->name('show');
+        Route::post('/{submission}/status', [FormSubmissionsController::class, 'markStatus'])
+            ->middleware('can:baobab.system.forms.submissions_view')->name('mark-status');
+        Route::delete('/{submission}', [FormSubmissionsController::class, 'destroy'])
+            ->middleware('can:baobab.system.forms.submissions_delete')->name('destroy');
     });
 
 Route::middleware('can:baobab.system.themes.manage')

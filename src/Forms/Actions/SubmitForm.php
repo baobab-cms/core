@@ -46,6 +46,7 @@ final class SubmitForm
         $submission = new FormSubmission([
             'form_id' => $form->id,
             'form_version' => $form->version,
+            'blueprint_snapshot' => $form->blueprint['fields'] ?? [],
             'payload' => $validated,
             'consent_at' => $consentAt,
             'ip' => $form->retain_ip ? $ip : null,

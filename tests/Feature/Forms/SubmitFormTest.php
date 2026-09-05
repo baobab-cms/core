@@ -25,7 +25,7 @@ it('validates the payload against the blueprint and persists the submission', fu
     expect($submission->exists)->toBeTrue()
         ->and($submission->form_id)->toBe($form->id)
         ->and($submission->form_version)->toBe($form->version)
-        ->and($submission->status)->toBe(FormSubmissionStatus::New->value)
+        ->and($submission->status)->toBe(FormSubmissionStatus::New)
         ->and($submission->payload)->toBe(['full_name' => 'Jane Doe', 'email' => 'jane@example.com']);
 });
 

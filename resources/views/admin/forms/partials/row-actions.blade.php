@@ -3,6 +3,10 @@
         {{ __('baobab::admin.forms.edit_action') }}
     </a>
 
+    <a href="{{ route('admin.forms.submissions.index', ['form' => $form->id]) }}" class="text-primary hover:underline">
+        {{ __('baobab::admin.forms.submissions_action') }}
+    </a>
+
     <a href="{{ route('admin.forms.export', ['form' => $form->id]) }}" class="text-primary hover:underline">
         {{ __('baobab::admin.forms.export_action') }}
     </a>
