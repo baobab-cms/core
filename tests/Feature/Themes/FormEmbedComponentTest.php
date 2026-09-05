@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ViewErrorBag;
 
 /**
- * `<x-baobab::form-embed>` (spec 14 §4, M8 point 6 Pass C1) — rendu public
+ * `<x-baobab::form-embed>` (spec 14 §4, M8 point 6 Pass C1/C2) — rendu public
  * par défaut, patron `FieldDisplayComponentsTest` (`Blade::render()`).
  * `$errors` partagé manuellement (patron `ComponentsTest`) : la vraie requête
  * HTTP le fait via `ShareErrorsFromSession` (`web`), absent de `Blade::render()`.
@@ -65,4 +65,22 @@ it('keeps showing the form when the flashed confirmation belongs to a different 
     $html = Blade::render('<x-baobab::form-embed slug="contact" />');
 
     expect($html)->not->toContain('Merci !')->toContain('<form');
+});
+
+it('defaults to redirect mode, never attaching the fragment listener', function () {
+    app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
+
+    expect(Blade::render('<x-baobab::form-embed slug="contact" />'))->toContain("mode: 'redirect'");
+});
+
+it('passes the fragment mode through to the Alpine component', function () {
+    app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
+
+    expect(Blade::render('<x-baobab::form-embed slug="contact" mode="fragment" />'))->toContain("mode: 'fragment'");
+});
+
+it('falls back to redirect mode for an unknown mode value, rather than trusting arbitrary input', function () {
+    app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
+
+    expect(Blade::render('<x-baobab::form-embed slug="contact" mode="carrier-pigeon" />'))->toContain("mode: 'redirect'");
 });

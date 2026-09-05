@@ -25,9 +25,20 @@ use Illuminate\View\Component;
  * La confirmation (`baobab_form_confirmation`, flashée par
  * `SubmitFormController`) est scopée par slug pour ne s'afficher que sous le
  * formulaire réellement soumis, si plusieurs vivent sur la même page.
+ *
+ * `mode="fragment"` (Pass C2) demande une soumission sans rechargement : le
+ * même `<form>`, posté au même endpoint, mais intercepté par Alpine plutôt
+ * que laissé au navigateur — dégradation gracieuse assurée par construction,
+ * pas par détection : sans JavaScript, l'écouteur ne s'attache jamais et le
+ * navigateur poste nativement, exactement comme en mode `redirect`. Une
+ * valeur inconnue retombe sur `redirect` plutôt que de faire confiance à une
+ * valeur arbitraire (patron `FormSettingsNormalizer::CAPTCHA_PROVIDERS`).
  */
 final class FormEmbed extends Component
 {
+    /** @var list<string> */
+    public const MODES = ['redirect', 'fragment'];
+
     public ?Form $form = null;
 
     /** @var list<array<string, mixed>> */
@@ -35,8 +46,12 @@ final class FormEmbed extends Component
 
     public ?string $confirmationMessage = null;
 
-    public function __construct(public string $slug)
+    public string $mode;
+
+    public function __construct(public string $slug, string $mode = 'redirect')
     {
+        $this->mode = in_array($mode, self::MODES, true) ? $mode : 'redirect';
+
         $this->form = Form::query()->where('slug', $slug)->first();
 
         if ($this->form === null) {

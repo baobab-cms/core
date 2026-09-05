@@ -78,6 +78,59 @@ it('returns a 404 for an unknown form slug', function () {
     $this->post(route('baobab.forms.submit', ['form' => 'does-not-exist']))->assertNotFound();
 });
 
+it('returns the rendered confirmation as a fragment when X-Baobab-Form-Fragment is set', function () {
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'email', 'type' => 'email', 'required' => true]],
+    ]);
+
+    $response = $this->post(
+        route('baobab.forms.submit', ['form' => $form->slug]),
+        ['email' => 'jane@example.com'],
+        ['X-Baobab-Form-Fragment' => '1'],
+    );
+
+    $response->assertOk()
+        ->assertSee(__('baobab::rendering.form_confirmation_default'))
+        ->assertDontSee('<form', false);
+
+    expect(FormSubmission::count())->toBe(1);
+});
+
+it('returns the re-rendered form with inline errors and a 422 in fragment mode, instead of redirecting', function () {
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [
+            ['key' => 'full_name', 'type' => 'text', 'required' => false],
+            ['key' => 'email', 'type' => 'email', 'required' => true],
+        ],
+    ]);
+
+    $response = $this->post(
+        route('baobab.forms.submit', ['form' => $form->slug]),
+        ['full_name' => 'Jane Doe'],
+        ['X-Baobab-Form-Fragment' => '1'],
+    );
+
+    $response->assertStatus(422)
+        ->assertSee('<form', false)
+        ->assertSee('value="Jane Doe"', false);
+
+    expect(FormSubmission::count())->toBe(0);
+});
+
+it('ignores a fragment header that is not exactly "1"', function () {
+    $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
+
+    $this->post(
+        route('baobab.forms.submit', ['form' => $form->slug]),
+        [],
+        ['X-Baobab-Form-Fragment' => 'true'],
+    )->assertRedirect();
+});
+
 it('throttles submissions by IP (baobab-forms-submit, 10/min)', function () {
     $form = app(SaveForm::class)(null, [
         'slug' => 'contact',
