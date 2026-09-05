@@ -156,6 +156,51 @@ it('rejects an update whose fields break the blueprint, without saving anything'
     expect($form->fresh()->version)->toBe(1);
 });
 
+it('updates the settings without touching the existing fields', function () {
+    $user = formsActor(['baobab.system.forms.manage']);
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'email', 'type' => 'email', 'required' => true]],
+    ]);
+
+    $this->actingAs($user, 'baobab')
+        ->put(route('admin.forms.settings.update', ['form' => $form->id]), [
+            'store_submissions' => '1',
+            'retention_days' => '90',
+            'retain_ip' => '1',
+            'suites' => [
+                'email_notification' => ['enabled' => '1', 'recipients' => "jane@example.com\njohn@example.com"],
+                'admin_notification' => ['enabled' => '1'],
+            ],
+            'captcha_provider' => 'turnstile',
+            'captcha_site_key' => '0x123',
+            'captcha_secret_key' => '0xabc',
+        ])
+        ->assertRedirect(route('admin.forms.edit', ['form' => $form->id]));
+
+    $form = $form->fresh();
+
+    expect($form->retention_days)->toBe(90)
+        ->and($form->retain_ip)->toBeTrue()
+        ->and($form->settings['suites']['email_notification'])->toBe(['enabled' => true, 'recipients' => ['jane@example.com', 'john@example.com']])
+        ->and($form->settings['anti_spam']['captcha']['provider'])->toBe('turnstile')
+        ->and($form->blueprint['fields'])->toHaveCount(1)
+        ->and($form->blueprint['fields'][0]['key'])->toBe('email')
+        ->and($form->version)->toBe(2);
+});
+
+it('rejects a settings update with an invalid retention', function () {
+    $user = formsActor(['baobab.system.forms.manage']);
+    $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
+
+    $this->actingAs($user, 'baobab')
+        ->put(route('admin.forms.settings.update', ['form' => $form->id]), ['retention_days' => '0'])
+        ->assertSessionHasErrors('retention_days');
+
+    expect($form->fresh()->version)->toBe(1);
+});
+
 it('deletes a form', function () {
     $user = formsActor(['baobab.system.forms.manage']);
     $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);

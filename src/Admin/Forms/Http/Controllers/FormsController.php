@@ -11,6 +11,7 @@ use Baobab\Forms\Exceptions\InvalidFormBlueprintException;
 use Baobab\Forms\Models\Form;
 use Baobab\Forms\Support\FormFieldsNormalizer;
 use Baobab\Forms\Support\FormFieldTypes;
+use Baobab\Forms\Support\FormSettingsNormalizer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -74,6 +75,7 @@ final class FormsController
             'fieldTypes' => [...FormFieldTypes::allowed(), 'consent'],
             'typesNeedingChoices' => FormFieldsNormalizer::TYPES_NEEDING_CHOICES,
             'previewFields' => $this->previewFields($form),
+            'settingsForm' => $this->settingsForm($form),
         ]);
     }
 
@@ -95,6 +97,46 @@ final class FormsController
         }
 
         session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.forms.updated')]);
+
+        return redirect()->route('admin.forms.edit', $form);
+    }
+
+    /**
+     * Suites (spec 14 §8), anti-spam (§7) et rétention (§6.4) — trois sections
+     * du même écran (§3), soumises indépendamment du formulaire de champs.
+     * Réutilise `SaveForm` (Pass A) comme les champs : mêmes garanties
+     * (version incrémentée, audit, hook), aucune Action dédiée n'a de raison
+     * d'exister pour un sous-ensemble des mêmes colonnes. Les champs
+     * courants sont repassés tels quels — cette action ne les touche jamais.
+     */
+    public function updateSettings(Form $form, Request $request, SaveForm $action): RedirectResponse
+    {
+        $validated = $request->validate([
+            'store_submissions' => ['nullable', 'boolean'],
+            'retention_days' => ['required', 'integer', 'min:1'],
+            'retain_ip' => ['nullable', 'boolean'],
+            'suites' => ['nullable', 'array'],
+            'suites.email_notification.enabled' => ['nullable', 'boolean'],
+            'suites.email_notification.recipients' => ['nullable', 'string'],
+            'suites.acknowledgement.enabled' => ['nullable', 'boolean'],
+            'suites.admin_notification.enabled' => ['nullable', 'boolean'],
+            'suites.webhook.enabled' => ['nullable', 'boolean'],
+            'captcha_provider' => ['nullable', 'string', 'in:'.implode(',', FormSettingsNormalizer::CAPTCHA_PROVIDERS)],
+            'captcha_site_key' => ['nullable', 'string', 'max:255'],
+            'captcha_secret_key' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $action($form, [
+            'title' => $form->title,
+            'slug' => $form->slug,
+            'fields' => (array) ($form->blueprint['fields'] ?? []),
+            'settings' => FormSettingsNormalizer::normalize($validated),
+            'store_submissions' => (bool) ($validated['store_submissions'] ?? false),
+            'retention_days' => $validated['retention_days'],
+            'retain_ip' => (bool) ($validated['retain_ip'] ?? false),
+        ]);
+
+        session()->flash('toast', ['type' => 'success', 'message' => __('baobab::admin.forms.settings_updated')]);
 
         return redirect()->route('admin.forms.edit', $form);
     }
@@ -126,6 +168,32 @@ final class FormsController
                 'choice_options' => array_combine($choices, $choices),
             ];
         }, (array) ($form->blueprint['fields'] ?? []));
+    }
+
+    /**
+     * Réglages tels que la vue les affiche — jamais un accès direct à
+     * `$form->settings` depuis le Blade, dont la forme (sac JSON, vide sur
+     * un formulaire jamais passé par cette passe) ne doit être connue qu'ici.
+     *
+     * @return array<string, mixed>
+     */
+    private function settingsForm(Form $form): array
+    {
+        $settings = $form->settings;
+
+        return [
+            'store_submissions' => $form->store_submissions,
+            'retention_days' => $form->retention_days,
+            'retain_ip' => $form->retain_ip,
+            'email_notification_enabled' => (bool) ($settings['suites']['email_notification']['enabled'] ?? false),
+            'email_notification_recipients' => implode("\n", (array) ($settings['suites']['email_notification']['recipients'] ?? [])),
+            'acknowledgement_enabled' => (bool) ($settings['suites']['acknowledgement']['enabled'] ?? false),
+            'admin_notification_enabled' => (bool) ($settings['suites']['admin_notification']['enabled'] ?? false),
+            'webhook_enabled' => (bool) ($settings['suites']['webhook']['enabled'] ?? false),
+            'captcha_provider' => (string) ($settings['anti_spam']['captcha']['provider'] ?? 'none'),
+            'captcha_site_key' => (string) ($settings['anti_spam']['captcha']['site_key'] ?? ''),
+            'captcha_secret_key' => (string) ($settings['anti_spam']['captcha']['secret_key'] ?? ''),
+        ];
     }
 
     /**

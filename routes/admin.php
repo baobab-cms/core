@@ -185,6 +185,7 @@ Route::middleware('can:baobab.system.forms.manage')
         Route::post('/', [FormsController::class, 'store'])->name('store');
         Route::get('/{form}', [FormsController::class, 'edit'])->name('edit');
         Route::put('/{form}', [FormsController::class, 'update'])->name('update');
+        Route::put('/{form}/settings', [FormsController::class, 'updateSettings'])->name('settings.update');
         Route::delete('/{form}', [FormsController::class, 'destroy'])->name('destroy');
     });
 

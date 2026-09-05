@@ -38,6 +38,52 @@
             </x-baobab::card>
         </div>
 
+        {{--
+            Trois sections plutôt que des onglets (spec 14 §3 en parle
+            littéralement) : aucun composant d'onglets n'existe nulle part
+            dans le Core (recherché, aucun précédent), et la Branding suit
+            déjà ce même patron pour plusieurs groupes de réglages sur un
+            seul écran. Écart assumé, revenir aux onglets un jour n'est pas
+            structurant.
+        --}}
+        <x-baobab::card class="mt-6">
+            <x-baobab::form method="PUT" action="{{ route('admin.forms.settings.update', ['form' => $form->id]) }}">
+                <h2 class="mb-3 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.forms.suites_title') }}</h2>
+
+                <div class="mb-4 space-y-2">
+                    <x-baobab::field.checkbox name="suites[email_notification][enabled]" :label="__('baobab::admin.forms.suite_email_notification')" :checked="$settingsForm['email_notification_enabled']" />
+                    <x-baobab::field.textarea name="suites[email_notification][recipients]" :label="__('baobab::admin.forms.suite_email_notification_recipients')" :value="$settingsForm['email_notification_recipients']" />
+
+                    <x-baobab::field.checkbox name="suites[acknowledgement][enabled]" :label="__('baobab::admin.forms.suite_acknowledgement')" :checked="$settingsForm['acknowledgement_enabled']" />
+                    <x-baobab::field.checkbox name="suites[admin_notification][enabled]" :label="__('baobab::admin.forms.suite_admin_notification')" :checked="$settingsForm['admin_notification_enabled']" />
+                    <x-baobab::field.checkbox name="suites[webhook][enabled]" :label="__('baobab::admin.forms.suite_webhook')" :checked="$settingsForm['webhook_enabled']" />
+                </div>
+
+                <h2 class="mb-3 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.forms.anti_spam_title') }}</h2>
+                <p class="mb-4 text-xs text-muted">{{ __('baobab::admin.forms.anti_spam_hint') }}</p>
+
+                <div class="mb-4 space-y-2">
+                    <x-baobab::field.select name="captcha_provider" :label="__('baobab::admin.forms.captcha_provider')" :value="$settingsForm['captcha_provider']" :options="[
+                        'none' => __('baobab::admin.forms.captcha_provider_none'),
+                        'turnstile' => __('baobab::admin.forms.captcha_provider_turnstile'),
+                        'hcaptcha' => __('baobab::admin.forms.captcha_provider_hcaptcha'),
+                    ]" />
+                    <x-baobab::field.text name="captcha_site_key" :label="__('baobab::admin.forms.captcha_site_key')" :value="$settingsForm['captcha_site_key']" />
+                    <x-baobab::field.text name="captcha_secret_key" :label="__('baobab::admin.forms.captcha_secret_key')" :value="$settingsForm['captcha_secret_key']" />
+                    <x-baobab::field.checkbox name="retain_ip" :label="__('baobab::admin.forms.retain_ip')" :checked="$settingsForm['retain_ip']" />
+                </div>
+
+                <h2 class="mb-3 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.forms.retention_title') }}</h2>
+
+                <div class="mb-4 space-y-2">
+                    <x-baobab::field.checkbox name="store_submissions" :label="__('baobab::admin.forms.store_submissions')" :checked="$settingsForm['store_submissions']" />
+                    <x-baobab::field.integer name="retention_days" :label="__('baobab::admin.forms.retention_days')" :value="$settingsForm['retention_days']" />
+                </div>
+
+                <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.forms.save_action') }}</x-baobab::button>
+            </x-baobab::form>
+        </x-baobab::card>
+
         <x-baobab::card class="mt-6">
             <h2 class="mb-3 font-display text-sm font-medium text-foreground">{{ __('baobab::admin.forms.preview_title') }}</h2>
             <p class="mb-4 text-xs text-muted">{{ __('baobab::admin.forms.preview_hint') }}</p>
