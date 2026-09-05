@@ -80,6 +80,82 @@ it('rejects a slug with characters alpha_dash does not allow', function () {
         ->assertSessionHasErrors('slug');
 });
 
+it('shows the edit screen with the current fields', function () {
+    $user = formsActor(['baobab.system.forms.manage']);
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'email', 'type' => 'email', 'required' => true, 'label' => 'E-mail']],
+    ]);
+
+    $this->actingAs($user, 'baobab')
+        ->get(route('admin.forms.edit', ['form' => $form->id]))
+        ->assertOk()
+        ->assertSee('Contact')
+        ->assertSee('email');
+});
+
+it('renders the placeholder and the help text in the preview', function () {
+    $user = formsActor(['baobab.system.forms.manage']);
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [[
+            'key' => 'email',
+            'type' => 'email',
+            'label' => 'E-mail',
+            'placeholder' => 'jane@example.com',
+            'help_text' => 'Nous ne le partagerons jamais.',
+        ]],
+    ]);
+
+    $this->actingAs($user, 'baobab')
+        ->get(route('admin.forms.edit', ['form' => $form->id]))
+        ->assertOk()
+        ->assertSee('placeholder="jane@example.com"', false)
+        ->assertSee('Nous ne le partagerons jamais.');
+});
+
+it('updates the title and the fields from the builder payload', function () {
+    $user = formsActor(['baobab.system.forms.manage']);
+    $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
+
+    $fields = json_encode([
+        ['key' => 'email', 'type' => 'email', 'label' => 'E-mail', 'placeholder' => null, 'help_text' => null, 'required' => true, 'options' => []],
+        ['key' => 'topic', 'type' => 'select', 'label' => 'Sujet', 'placeholder' => null, 'help_text' => null, 'required' => false, 'options' => ['choices' => ['support', 'sales']]],
+    ]);
+
+    $this->actingAs($user, 'baobab')
+        ->put(route('admin.forms.update', ['form' => $form->id]), [
+            'title' => 'Nous contacter',
+            'fields' => $fields,
+        ])
+        ->assertRedirect(route('admin.forms.edit', ['form' => $form->id]));
+
+    $form = $form->fresh();
+
+    expect($form->title)->toBe('Nous contacter')
+        ->and($form->version)->toBe(2)
+        ->and($form->blueprint['fields'])->toHaveCount(2)
+        ->and($form->blueprint['fields'][0]['label'])->toBe('E-mail')
+        ->and($form->blueprint['fields'][1]['options'])->toBe(['choices' => ['support', 'sales']]);
+});
+
+it('rejects an update whose fields break the blueprint, without saving anything', function () {
+    $user = formsActor(['baobab.system.forms.manage']);
+    $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
+
+    $fields = json_encode([
+        ['key' => 'topic', 'type' => 'select', 'options' => []],
+    ]);
+
+    $this->actingAs($user, 'baobab')
+        ->put(route('admin.forms.update', ['form' => $form->id]), ['title' => 'Contact', 'fields' => $fields])
+        ->assertSessionHasErrors('fields');
+
+    expect($form->fresh()->version)->toBe(1);
+});
+
 it('deletes a form', function () {
     $user = formsActor(['baobab.system.forms.manage']);
     $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);

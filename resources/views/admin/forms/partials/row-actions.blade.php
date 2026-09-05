@@ -1,4 +1,8 @@
 <div class="flex items-center gap-2">
+    <a href="{{ route('admin.forms.edit', ['form' => $form->id]) }}" class="text-primary hover:underline">
+        {{ __('baobab::admin.forms.edit_action') }}
+    </a>
+
     <form
         method="POST"
         action="{{ route('admin.forms.destroy', ['form' => $form->id]) }}"

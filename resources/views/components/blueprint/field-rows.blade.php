@@ -8,18 +8,40 @@
     Alpine**, pas des données — le composant s'insère dans la portée de son
     appelant plutôt que d'imposer la sienne.
 
-    Les primitives Alpine attendues dans cette portée (`addField`,
-    `needsChoices`) viennent de `baobabBlueprintEditor()`, poussé une fois par
-    `<x-baobab::blueprint.editor-script>`.
+    Étendu en M8 point 6 Pass B2 pour un troisième appelant, le constructeur
+    de formulaires : `extraFields` ajoute label/placeholder/aide (spec 14
+    §2.2, sans objet pour un Content Type ou un module — ces libellés s'y
+    dérivent de la clé) ; `showUniqueIndexed` masque `unique`/`indexed`
+    (contraintes de colonne, sans objet pour un formulaire, dont les
+    soumissions vivent en JSON) ; `draggable` active le réordonnancement —
+    premier glisser-déposer du Core, aucun précédent à suivre (menus/widgets/
+    galerie n'ont que des boutons ↑/↓). Les trois défauts préservent le
+    comportement des deux appelants existants à l'identique.
 
-    @param string $collection    Expression Alpine désignant le tableau de champs.
-    @param array  $fieldTypes    Clés du catalogue (FieldRegistry), pour le select.
-    @param string $addExpression Expression Alpine ajoutant un champ à cette collection.
+    Les primitives Alpine attendues dans cette portée (`addField`,
+    `needsChoices`) sont définies localement par chaque appelant — patron
+    dupliqué trois fois plutôt qu'un composant partagé, contrairement à ce
+    que suggérait un commentaire plus ancien de ce fichier (`editor-script`
+    n'a jamais existé).
+
+    L'état de glisser-déposer (`dragIndex`) est un état d'interface pur,
+    entièrement local à ce fragment : il n'a aucune raison de fuiter dans
+    l'état sérialisé de l'appelant.
+
+    @param string  $collection       Expression Alpine désignant le tableau de champs.
+    @param array   $fieldTypes       Clés du catalogue (FieldRegistry), pour le select.
+    @param string  $addExpression    Expression Alpine ajoutant un champ à cette collection.
+    @param bool    $extraFields      Ajoute label/placeholder/aide (spec 14 §2.2).
+    @param bool    $showUniqueIndexed Affiche unique/indexed (défaut : oui, comme avant).
+    @param bool    $draggable        Active le glisser-déposer pour réordonner.
 --}}
 @props([
     'collection',
     'fieldTypes',
     'addExpression',
+    'extraFields' => false,
+    'showUniqueIndexed' => true,
+    'draggable' => false,
 ])
 
 <div>
@@ -30,10 +52,29 @@
         <p class="mb-2 text-sm text-muted">{{ __('baobab::admin.studio.entities.no_fields') }}</p>
     </template>
 
-    <div class="space-y-2">
+    <div class="space-y-2" x-data="{ dragIndex: null }">
         <template x-for="(field, fieldIndex) in {{ $collection }}" :key="fieldIndex">
-            <div class="rounded-md border border-border bg-surface-subtle p-2">
+            <div
+                class="rounded-md border border-border bg-surface-subtle p-2"
+                @if ($draggable)
+                    draggable="true"
+                    x-on:dragstart="dragIndex = fieldIndex"
+                    x-on:dragover.prevent
+                    x-on:drop="{{ $collection }}.splice(fieldIndex, 0, {{ $collection }}.splice(dragIndex, 1)[0]); dragIndex = null"
+                    x-bind:class="dragIndex === fieldIndex && 'opacity-50'"
+                @endif
+            >
                 <div class="flex flex-wrap items-center gap-2">
+                    @if ($draggable)
+                        <span
+                            class="cursor-grab text-muted"
+                            aria-hidden="true"
+                            title="{{ __('baobab::admin.studio.entities.drag_to_reorder') }}"
+                        >
+                            <x-baobab::icon name="bi-grip-vertical" class="h-4 w-4" />
+                        </span>
+                    @endif
+
                     {{--
                         Une clé de champ devient un nom de colonne : le placeholder
                         montre la forme attendue, sans quoi on y saisit un libellé
@@ -62,14 +103,17 @@
                         <input type="checkbox" x-model="field.required" class="rounded border-border">
                         {{ __('baobab::admin.studio.entities.field_required') }}
                     </label>
-                    <label class="flex items-center gap-1 text-xs text-muted">
-                        <input type="checkbox" x-model="field.unique" class="rounded border-border">
-                        {{ __('baobab::admin.studio.entities.field_unique') }}
-                    </label>
-                    <label class="flex items-center gap-1 text-xs text-muted">
-                        <input type="checkbox" x-model="field.indexed" class="rounded border-border">
-                        {{ __('baobab::admin.studio.entities.field_indexed') }}
-                    </label>
+
+                    @if ($showUniqueIndexed)
+                        <label class="flex items-center gap-1 text-xs text-muted">
+                            <input type="checkbox" x-model="field.unique" class="rounded border-border">
+                            {{ __('baobab::admin.studio.entities.field_unique') }}
+                        </label>
+                        <label class="flex items-center gap-1 text-xs text-muted">
+                            <input type="checkbox" x-model="field.indexed" class="rounded border-border">
+                            {{ __('baobab::admin.studio.entities.field_indexed') }}
+                        </label>
+                    @endif
 
                     <button
                         type="button"
@@ -82,7 +126,34 @@
                     </button>
                 </div>
 
-                {{-- `choices` est obligatoire pour select/multiselect/radio --}}
+                @if ($extraFields)
+                    <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <input
+                            type="text"
+                            x-model="field.label"
+                            placeholder="{{ __('baobab::admin.forms.field_label_placeholder') }}"
+                            aria-label="{{ __('baobab::admin.forms.field_label') }}"
+                            class="rounded-md border border-border px-2 py-1 text-sm text-foreground"
+                        >
+                        <input
+                            type="text"
+                            x-model="field.placeholder"
+                            placeholder="{{ __('baobab::admin.forms.field_placeholder_placeholder') }}"
+                            aria-label="{{ __('baobab::admin.forms.field_placeholder') }}"
+                            class="rounded-md border border-border px-2 py-1 text-sm text-foreground"
+                        >
+                        <input
+                            type="text"
+                            x-model="field.help_text"
+                            placeholder="{{ __('baobab::admin.forms.field_help_text_placeholder') }}"
+                            aria-label="{{ __('baobab::admin.forms.field_help_text') }}"
+                            class="rounded-md border border-border px-2 py-1 text-sm text-foreground"
+                        >
+                    </div>
+                @endif
+
+                {{-- `choices` est obligatoire pour select/multiselect/radio (et leurs
+                     alias formulaires select/checkboxes/radio) --}}
                 <div class="mt-2" x-show="needsChoices(field.type)" x-cloak>
                     <label class="mb-1 block text-xs text-muted">{{ __('baobab::admin.studio.entities.field_choices') }}</label>
                     <textarea
@@ -91,6 +162,30 @@
                         class="w-full rounded-md border border-border px-2 py-1 font-mono text-sm text-foreground"
                     ></textarea>
                 </div>
+
+                @if ($extraFields)
+                    {{-- Options propres au champ `consent` (spec 14 §2.2) : texte
+                         légal et lien vers la politique de confidentialité. Type
+                         sans objet ailleurs que dans un formulaire, donc jamais
+                         affiché quand `extraFields` est faux. --}}
+                    <div class="mt-2 space-y-2" x-show="field.type === 'consent'" x-cloak>
+                        <div>
+                            <label class="mb-1 block text-xs text-muted">{{ __('baobab::admin.forms.consent_text') }}</label>
+                            <textarea
+                                x-model="field._consentText"
+                                rows="2"
+                                class="w-full rounded-md border border-border px-2 py-1 text-sm text-foreground"
+                            ></textarea>
+                        </div>
+                        <input
+                            type="url"
+                            x-model="field._consentPrivacyUrl"
+                            placeholder="{{ __('baobab::admin.forms.consent_privacy_url_placeholder') }}"
+                            aria-label="{{ __('baobab::admin.forms.consent_privacy_url') }}"
+                            class="w-full rounded-md border border-border px-2 py-1 text-sm text-foreground"
+                        >
+                    </div>
+                @endif
             </div>
         </template>
     </div>

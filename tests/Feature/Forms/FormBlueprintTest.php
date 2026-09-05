@@ -49,6 +49,23 @@ it('accepts a consent field with its own options and rejects a missing legal tex
     ]))->toThrow(InvalidFormBlueprintException::class);
 });
 
+it('keeps label/placeholder/help_text, and drops them when blank (spec 14 §2.2)', function () {
+    $blueprint = FormBlueprint::fromArray([
+        ['key' => 'full_name', 'type' => 'text', 'label' => 'Nom complet', 'placeholder' => 'Jane Doe', 'help_text' => 'Prénom et nom.'],
+        ['key' => 'email', 'type' => 'email', 'label' => '', 'placeholder' => null],
+    ]);
+
+    expect($blueprint->fields()[0])->toMatchArray([
+        'label' => 'Nom complet',
+        'placeholder' => 'Jane Doe',
+        'help_text' => 'Prénom et nom.',
+    ])->and($blueprint->fields()[1])->toMatchArray([
+        'label' => null,
+        'placeholder' => null,
+        'help_text' => null,
+    ]);
+});
+
 it('rejects options that fail the field type optionsRules — a select without choices', function () {
     expect(fn () => FormBlueprint::fromArray([
         ['key' => 'topic', 'type' => 'select', 'options' => []],

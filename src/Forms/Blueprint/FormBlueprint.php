@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Validator;
  * revoir si le besoin apparaît une fois le constructeur admin (Pass B) en
  * usage réel.
  *
- * @phpstan-type FormField array{key: string, type: string, label: ?string, required: bool, options: array<string, mixed>}
+ * @phpstan-type FormField array{key: string, type: string, label: ?string, placeholder: ?string, help_text: ?string, required: bool, options: array<string, mixed>}
  */
 final readonly class FormBlueprint
 {
@@ -57,7 +57,9 @@ final readonly class FormBlueprint
             $normalized[] = [
                 'key' => $key,
                 'type' => $type,
-                'label' => $field['label'] ?? null,
+                'label' => self::nullableString($field['label'] ?? null),
+                'placeholder' => self::nullableString($field['placeholder'] ?? null),
+                'help_text' => self::nullableString($field['help_text'] ?? null),
                 'required' => (bool) ($field['required'] ?? false),
                 'options' => $options,
             ];
@@ -124,5 +126,16 @@ final readonly class FormBlueprint
         if ($result->fails()) {
             throw InvalidFormBlueprintException::forField("fields.{$key}.options", (string) $result->errors()->first());
         }
+    }
+
+    private static function nullableString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim((string) $value);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 }
