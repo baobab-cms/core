@@ -216,6 +216,39 @@ it('marks the submission as spam when it arrives faster than the render token al
     expect($submission->status)->toBe(FormSubmissionStatus::Spam);
 });
 
+it('lets baobab.form.spam_checking flag as spam a submission the level-1 guard let through (spec 14 §7.2, Pass D2)', function () {
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'email', 'type' => 'email', 'required' => true]],
+    ]);
+
+    Hook::modify('baobab.form.spam_checking', function (bool $isSpam, $hookedForm, array $payload) use ($form): bool {
+        expect($hookedForm->id)->toBe($form->id)
+            ->and($payload)->toBe(['email' => 'jane@example.com']);
+
+        return true;
+    });
+
+    $submission = app(SubmitForm::class)($form, ['email' => 'jane@example.com']);
+
+    expect($submission->status)->toBe(FormSubmissionStatus::Spam);
+});
+
+it('lets baobab.form.spam_checking clear a level-1 verdict, since it is a normal filter chain', function () {
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact', 'title' => 'Contact', 'fields' => [],
+    ]);
+
+    Hook::modify('baobab.form.spam_checking', fn (): bool => false);
+
+    $submission = app(SubmitForm::class)($form, [
+        FormSpamGuard::HONEYPOT_FIELD => 'i am a bot',
+    ]);
+
+    expect($submission->status)->toBe(FormSubmissionStatus::New);
+});
+
 it('lets baobab.form.validating augment the rules before validation', function () {
     $form = app(SaveForm::class)(null, [
         'slug' => 'contact', 'title' => 'Contact', 'fields' => [],

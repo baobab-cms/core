@@ -24,9 +24,14 @@ use Illuminate\Support\Facades\Validator;
  * piège temporel) : marque, ne rejette jamais (spec 14 §7.2) — une
  * soumission suspecte suit exactement le même chemin qu'une légitime,
  * seul `status` change, pour ne jamais laisser un robot deviner qu'il a été
- * repéré. Ce que cette Action ne fait **pas encore**, volontairement, par
- * découpage de passe : le captcha (Pass D3) et le pipeline de suites
- * (Pass E — e-mail, notification, webhook, hook `baobab.form.submitted`).
+ * repéré. Niveau 2 (Pass D2) : `baobab.form.spam_checking` (filter) reçoit
+ * le verdict du niveau 1 et peut l'étendre — un module de scoring externe
+ * (Akismet…) vote après le socle silencieux, jamais à sa place ; aucun
+ * réglage par formulaire ici non plus (spec §7.2), l'extension vit
+ * entièrement côté module qui écoute le filtre. Ce que cette Action ne fait
+ * **pas encore**, volontairement, par découpage de passe : le captcha
+ * (Pass D3) et le pipeline de suites (Pass E — e-mail, notification,
+ * webhook, hook `baobab.form.submitted`).
  *
  * Un champ `file` validé arrive ici comme un `UploadedFile` — jamais laissé
  * tel quel dans `payload` : le cast `array` d'Eloquent encode en JSON **dès
@@ -61,7 +66,9 @@ final class SubmitForm
             ? now()
             : null;
 
-        $status = FormSpamGuard::isTriggered($input) ? FormSubmissionStatus::Spam : FormSubmissionStatus::New;
+        $isSpam = FormSpamGuard::isTriggered($input);
+        $isSpam = (bool) Hook::filter('baobab.form.spam_checking', $isSpam, $form, $validated);
+        $status = $isSpam ? FormSubmissionStatus::Spam : FormSubmissionStatus::New;
 
         $submission = new FormSubmission([
             'form_id' => $form->id,
