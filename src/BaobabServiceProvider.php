@@ -85,6 +85,7 @@ use Baobab\ContentTypes\Fields\Types\TimeField;
 use Baobab\ContentTypes\Fields\Types\UrlField;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
+use Baobab\Forms\Models\Form;
 use Baobab\Hooks\HookRegistry;
 use Baobab\Install\Console\CheckCommand;
 use Baobab\Install\Console\InstallCommand;
@@ -388,6 +389,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerWidgetCacheInvalidationListener();
 
         $this->registerSeoFormSection();
+
+        $this->registerFormEmbedRichTextResolver();
 
         $this->registerSeoSaveListener();
 
@@ -1395,6 +1398,44 @@ class BaobabServiceProvider extends ServiceProvider
             ])->render();
 
             return $sections;
+        });
+    }
+
+    /**
+     * Résout un embed de formulaire (M8 point 6, Pass C4, spec 14 §4) posé
+     * par le noeud Tiptap dédié dans un champ `richtext` : le marqueur
+     * `<span data-baobab-embed="form:{slug}">` a survécu à
+     * `MarkerPreservingCleanHtml` intact — reste à le remplacer par le rendu
+     * réel de `<x-baobab::form-embed>`. Enregistré via `Hook::modify` plutôt
+     * qu'un appel direct depuis `field.richtext-display.blade.php` : le
+     * domaine ContentTypes (propriétaire de ce composant, consommé par tout
+     * Content Type ayant un champ richtext) n'a ainsi jamais besoin de
+     * connaître le domaine Forms — patron déjà tenu pour `LineDiff`, extrait
+     * vers `Support` afin que Mail n'ait pas à dépendre de Studio.
+     * Un slug inconnu ou un formulaire supprimé après coup disparaît
+     * simplement du rendu, jamais une exception ni un fragment vide visible
+     * (même garde que `FormEmbed::shouldRender()`).
+     */
+    private function registerFormEmbedRichTextResolver(): void
+    {
+        Hook::modify('baobab.richtext.display', function (string $html): string {
+            if (! str_contains($html, 'data-baobab-embed="form:')) {
+                return $html;
+            }
+
+            return (string) preg_replace_callback(
+                '/<span[^>]*\sdata-baobab-embed="form:([a-z0-9-]+)"[^>]*>.*?<\/span>/su',
+                function (array $match): string {
+                    $slug = $match[1];
+
+                    if (! Form::query()->where('slug', $slug)->exists()) {
+                        return '';
+                    }
+
+                    return Blade::render('<x-baobab::form-embed :slug="$slug" />', ['slug' => $slug]);
+                },
+                $html,
+            );
         });
     }
 

@@ -278,6 +278,7 @@
                                     :name="$field['key']"
                                     :label="$field['label']"
                                     :value="$field['value']"
+                                    :forms="$embeddableForms ?? []"
                                     x-on:input="{{ $field['auto_slug_handler'] }}"
                                 />
                                 @break

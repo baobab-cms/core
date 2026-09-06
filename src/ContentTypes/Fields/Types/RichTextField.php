@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Baobab\ContentTypes\Fields\Types;
 
+use Baobab\ContentTypes\Fields\Casts\MarkerPreservingCleanHtml;
 use Baobab\ContentTypes\Fields\FieldType;
-use Mews\Purifier\Casts\CleanHtml;
 
 /**
- * HTML nettoyé à la sauvegarde par whitelist (spec 02 §3.2) — délégué au
- * cast CastsAttributes de mews/purifier plutôt qu'à une méthode ad hoc :
- * c'est un vrai cast Eloquent, généré tel quel dans le modèle, cohérent avec
- * le reste du contrat cast().
+ * HTML nettoyé à la sauvegarde par whitelist (spec 02 §3.2) — délégué à un
+ * cast CastsAttributes plutôt qu'à une méthode ad hoc : c'est un vrai cast
+ * Eloquent, généré tel quel dans le modèle, cohérent avec le reste du
+ * contrat cast(). `MarkerPreservingCleanHtml` (et non plus directement
+ * `Mews\Purifier\Casts\CleanHtml`, depuis M8 point 6 Pass C4) ajoute la
+ * seule différence : un marqueur d'embed (`<span data-baobab-embed="...">`,
+ * ex. un formulaire inséré dans le texte) traverse la purification intact.
  */
 final class RichTextField extends FieldType
 {
@@ -32,7 +35,7 @@ final class RichTextField extends FieldType
 
     public function cast(array $options): string
     {
-        return CleanHtml::class;
+        return MarkerPreservingCleanHtml::class;
     }
 
     public function formComponent(): string

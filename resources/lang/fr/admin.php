@@ -47,6 +47,7 @@ return [
         'richtext_align_justify' => 'Justifier',
         'richtext_horizontal_rule' => 'Séparateur',
         'richtext_clear_format' => 'Effacer la mise en forme',
+        'richtext_insert_form' => 'Insérer un formulaire',
     ],
 
     'sidebar' => [

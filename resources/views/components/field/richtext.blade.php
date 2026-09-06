@@ -11,6 +11,15 @@
         déjà.
     */
     'variables' => [],
+    /*
+        Menu d'insertion optionnel : slug de formulaire → titre. Fourni, un
+        sélecteur apparaît dans la barre d'outils et insère un noeud Tiptap
+        dédié (survit au copier-coller, contrairement aux variables mail
+        insérées en texte brut ci-dessus — patron distinct assumé, M8
+        point 6 Pass C4) ; absent, aucune extension supplémentaire n'est
+        chargée et le composant reste identique à avant.
+    */
+    'forms' => [],
 ])
 
 <div class="mb-4">
@@ -19,7 +28,7 @@
     @endif
 
     <div
-        x-data="richTextEditor({ initialValue: @js(old($name, $value)) })"
+        x-data="richTextEditor({ initialValue: @js(old($name, $value)), forms: @js($forms !== []) })"
         x-init="mount($refs.editorRoot, $refs.hiddenInput)"
         @class([
             'overflow-hidden rounded-md border',
@@ -74,6 +83,20 @@
                     @endforeach
                 </select>
             @endif
+
+            @if ($forms !== [])
+                <span class="mx-1 h-4 w-px bg-border"></span>
+                <select
+                    x-on:change="insertForm($event.target.value, $event.target.selectedOptions[0]?.dataset.label); $event.target.value = ''"
+                    class="rounded border border-border bg-surface px-2 py-1 text-xs text-foreground"
+                    aria-label="{{ __('baobab::admin.components.richtext_insert_form') }}"
+                >
+                    <option value="">{{ __('baobab::admin.components.richtext_insert_form') }}</option>
+                    @foreach ($forms as $formSlug => $formTitle)
+                        <option value="{{ $formSlug }}" data-label="{{ $formTitle }}">{{ $formTitle }}</option>
+                    @endforeach
+                </select>
+            @endif
         </div>
 
         <div x-ref="editorRoot" class="tiptap px-3 py-2 text-sm text-foreground" data-tiptap-editor></div>
@@ -102,15 +125,27 @@
                 active: {},
 
                 mount(root, hiddenInput) {
+                    // L'extension d'embed n'est chargée que si un sélecteur de
+                    // formulaires a été fourni (prop `forms`) : un champ
+                    // richtext de la messagerie ou des réglages de widget n'en
+                    // affiche jamais et n'a donc jamais besoin de reconnaître
+                    // ce noeud (patron du garde conditionnel côté toolbar,
+                    // au-dessus, sur la même prop).
+                    const extensions = [
+                        TiptapStarterKit,
+                        TiptapLink,
+                        TiptapUnderline,
+                        TiptapHighlight,
+                        TiptapTextAlign.configure({ types: ['heading', 'paragraph'] }),
+                    ];
+
+                    if (config.forms) {
+                        extensions.push(TiptapFormEmbed);
+                    }
+
                     editor = new TiptapEditor({
                         element: root,
-                        extensions: [
-                            TiptapStarterKit,
-                            TiptapLink,
-                            TiptapUnderline,
-                            TiptapHighlight,
-                            TiptapTextAlign.configure({ types: ['heading', 'paragraph'] }),
-                        ],
+                        extensions,
                         content: config.initialValue || '',
                         onUpdate: () => {
                             hiddenInput.value = editor.getHTML();
@@ -145,6 +180,22 @@
                     const close = '}' + '}';
 
                     editor.chain().focus().insertContent(open + ' ' + name + ' ' + close).run();
+                },
+
+                // Contrairement à `insertVariable()` ci-dessus, un vrai noeud
+                // ProseMirror ici : rien n'impose de version texte de repli
+                // pour du contenu de site (contrairement à un e-mail), et un
+                // noeud atomique protège le marqueur d'une édition accidentelle
+                // caractère par caractère (spec 14 §4, M8 point 6 Pass C4).
+                insertForm(slug, label) {
+                    if (! slug) {
+                        return;
+                    }
+
+                    editor.chain().focus().insertContent({
+                        type: 'formEmbed',
+                        attrs: { slug, label: label || slug },
+                    }).run();
                 },
 
                 updateActive() {

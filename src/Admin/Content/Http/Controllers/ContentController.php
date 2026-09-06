@@ -42,6 +42,7 @@ use Baobab\ContentTypes\Support\ContentEntryRules;
 use Baobab\ContentTypes\Support\ContentTrash;
 use Baobab\ContentTypes\Support\FieldDisplay;
 use Baobab\Facades\Hook;
+use Baobab\Forms\Models\Form;
 use Baobab\Media\Models\Media;
 use Baobab\Media\Models\MediaUsage;
 use Baobab\Users\Models\User;
@@ -153,6 +154,7 @@ final class ContentController
             'formAction' => route('admin.content.store', ['contentType' => $contentType]),
             'fields' => $this->formFieldsForView($type, null),
             'sections' => $this->formSections($type, null),
+            'embeddableForms' => $this->embeddableForms(),
         ]);
     }
 
@@ -202,6 +204,7 @@ final class ContentController
             'formAction' => route('admin.content.update', ['contentType' => $contentType, 'entry' => $model->getKey()]),
             'fields' => $this->formFieldsForView($type, $model),
             'sections' => $this->formSections($type, $model),
+            'embeddableForms' => $this->embeddableForms(),
             'entryId' => $model->getKey(),
             'currentStatus' => $status,
             'publishedAt' => $model->getAttribute('published_at'),
@@ -892,6 +895,21 @@ final class ContentController
         $sections = Hook::filter('baobab.content.form.sections', [], $type, $entry);
 
         return $sections;
+    }
+
+    /**
+     * Formulaires existants proposés au sélecteur d'embed d'un champ
+     * `richtext` (spec 14 §4, M8 point 6 Pass C4) — « un formulaire se place
+     * dans du contenu via un champ richtext ». Toujours calculé, y compris
+     * pour un Content Type sans aucun champ richtext : `field.richtext`
+     * n'affiche le sélecteur que si la liste est non vide (`@if ($forms !== [])`),
+     * un coût nul à ignorer.
+     *
+     * @return array<string, string>
+     */
+    private function embeddableForms(): array
+    {
+        return Form::query()->orderBy('title')->pluck('title', 'slug')->all();
     }
 
     /**

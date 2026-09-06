@@ -1,5 +1,6 @@
 <?php
 
+use Baobab\ContentTypes\Fields\Casts\MarkerPreservingCleanHtml;
 use Baobab\ContentTypes\Fields\Types\EmailField;
 use Baobab\ContentTypes\Fields\Types\RichTextField;
 use Baobab\ContentTypes\Fields\Types\SlugField;
@@ -41,11 +42,11 @@ it('TextareaField builds a text column', function () {
 
 // ── richtext ─────────────────────────────────────────────────────────────────
 
-it('RichTextField builds a longtext column and casts through mews/purifier', function () {
+it('RichTextField builds a longtext column and casts through the marker-preserving purifier cast', function () {
     $field = new RichTextField;
 
     expect($field->columnDefinition('body', []))->toBe("\$table->longText('body');")
-        ->and($field->cast([]))->toBe(CleanHtml::class);
+        ->and($field->cast([]))->toBe(MarkerPreservingCleanHtml::class);
 });
 
 it('RichTextField cast strips disallowed tags and attributes on save', function () {
