@@ -6,20 +6,32 @@ namespace Baobab\Forms\Actions;
 
 use Baobab\Audit\AuditLogger;
 use Baobab\Forms\Models\FormSubmission;
+use Baobab\Forms\Support\FormFileStorage;
 
 /**
  * Supprime une soumission (spec 14 §6.2) — auditée, ce sont des données
- * personnelles. Les fichiers joints ne sont pas encore purgés ici : leur
- * stockage n'existe pas avant la Pass C (rendu front), même remarque que
- * `FormSubmissionsPurgeCommand`.
+ * personnelles. Les pièces jointes (Pass C3) sont effacées du disque privé
+ * **avant** la ligne, jamais l'inverse : si l'effacement du fichier échoue,
+ * mieux vaut une ligne encore là (rejouable) qu'un fichier orphelin sans
+ * plus aucune trace pour le retrouver.
+ *
+ * Lit `blueprint_snapshot` (via `FormFileStorage::deleteForSubmission()`),
+ * jamais le blueprint courant du formulaire : une soumission sans snapshot
+ * (antérieure à la Pass B5) ne peut de toute façon pas porter de champ
+ * `file`, ce type n'existant pas avant la Pass C3.
  */
 final class DeleteFormSubmission
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly FormFileStorage $fileStorage,
+    ) {}
 
     public function __invoke(FormSubmission $submission): void
     {
         $formId = $submission->form_id;
+
+        $this->fileStorage->deleteForSubmission($submission);
 
         $submission->delete();
 

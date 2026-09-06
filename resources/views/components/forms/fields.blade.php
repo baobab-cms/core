@@ -7,7 +7,7 @@
     Core ne le fait, cf. suivi n° 260).
 
     Partagé par l'aperçu du builder (`admin/forms/edit.blade.php`, Pass B2) et
-    le rendu public (`<x-baobab::form-embed>`, Pass C1) — spec 14 §3 : « aperçu
+    le rendu public (`<x-baobab::form-embed>`, Pass C1/C2/C3) — spec 14 §3 : « aperçu
     rendu avec le vrai composant front ». `$required` distingue les deux : le
     builder envoie un aperçu statique ($required=false, aucune contrainte
     HTML5 utile sur des noms de champs fictifs) ; le rendu public la passe à
@@ -57,6 +57,10 @@
 
         @case('consent')
             <x-baobab::field.consent :name="$field['key']" :text="(string) ($field['options']['text'] ?? '')" :privacy-url="$field['options']['privacy_url'] ?? null" :required="$required && ($field['required'] ?? false)" />
+            @break
+
+        @case('file')
+            <x-baobab::field.file :name="$field['key']" :label="$field['display_label']" :required="$required && ($field['required'] ?? false)" />
             @break
 
         @default

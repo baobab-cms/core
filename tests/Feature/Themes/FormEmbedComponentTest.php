@@ -84,3 +84,23 @@ it('falls back to redirect mode for an unknown mode value, rather than trusting 
 
     expect(Blade::render('<x-baobab::form-embed slug="contact" mode="carrier-pigeon" />'))->toContain("mode: 'redirect'");
 });
+
+it('sets enctype=multipart/form-data when the form has a file field (Pass C3)', function () {
+    app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'cv', 'type' => 'file']],
+    ]);
+
+    $html = Blade::render('<x-baobab::form-embed slug="contact" />');
+
+    expect($html)->toContain('enctype="multipart/form-data"')
+        ->toContain('type="file"')
+        ->toContain('name="cv"');
+});
+
+it('omits enctype when the form has no file field', function () {
+    app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => [['key' => 'email', 'type' => 'email']]]);
+
+    expect(Blade::render('<x-baobab::form-embed slug="contact" />'))->not->toContain('enctype');
+});

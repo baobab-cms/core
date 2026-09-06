@@ -35,12 +35,14 @@ final class ExportFormSubmissionsCsv
 
         /** @var list<string> $keys */
         $keys = array_column((array) ($form->blueprint['fields'] ?? []), 'key');
+        /** @var array<string, string> $types */
+        $types = array_column((array) ($form->blueprint['fields'] ?? []), 'type', 'key');
 
         fputcsv($stream, [...$keys, 'status', 'submitted_at']);
 
-        $query->each(function (FormSubmission $submission) use ($stream, $keys): void {
+        $query->each(function (FormSubmission $submission) use ($stream, $keys, $types): void {
             $row = array_map(
-                fn (string $key): string => (string) ($submission->payload[$key] ?? ''),
+                fn (string $key): string => $this->cellValue($submission->payload[$key] ?? null, $types[$key] ?? null),
                 $keys,
             );
             $row[] = $submission->status->value;
@@ -54,5 +56,21 @@ final class ExportFormSubmissionsCsv
         fclose($stream);
 
         return $csv;
+    }
+
+    /**
+     * Un champ `file` (Pass C3) stocke une référence (`original_name`,
+     * `stored_path`...), jamais un scalaire — le caster tel quel produirait
+     * le mot littéral « Array ». Le nom d'origine seul est exporté, jamais un
+     * lien signé : un export CSV n'a pas de date de péremption, contrairement
+     * à `URL::temporarySignedRoute()`.
+     */
+    private function cellValue(mixed $value, ?string $type): string
+    {
+        if ($type === 'file') {
+            return is_array($value) ? (string) ($value['original_name'] ?? '') : '';
+        }
+
+        return (string) ($value ?? '');
     }
 }

@@ -17,7 +17,11 @@
                 {{ $confirmationMessage }}
             </div>
         @else
-            <x-baobab::form method="POST" :action="route('baobab.forms.submit', ['form' => $form->slug])">
+            {{-- `enctype` conditionnel (Pass C3) : un formulaire sans champ
+                 `file` n'a aucune raison de poster en multipart. `null` fait
+                 disparaître l'attribut entier (`ComponentAttributeBag`),
+                 jamais un `enctype=""` vide. --}}
+            <x-baobab::form method="POST" :action="route('baobab.forms.submit', ['form' => $form->slug])" :enctype="$hasFileField ? 'multipart/form-data' : null">
                 <input type="hidden" name="_form_slug" value="{{ $slug }}">
 
                 <x-baobab::forms.fields :fields="$fields" required />

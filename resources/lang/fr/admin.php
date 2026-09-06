@@ -630,6 +630,7 @@ return [
         'deleted' => 'Soumission supprimée.',
         'value_yes' => 'Oui',
         'value_no' => 'Non',
+        'no_file' => 'Aucun fichier joint.',
         'status_new' => 'Nouvelle',
         'status_read' => 'Lue',
         'status_spam' => 'Spam',

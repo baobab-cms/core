@@ -3,6 +3,7 @@
 use Baobab\Audit\Models\AuditEntry;
 use Baobab\Forms\Actions\SaveForm;
 use Baobab\Forms\Models\FormSubmission;
+use Illuminate\Support\Facades\Storage;
 
 it('purges submissions past each form\'s own retention, and audits it', function () {
     $shortRetention = app(SaveForm::class)(null, [
@@ -43,6 +44,29 @@ it('purges submissions past each form\'s own retention, and audits it', function
         ->and(FormSubmission::find($stillWithinLongRetention->id))->not->toBeNull();
 
     expect(AuditEntry::where('action', 'form_submissions.purged')->where('auditable_id', $shortRetention->id)->exists())->toBeTrue();
+});
+
+it('deletes the attached file of a purged submission (spec 14 §5, Pass C3)', function () {
+    Storage::fake('local');
+    Storage::disk('local')->put('form-submissions/2026/09/old.pdf', 'contenu');
+
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact', 'title' => 'Contact', 'retention_days' => 10,
+        'fields' => [['key' => 'cv', 'type' => 'file']],
+    ]);
+
+    $old = FormSubmission::create([
+        'form_id' => $form->id,
+        'form_version' => 1,
+        'blueprint_snapshot' => $form->blueprint['fields'],
+        'payload' => ['cv' => ['original_name' => 'old.pdf', 'stored_path' => 'form-submissions/2026/09/old.pdf']],
+        'status' => 'new',
+    ]);
+    $old->forceFill(['created_at' => now()->subDays(30)])->save();
+
+    $this->artisan('baobab:forms:purge')->assertSuccessful();
+
+    Storage::disk('local')->assertMissing('form-submissions/2026/09/old.pdf');
 });
 
 it('reports zero without auditing when nothing is past retention', function () {

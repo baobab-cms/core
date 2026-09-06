@@ -9,12 +9,15 @@ namespace Baobab\Forms\Support;
  * aux formulaires — un seul vocabulaire de champs dans tout le CMS (spec 14
  * §1), mais pas la totalité du catalogue : les types propres au contenu
  * éditorial (`richtext`, `slug`, `json`, `gallery`, `decimal`, `datetime`,
- * `time`) n'ont pas de sens dans un formulaire public, et `file`/`image`
- * restent hors catalogue pour l'instant — la spec 14 §5 exige un disque
- * *privé* dédié aux soumissions, jamais la médiathèque publique que
- * `Baobab\ContentTypes\Fields\Types\FileField`/`ImageField` ciblent ; le
- * champ fichier des formulaires est construit en Pass C (rendu front) avec
- * son propre mécanisme de stockage.
+ * `time`) n'ont pas de sens dans un formulaire public, et `image` reste hors
+ * catalogue (absent de la liste spec 14 §2.2).
+ *
+ * `file` n'apparaît **pas** dans `allowed()` : comme `consent`, c'est un type
+ * spécial traité en dehors du `FieldRegistry` (spec 02) — la spec 14 §5 exige
+ * un disque *privé* dédié aux soumissions, jamais la médiathèque publique que
+ * `Baobab\ContentTypes\Fields\Types\FileField` cible. `FormBlueprint` le
+ * valide directement, `FormEntryRules` construit ses règles Laravel natives
+ * (`file`/`mimetypes`/`max`) sans passer par cette classe (Pass C3).
  */
 final class FormFieldTypes
 {

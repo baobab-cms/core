@@ -95,7 +95,11 @@ final readonly class FormBlueprint
             throw InvalidFormBlueprintException::forField("fields.{$key}.type", 'Le honeypot est injecté automatiquement, il ne se déclare pas dans le blueprint.');
         }
 
-        if ($type === 'consent') {
+        if ($type === 'consent' || $type === 'file') {
+            // `file` (spec 14 §5, Pass C3) est traité comme `consent` : un type
+            // spécial propre aux formulaires, jamais résolu via le
+            // `FieldRegistry` (spec 02) — le champ fichier des Content Types
+            // cible la médiathèque publique, ce que la spec 14 §5 interdit ici.
             return;
         }
 
@@ -113,9 +117,15 @@ final readonly class FormBlueprint
      */
     private static function validateOptions(string $key, string $type, array $options, FieldRegistry $registry): void
     {
-        $rules = $type === 'consent'
-            ? ['text' => ['required', 'string'], 'privacy_url' => ['nullable', 'url']]
-            : $registry->resolve(FormFieldTypes::registryKey($type))->optionsRules();
+        $rules = match ($type) {
+            'consent' => ['text' => ['required', 'string'], 'privacy_url' => ['nullable', 'url']],
+            // Resserre les plafonds globaux (`config('baobab.forms')`), ne les
+            // élargit jamais — `FormEntryRules` retombe sur la config quand ces
+            // clés sont absentes, jamais l'inverse (spec 14 §5, « par champ +
+            // globale »).
+            'file' => ['mime_types' => ['nullable', 'array'], 'mime_types.*' => ['string'], 'max_size' => ['nullable', 'integer', 'min:1']],
+            default => $registry->resolve(FormFieldTypes::registryKey($type))->optionsRules(),
+        };
 
         if ($rules === []) {
             return;

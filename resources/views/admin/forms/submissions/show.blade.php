@@ -41,7 +41,13 @@
                 @foreach ($fields as $field)
                     <div class="grid grid-cols-3 gap-2 py-2">
                         <dt class="text-sm font-medium text-foreground">{{ $field['label'] }}</dt>
-                        <dd class="col-span-2 whitespace-pre-wrap text-sm text-foreground">{{ $field['value'] }}</dd>
+                        <dd class="col-span-2 whitespace-pre-wrap text-sm text-foreground">
+                            @if ($field['raw'] ?? false)
+                                {!! $field['value'] !!}
+                            @else
+                                {{ $field['value'] }}
+                            @endif
+                        </dd>
                     </div>
                 @endforeach
             </dl>

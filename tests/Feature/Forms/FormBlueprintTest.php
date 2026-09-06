@@ -71,3 +71,31 @@ it('rejects options that fail the field type optionsRules — a select without c
         ['key' => 'topic', 'type' => 'select', 'options' => []],
     ]))->toThrow(InvalidFormBlueprintException::class);
 });
+
+it('accepts a file field, like consent treated outside the FieldRegistry (spec 14 §5, Pass C3)', function () {
+    $blueprint = FormBlueprint::fromArray([
+        ['key' => 'cv', 'type' => 'file', 'required' => true],
+    ]);
+
+    expect($blueprint->fields()[0]['type'])->toBe('file');
+});
+
+it('accepts a file field with mime_types/max_size overrides, resserring the global defaults', function () {
+    $blueprint = FormBlueprint::fromArray([
+        ['key' => 'cv', 'type' => 'file', 'options' => ['mime_types' => ['application/pdf'], 'max_size' => 1_048_576]],
+    ]);
+
+    expect($blueprint->fields()[0]['options'])->toBe(['mime_types' => ['application/pdf'], 'max_size' => 1_048_576]);
+});
+
+it('rejects a file field whose mime_types option is not a list of strings', function () {
+    expect(fn () => FormBlueprint::fromArray([
+        ['key' => 'cv', 'type' => 'file', 'options' => ['mime_types' => 'application/pdf']],
+    ]))->toThrow(InvalidFormBlueprintException::class);
+});
+
+it('rejects a file field whose max_size option is not a positive integer', function () {
+    expect(fn () => FormBlueprint::fromArray([
+        ['key' => 'cv', 'type' => 'file', 'options' => ['max_size' => 0]],
+    ]))->toThrow(InvalidFormBlueprintException::class);
+});

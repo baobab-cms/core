@@ -6,6 +6,8 @@ namespace Baobab\Console\Commands;
 
 use Baobab\Audit\AuditLogger;
 use Baobab\Forms\Models\Form;
+use Baobab\Forms\Models\FormSubmission;
+use Baobab\Forms\Support\FormFileStorage;
 use Illuminate\Console\Command;
 
 /**
@@ -16,10 +18,11 @@ use Illuminate\Console\Command;
  * Purge auditée (spec 14 §6.4 — l'IP tombe sous la même rétention, portée
  * par la même ligne, rien à purger séparément).
  *
- * Les fichiers joints (spec 14 §5, disque privé) ne sont pas encore purgés
- * ici : leur stockage n'existe pas avant la Pass C (rendu front). À
- * raccorder à ce moment — « aucun orphelin » de la spec vaut aussi pour
- * cette commande.
+ * Les pièces jointes (spec 14 §5, disque privé, Pass C3) sont effacées avant
+ * chaque ligne, via `FormFileStorage::deleteForSubmission()` — même point
+ * unique que `DeleteFormSubmission`. Passe par `->get()` plutôt que le
+ * `->delete()` en masse d'avant la Pass C3 : un `delete()` en une requête ne
+ * donne aucune prise pour toucher les fichiers ligne par ligne.
  */
 final class FormSubmissionsPurgeCommand extends Command
 {
@@ -27,8 +30,10 @@ final class FormSubmissionsPurgeCommand extends Command
 
     protected $description = 'Purge les soumissions de formulaires au-delà de la rétention propre à chaque formulaire.';
 
-    public function __construct(private readonly AuditLogger $audit)
-    {
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly FormFileStorage $fileStorage,
+    ) {
         parent::__construct();
     }
 
@@ -37,11 +42,19 @@ final class FormSubmissionsPurgeCommand extends Command
         $totalPurged = 0;
 
         Form::query()->each(function (Form $form) use (&$totalPurged): void {
-            $purged = $form->submissions()
+            $submissions = $form->submissions()
                 ->where('created_at', '<=', now()->subDays($form->retention_days))
-                ->delete();
+                ->get();
+
+            $submissions->each(function (FormSubmission $submission): void {
+                $this->fileStorage->deleteForSubmission($submission);
+            });
+
+            $purged = $submissions->count();
 
             if ($purged > 0) {
+                FormSubmission::query()->whereIn('id', $submissions->pluck('id'))->delete();
+
                 $this->audit->record('form_submissions.purged', $form, [
                     'count' => $purged,
                     'retention_days' => $form->retention_days,

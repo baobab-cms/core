@@ -33,6 +33,9 @@ use Illuminate\View\Component;
  * navigateur poste nativement, exactement comme en mode `redirect`. Une
  * valeur inconnue retombe sur `redirect` plutôt que de faire confiance à une
  * valeur arbitraire (patron `FormSettingsNormalizer::CAPTCHA_PROVIDERS`).
+ *
+ * `hasFileField` (Pass C3) pilote l'`enctype` du `<form>` posé par la vue —
+ * calculé une fois ici plutôt que dans la vue, qui ne fait qu'afficher.
  */
 final class FormEmbed extends Component
 {
@@ -43,6 +46,8 @@ final class FormEmbed extends Component
 
     /** @var list<array<string, mixed>> */
     public array $fields = [];
+
+    public bool $hasFileField = false;
 
     public ?string $confirmationMessage = null;
 
@@ -59,6 +64,7 @@ final class FormEmbed extends Component
         }
 
         $this->fields = FormFieldPresenter::present((array) ($this->form->blueprint['fields'] ?? []));
+        $this->hasFileField = collect($this->fields)->contains(fn (array $field): bool => $field['type'] === 'file');
 
         /** @var array{slug?: string, message?: string}|null $confirmation */
         $confirmation = session('baobab_form_confirmation');

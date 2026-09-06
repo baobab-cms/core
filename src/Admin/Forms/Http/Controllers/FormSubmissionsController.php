@@ -16,6 +16,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Consultation des soumissions (spec 14 §6.2, M8 point 6, Pass B5) — patron
@@ -26,6 +29,8 @@ use Illuminate\Http\Response;
  * Accès gouverné par `baobab.system.forms.submissions_view` (routes/admin.php)
  * pour l'index/la fiche/le marquage — la spec 14 §9 ne nomme un permission
  * séparé que pour l'export et la suppression, jamais pour le marquage.
+ * `downloadFile()` (Pass C3) réutilise ce même permission : une pièce jointe
+ * est une donnée de soumission comme une autre, pas une surface à part.
  */
 final class FormSubmissionsController
 {
@@ -88,6 +93,28 @@ final class FormSubmissionsController
     }
 
     /**
+     * `signed` **et** permissionnée (spec 14 §5) — la route porte déjà
+     * `can:baobab.system.forms.submissions_view` (routes/admin.php), ce
+     * contrôleur ne revérifie donc que la présence réelle du fichier.
+     * Premier téléchargement de fichier stocké proxié par le Core (Pass C3) :
+     * aucun autre écran ne sert un fichier autrement qu'en le publiant sur le
+     * disque public.
+     */
+    public function downloadFile(Form $form, FormSubmission $submission, string $field): StreamedResponse
+    {
+        /** @var array{stored_path?: string, original_name?: string}|null $reference */
+        $reference = $submission->payload[$field] ?? null;
+
+        abort_unless(is_array($reference) && isset($reference['stored_path']), 404);
+
+        $disk = (string) config('baobab.forms.disk', 'local');
+
+        abort_unless(Storage::disk($disk)->exists($reference['stored_path']), 404);
+
+        return Storage::disk($disk)->download($reference['stored_path'], $reference['original_name'] ?? basename($reference['stored_path']));
+    }
+
+    /**
      * Part de `FormSubmission::query()` plutôt que de `$form->submissions()`
      * (patron `MailLogController::index()`) : chaîner `when()` sur une
      * relation `HasMany` la fait rester une `HasMany` à l'exécution, que
@@ -120,8 +147,12 @@ final class FormSubmissionsController
             'label' => (string) ($field['label'] ?? $field['key']),
             // `<x-baobab::table>` échoue silencieusement (« Array ») sur une
             // valeur non scalaire sans ce rendu explicite — `checkboxes`
-            // rend un tableau de choix, `checkbox`/`consent` un booléen.
-            'render' => fn (FormSubmission $submission) => $this->displayValue($submission->payload[$field['key']] ?? null),
+            // rend un tableau de choix, `checkbox`/`consent` un booléen,
+            // `file` (Pass C3) un lien signé vers la pièce jointe.
+            'raw' => $field['type'] === 'file',
+            'render' => $field['type'] === 'file'
+                ? fn (FormSubmission $submission) => $this->fileLink($form, $submission, $field['key'])
+                : fn (FormSubmission $submission) => $this->displayValue($submission->payload[$field['key']] ?? null),
         ], (array) ($form->blueprint['fields'] ?? []));
 
         return [
@@ -148,6 +179,32 @@ final class FormSubmissionsController
                 ])->render(),
             ],
         ];
+    }
+
+    /**
+     * Lien signé (30 min) et permissionné vers `downloadFile()` (spec 14 §5).
+     * Signature courte volontaire : une soumission consultée se télécharge
+     * dans la foulée, pas des jours plus tard — contrairement au lien de
+     * préview de thème (30 min également, même raisonnement).
+     */
+    private function fileLink(Form $form, FormSubmission $submission, string $fieldKey): string
+    {
+        /** @var array{original_name?: string, stored_path?: string}|null $reference */
+        $reference = $submission->payload[$fieldKey] ?? null;
+
+        if (! is_array($reference) || ! isset($reference['stored_path'])) {
+            return __('baobab::admin.form_submissions.no_file');
+        }
+
+        $url = URL::temporarySignedRoute('admin.forms.submissions.files.show', now()->addMinutes(30), [
+            'form' => $form->id,
+            'submission' => $submission->id,
+            'field' => $fieldKey,
+        ]);
+
+        $name = e($reference['original_name'] ?? basename($reference['stored_path']));
+
+        return "<a href=\"{$url}\" class=\"underline\">{$name}</a>";
     }
 
     private function displayValue(mixed $value): string
@@ -192,7 +249,10 @@ final class FormSubmissionsController
         return array_map(fn (array $field): array => [
             'key' => $field['key'],
             'label' => (string) ($field['label'] ?? $field['key']),
-            'value' => $this->displayValue($submission->payload[$field['key']] ?? null),
+            'raw' => $field['type'] === 'file',
+            'value' => $field['type'] === 'file'
+                ? $this->fileLink($form, $submission, $field['key'])
+                : $this->displayValue($submission->payload[$field['key']] ?? null),
         ], $fields);
     }
 }

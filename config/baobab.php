@@ -229,6 +229,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Formulaires — pièces jointes (spec 14 §5, M8 point 6 Pass C3)
+    |--------------------------------------------------------------------------
+    |
+    | disk : jamais le disque de `media.disk` (public) — spec 14 §5 exige un
+    | disque privé dédié aux soumissions, `local` par défaut (config/filesystems.php,
+    | storage/app/private). max_upload_size/allowed_mime_types : plafonds
+    | globaux, un champ `file` peut les resserrer via ses propres
+    | `options.max_size`/`options.mime_types`, jamais les élargir.
+    |
+    */
+    'forms' => [
+        'disk' => env('BAOBAB_FORMS_DISK', 'local'),
+        'max_upload_size' => (int) env('BAOBAB_FORMS_MAX_UPLOAD_SIZE', 10_485_760),
+        'allowed_mime_types' => [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Registre de polices (spec 18 §5, M8 point 8 Pass B)
     |--------------------------------------------------------------------------
     |

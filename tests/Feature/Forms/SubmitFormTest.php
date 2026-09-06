@@ -5,6 +5,8 @@ use Baobab\Forms\Actions\SaveForm;
 use Baobab\Forms\Actions\SubmitForm;
 use Baobab\Forms\FormSubmissionStatus;
 use Baobab\Forms\Models\FormSubmission;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 it('validates the payload against the blueprint and persists the submission', function () {
@@ -107,6 +109,81 @@ it('resolves the spec 14 §2.2 aliases (number/checkbox/checkboxes) to their Fie
 
     expect(fn () => app(SubmitForm::class)($form, ['age' => 34, 'interests' => ['cobol']]))
         ->toThrow(ValidationException::class);
+});
+
+it('stores an uploaded file on the private disk and replaces it with a structured reference (spec 14 §5)', function () {
+    Storage::fake('local');
+
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'cv', 'type' => 'file', 'required' => true]],
+    ]);
+
+    $file = UploadedFile::fake()->create('cv.pdf', 100, 'application/pdf');
+
+    $submission = app(SubmitForm::class)($form, ['cv' => $file]);
+
+    expect($submission->payload['cv'])->toBeArray()
+        ->and($submission->payload['cv']['original_name'])->toBe('cv.pdf')
+        ->and($submission->payload['cv']['mime_type'])->toBe('application/pdf')
+        ->and($submission->payload['cv']['stored_path'])->toBeString();
+
+    Storage::disk('local')->assertExists($submission->payload['cv']['stored_path']);
+});
+
+it('rejects a file whose real content type is not in the allowed list', function () {
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'cv', 'type' => 'file', 'required' => true]],
+    ]);
+
+    $file = UploadedFile::fake()->create('script.exe', 10, 'application/x-msdownload');
+
+    expect(fn () => app(SubmitForm::class)($form, ['cv' => $file]))->toThrow(ValidationException::class);
+});
+
+it('rejects a file larger than the configured maximum', function () {
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'cv', 'type' => 'file', 'required' => true]],
+    ]);
+
+    config(['baobab.forms.max_upload_size' => 1024]);
+    $file = UploadedFile::fake()->create('cv.pdf', 5, 'application/pdf');
+
+    expect(fn () => app(SubmitForm::class)($form, ['cv' => $file]))->toThrow(ValidationException::class);
+});
+
+it('honors a per-field mime_types override tighter than the global default', function () {
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'cv', 'type' => 'file', 'required' => true, 'options' => ['mime_types' => ['application/pdf']]]],
+    ]);
+
+    $file = UploadedFile::fake()->create('photo.png', 10, 'image/png');
+
+    expect(fn () => app(SubmitForm::class)($form, ['cv' => $file]))->toThrow(ValidationException::class);
+});
+
+it('never writes the file to disk when the form opts out of storage (§6.3)', function () {
+    Storage::fake('local');
+
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'cv', 'type' => 'file', 'required' => true]],
+        'store_submissions' => false,
+    ]);
+
+    $file = UploadedFile::fake()->create('cv.pdf', 100, 'application/pdf');
+
+    app(SubmitForm::class)($form, ['cv' => $file]);
+
+    expect(Storage::disk('local')->allFiles('form-submissions'))->toBeEmpty();
 });
 
 it('lets baobab.form.validating augment the rules before validation', function () {

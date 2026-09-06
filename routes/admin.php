@@ -205,6 +205,11 @@ Route::prefix('forms/{form}/submissions')
             ->middleware('can:baobab.system.forms.submissions_view')->name('mark-status');
         Route::delete('/{submission}', [FormSubmissionsController::class, 'destroy'])
             ->middleware('can:baobab.system.forms.submissions_delete')->name('destroy');
+        // Signée ET permissionnée (spec 14 §5) — aucune autre route du Core
+        // ne combine les deux (Pass C3, patron de signature seule :
+        // routes/theme-preview.php).
+        Route::get('/{submission}/files/{field}', [FormSubmissionsController::class, 'downloadFile'])
+            ->middleware(['can:baobab.system.forms.submissions_view', 'signed'])->name('files.show');
     });
 
 Route::middleware('can:baobab.system.themes.manage')

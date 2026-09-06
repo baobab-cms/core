@@ -36,3 +36,26 @@ it('only exports the rows the given query already filtered', function () {
     expect($csv)->toContain('spam@example.com')
         ->not->toContain('new@example.com');
 });
+
+it('exports the original filename for a file field, never the raw stored reference (Pass C3)', function () {
+    $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => [['key' => 'cv', 'type' => 'file']]]);
+    FormSubmission::create([
+        'form_id' => $form->id, 'form_version' => 1,
+        'payload' => ['cv' => ['original_name' => 'cv.pdf', 'stored_path' => 'form-submissions/2026/09/x.pdf']],
+        'status' => 'new',
+    ]);
+
+    $csv = app(ExportFormSubmissionsCsv::class)($form, FormSubmission::query()->where('form_id', $form->id));
+
+    expect($csv)->toContain('cv.pdf')
+        ->not->toContain('form-submissions/2026/09/x.pdf');
+});
+
+it('exports an empty cell for a file field never filled in', function () {
+    $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => [['key' => 'cv', 'type' => 'file', 'required' => false]]]);
+    FormSubmission::create(['form_id' => $form->id, 'form_version' => 1, 'payload' => [], 'status' => 'new']);
+
+    $csv = app(ExportFormSubmissionsCsv::class)($form, FormSubmission::query()->where('form_id', $form->id));
+
+    expect($csv)->toContain("cv,status,submitted_at\n,new,");
+});

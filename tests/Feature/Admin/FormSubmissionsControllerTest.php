@@ -7,6 +7,9 @@ use Baobab\Forms\Actions\SubmitForm;
 use Baobab\Forms\FormSubmissionStatus;
 use Baobab\Forms\Models\FormSubmission;
 use Baobab\Users\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 /**
  * @param  list<string>  $permissions
@@ -115,6 +118,53 @@ it('denies delete without baobab.system.forms.submissions_delete', function () {
     $this->actingAs($user, 'baobab')
         ->delete(route('admin.forms.submissions.destroy', ['form' => $form->id, 'submission' => $submission->id]))
         ->assertForbidden();
+});
+
+it('downloads the attached file through a signed link, for an actor with submissions_view (spec 14 §5, Pass C3)', function () {
+    Storage::fake('local');
+    $user = submissionsActor(['baobab.system.forms.submissions_view']);
+    $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => [['key' => 'cv', 'type' => 'file']]]);
+    $submission = app(SubmitForm::class)($form, ['cv' => UploadedFile::fake()->create('cv.pdf', 10, 'application/pdf')]);
+
+    $url = URL::temporarySignedRoute('admin.forms.submissions.files.show', now()->addMinutes(30), [
+        'form' => $form->id, 'submission' => $submission->id, 'field' => 'cv',
+    ]);
+
+    $this->actingAs($user, 'baobab')->get($url)->assertOk();
+});
+
+it('rejects an unsigned request to the file download route', function () {
+    $user = submissionsActor(['baobab.system.forms.submissions_view']);
+    $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => [['key' => 'cv', 'type' => 'file']]]);
+    $submission = FormSubmission::create(['form_id' => $form->id, 'form_version' => 1, 'payload' => [], 'status' => 'new']);
+
+    $this->actingAs($user, 'baobab')
+        ->get(route('admin.forms.submissions.files.show', ['form' => $form->id, 'submission' => $submission->id, 'field' => 'cv']))
+        ->assertForbidden();
+});
+
+it('denies a validly signed download link without baobab.system.forms.submissions_view', function () {
+    $user = submissionsActor([]);
+    $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => [['key' => 'cv', 'type' => 'file']]]);
+    $submission = FormSubmission::create(['form_id' => $form->id, 'form_version' => 1, 'payload' => [], 'status' => 'new']);
+
+    $url = URL::temporarySignedRoute('admin.forms.submissions.files.show', now()->addMinutes(30), [
+        'form' => $form->id, 'submission' => $submission->id, 'field' => 'cv',
+    ]);
+
+    $this->actingAs($user, 'baobab')->get($url)->assertForbidden();
+});
+
+it('returns 404 for a field that carries no file reference', function () {
+    $user = submissionsActor(['baobab.system.forms.submissions_view']);
+    $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => [['key' => 'email', 'type' => 'email']]]);
+    $submission = FormSubmission::create(['form_id' => $form->id, 'form_version' => 1, 'payload' => ['email' => 'jane@example.com'], 'status' => 'new']);
+
+    $url = URL::temporarySignedRoute('admin.forms.submissions.files.show', now()->addMinutes(30), [
+        'form' => $form->id, 'submission' => $submission->id, 'field' => 'email',
+    ]);
+
+    $this->actingAs($user, 'baobab')->get($url)->assertNotFound();
 });
 
 it('deletes a submission', function () {
