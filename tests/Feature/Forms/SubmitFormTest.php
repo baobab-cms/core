@@ -5,6 +5,7 @@ use Baobab\Forms\Actions\SaveForm;
 use Baobab\Forms\Actions\SubmitForm;
 use Baobab\Forms\FormSubmissionStatus;
 use Baobab\Forms\Models\FormSubmission;
+use Baobab\Forms\Support\FormSpamGuard;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -184,6 +185,35 @@ it('never writes the file to disk when the form opts out of storage (§6.3)', fu
     app(SubmitForm::class)($form, ['cv' => $file]);
 
     expect(Storage::disk('local')->allFiles('form-submissions'))->toBeEmpty();
+});
+
+it('marks the submission as spam rather than rejecting it when the honeypot is filled (spec 14 §7.1-7.2)', function () {
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'email', 'type' => 'email', 'required' => true]],
+    ]);
+
+    $submission = app(SubmitForm::class)($form, [
+        'email' => 'jane@example.com',
+        FormSpamGuard::HONEYPOT_FIELD => 'i am a bot',
+    ]);
+
+    expect($submission->exists)->toBeTrue()
+        ->and($submission->status)->toBe(FormSubmissionStatus::Spam)
+        ->and($submission->payload)->toBe(['email' => 'jane@example.com']);
+});
+
+it('marks the submission as spam when it arrives faster than the render token allows', function () {
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact', 'title' => 'Contact', 'fields' => [],
+    ]);
+
+    $submission = app(SubmitForm::class)($form, [
+        FormSpamGuard::TIMESTAMP_FIELD => FormSpamGuard::renderToken(),
+    ]);
+
+    expect($submission->status)->toBe(FormSubmissionStatus::Spam);
 });
 
 it('lets baobab.form.validating augment the rules before validation', function () {

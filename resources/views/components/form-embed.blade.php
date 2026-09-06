@@ -23,6 +23,19 @@
                  jamais un `enctype=""` vide. --}}
             <x-baobab::form method="POST" :action="route('baobab.forms.submit', ['form' => $form->slug])" :enctype="$hasFileField ? 'multipart/form-data' : null">
                 <input type="hidden" name="_form_slug" value="{{ $slug }}">
+                <input type="hidden" name="_form_rt" value="{{ $renderToken }}">
+
+                {{-- Honeypot (spec 14 §7.1, Pass D1) : un champ bien réel,
+                     jamais `type="hidden"` (repéré et ignoré par les robots
+                     qui connaissent ce piège précis) — dissimulé visuellement
+                     hors écran, retiré de l'ordre de tabulation et de l'arbre
+                     d'accessibilité pour qu'aucun visiteur, voyant ou non, ne
+                     puisse jamais le remplir par erreur. Nom sans rapport
+                     avec le champ `email` du formulaire, pour ne pas prêter à
+                     confusion avec de l'auto-remplissage de navigateur. --}}
+                <div style="position:absolute; left:-9999px" aria-hidden="true">
+                    <input type="text" name="_form_hp" tabindex="-1" autocomplete="off">
+                </div>
 
                 <x-baobab::forms.fields :fields="$fields" required />
 

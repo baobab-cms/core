@@ -1,7 +1,9 @@
 <?php
 
 use Baobab\Forms\Actions\SaveForm;
+use Baobab\Forms\FormSubmissionStatus;
 use Baobab\Forms\Models\FormSubmission;
+use Baobab\Forms\Support\FormSpamGuard;
 
 it('submits a form, persists it and flashes the default confirmation message', function () {
     $form = app(SaveForm::class)(null, [
@@ -27,6 +29,26 @@ it('submits a form, persists it and flashes the default confirmation message', f
 
     expect(FormSubmission::count())->toBe(1)
         ->and(FormSubmission::first()->payload)->toBe(['full_name' => 'Jane Doe', 'email' => 'jane@example.com']);
+});
+
+it('accepts and redirects normally even when the submission is caught by the anti-spam guard (Pass D1)', function () {
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'email', 'type' => 'email', 'required' => true]],
+    ]);
+
+    $response = $this->post(route('baobab.forms.submit', ['form' => $form->slug]), [
+        '_form_slug' => 'contact',
+        'email' => 'jane@example.com',
+        FormSpamGuard::HONEYPOT_FIELD => 'i am a bot',
+    ]);
+
+    // Le robot ne doit jamais voir la différence : même redirection, même
+    // message de confirmation qu'une soumission légitime (spec 14 §7.2).
+    $response->assertRedirect()->assertSessionHas('baobab_form_confirmation');
+
+    expect(FormSubmission::first()->status)->toBe(FormSubmissionStatus::Spam);
 });
 
 it('flashes the configured confirmation message when the form sets one', function () {

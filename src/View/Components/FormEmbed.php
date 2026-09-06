@@ -6,6 +6,7 @@ namespace Baobab\View\Components;
 
 use Baobab\Forms\Models\Form;
 use Baobab\Forms\Support\FormFieldPresenter;
+use Baobab\Forms\Support\FormSpamGuard;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
@@ -36,6 +37,11 @@ use Illuminate\View\Component;
  *
  * `hasFileField` (Pass C3) pilote l'`enctype` du `<form>` posé par la vue —
  * calculé une fois ici plutôt que dans la vue, qui ne fait qu'afficher.
+ *
+ * `renderToken` (Pass D1) horodate ce rendu précis pour le piège temporel de
+ * `FormSpamGuard` : recalculé à chaque exécution du constructeur, donc à
+ * chaque swap de fragment (Pass C2) — le minuteur anti-spam repart bien de
+ * zéro à chaque nouveau rendu, jamais du rendu initial de la page.
  */
 final class FormEmbed extends Component
 {
@@ -53,6 +59,8 @@ final class FormEmbed extends Component
 
     public string $mode;
 
+    public string $renderToken = '';
+
     public function __construct(public string $slug, string $mode = 'redirect')
     {
         $this->mode = in_array($mode, self::MODES, true) ? $mode : 'redirect';
@@ -65,6 +73,7 @@ final class FormEmbed extends Component
 
         $this->fields = FormFieldPresenter::present((array) ($this->form->blueprint['fields'] ?? []));
         $this->hasFileField = collect($this->fields)->contains(fn (array $field): bool => $field['type'] === 'file');
+        $this->renderToken = FormSpamGuard::renderToken();
 
         /** @var array{slug?: string, message?: string}|null $confirmation */
         $confirmation = session('baobab_form_confirmation');

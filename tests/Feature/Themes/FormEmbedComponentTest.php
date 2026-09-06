@@ -2,6 +2,7 @@
 
 use Baobab\Forms\Actions\SaveForm;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Str;
 use Illuminate\Support\ViewErrorBag;
 
 /**
@@ -103,4 +104,24 @@ it('omits enctype when the form has no file field', function () {
     app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => [['key' => 'email', 'type' => 'email']]]);
 
     expect(Blade::render('<x-baobab::form-embed slug="contact" />'))->not->toContain('enctype');
+});
+
+it('renders the honeypot field and a render token for the anti-spam guard (Pass D1)', function () {
+    app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
+
+    $html = Blade::render('<x-baobab::form-embed slug="contact" />');
+
+    expect($html)->toContain('name="_form_hp"')
+        ->toContain('tabindex="-1"')
+        ->toContain('name="_form_rt"');
+});
+
+it('renders a different render token on every render, so the fragment mode resets the timer (Pass C2/D1)', function () {
+    app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
+
+    $first = Blade::render('<x-baobab::form-embed slug="contact" />');
+    $second = Blade::render('<x-baobab::form-embed slug="contact" />');
+
+    expect(Str::match('/name="_form_rt" value="([^"]+)"/', $first))
+        ->not->toBe(Str::match('/name="_form_rt" value="([^"]+)"/', $second));
 });

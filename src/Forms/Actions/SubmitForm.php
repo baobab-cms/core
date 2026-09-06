@@ -10,6 +10,7 @@ use Baobab\Forms\Models\Form;
 use Baobab\Forms\Models\FormSubmission;
 use Baobab\Forms\Support\FormEntryRules;
 use Baobab\Forms\Support\FormFileStorage;
+use Baobab\Forms\Support\FormSpamGuard;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 
@@ -19,11 +20,13 @@ use Illuminate\Support\Facades\Validator;
  * (spec 14 ne le demande à aucun endroit, contrairement à l'export ou la
  * suppression en §6.2).
  *
- * Ce que cette Action ne fait **pas**, volontairement, par découpage de
- * passe : l'anti-spam (Pass D — honeypot, piège temporel, captcha) et le
- * pipeline de suites (Pass E — e-mail, notification, webhook, hook
- * `baobab.form.submitted`). Elle est le socle sur lequel les deux se
- * brancheront, pas leur remplacement.
+ * Anti-spam niveau 1 câblé depuis la Pass D1 (`FormSpamGuard`, honeypot +
+ * piège temporel) : marque, ne rejette jamais (spec 14 §7.2) — une
+ * soumission suspecte suit exactement le même chemin qu'une légitime,
+ * seul `status` change, pour ne jamais laisser un robot deviner qu'il a été
+ * repéré. Ce que cette Action ne fait **pas encore**, volontairement, par
+ * découpage de passe : le captcha (Pass D3) et le pipeline de suites
+ * (Pass E — e-mail, notification, webhook, hook `baobab.form.submitted`).
  *
  * Un champ `file` validé arrive ici comme un `UploadedFile` — jamais laissé
  * tel quel dans `payload` : le cast `array` d'Eloquent encode en JSON **dès
@@ -58,6 +61,8 @@ final class SubmitForm
             ? now()
             : null;
 
+        $status = FormSpamGuard::isTriggered($input) ? FormSubmissionStatus::Spam : FormSubmissionStatus::New;
+
         $submission = new FormSubmission([
             'form_id' => $form->id,
             'form_version' => $form->version,
@@ -65,7 +70,7 @@ final class SubmitForm
             'payload' => $validated,
             'consent_at' => $consentAt,
             'ip' => $form->retain_ip ? $ip : null,
-            'status' => FormSubmissionStatus::New->value,
+            'status' => $status->value,
         ]);
 
         if ($form->store_submissions) {
