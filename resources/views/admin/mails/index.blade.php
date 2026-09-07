@@ -5,6 +5,11 @@
 @section('content')
     <x-baobab::page :title="__('baobab::admin.mails.title')">
         <x-slot:actions>
+            @can('baobab.system.mail.configure')
+                <x-baobab::button :href="route('admin.mails.settings')" variant="secondary">
+                    {{ __('baobab::admin.mail_settings.title') }}
+                </x-baobab::button>
+            @endcan
             @can('baobab.system.mail.log_view')
                 <x-baobab::button :href="route('admin.mails.log')" variant="secondary">
                     {{ __('baobab::admin.mail_log.title') }}

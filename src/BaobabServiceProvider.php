@@ -98,6 +98,7 @@ use Baobab\Install\InstallPaths;
 use Baobab\Install\InstallSession;
 use Baobab\Install\InstallToken;
 use Baobab\Mail\Mailer;
+use Baobab\Mail\Support\MailTransportConfigurator;
 use Baobab\Media\Actions\SyncMediaUsagesFromEntry;
 use Baobab\Media\Conversions\PresetRegistry;
 use Baobab\Menus\Actions\InvalidateMenuCacheForEntry;
@@ -314,6 +315,14 @@ class BaobabServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Doit être en boot(), jamais en register() : Eloquent n'a pas
+        // encore de résolveur de connexion tant que le register() de tous
+        // les providers n'est pas terminé (posé par le boot() du
+        // DatabaseServiceProvider natif) — un appel ici trop tôt casse
+        // toute l'application (« Call to a member function connection() on
+        // null »), constaté en recette le 7 septembre 2026.
+        $this->app->make(MailTransportConfigurator::class)->apply();
+
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
         $this->registerInstallRoutes();

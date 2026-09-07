@@ -17,6 +17,7 @@ use Baobab\Admin\Demo\Http\Controllers\DemoContentController;
 use Baobab\Admin\Forms\Http\Controllers\FormsController;
 use Baobab\Admin\Forms\Http\Controllers\FormSubmissionsController;
 use Baobab\Admin\Mail\Http\Controllers\MailLogController;
+use Baobab\Admin\Mail\Http\Controllers\MailSettingsController;
 use Baobab\Admin\Mail\Http\Controllers\MailTemplatesController;
 use Baobab\Admin\Media\Http\Controllers\MediaController;
 use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
@@ -391,6 +392,29 @@ Route::prefix('content/{contentType}')
         Route::post('/{entry}/lock/heartbeat', [ContentController::class, 'heartbeat'])->name('lock.heartbeat');
         Route::post('/{entry}/lock/release', [ContentController::class, 'releaseLock'])->name('lock.release');
         Route::post('/{entry}/lock/take-over', [ContentController::class, 'takeOverLock'])->name('lock.take-over');
+    });
+
+// Réglages de transport (spec 13 §2.1, suivi n° 187). Groupe séparé, même
+// patron que `.log_view`/`.templates` : configurer le SMTP est un pouvoir
+// distinct de personnaliser un template ou consulter le journal.
+//
+// Enregistré **avant** le groupe des templates ci-dessous, malgré le même
+// préfixe `mails` : `/mails/settings/test` correspondrait sinon d'abord au
+// motif générique `/mails/{key}/test` de `MailTemplatesController::test()`
+// (Laravel matche dans l'ordre d'enregistrement), détourné vers le mauvais
+// contrôleur avec une permission différente — même piège que le n° 280,
+// cette fois entre deux groupes du Core plutôt qu'avec `routes/web.php`.
+//
+// À `mails/settings` et non à l'`admin/system/mail` de la spec — même
+// raison, même précédent que `mails/log` (suivi n° 197) : aucun
+// `admin/system/*` n'existe dans le Core.
+Route::middleware('can:baobab.system.mail.configure')
+    ->prefix('mails')
+    ->name('mails.')
+    ->group(function (): void {
+        Route::get('/settings', [MailSettingsController::class, 'index'])->name('settings');
+        Route::put('/settings', [MailSettingsController::class, 'update'])->name('settings.update');
+        Route::post('/settings/test', [MailSettingsController::class, 'test'])->name('settings.test');
     });
 
 // Personnalisation des templates d'e-mails (spec 13 §3.2-3.4, M8 point 7,
