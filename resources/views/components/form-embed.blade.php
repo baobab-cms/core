@@ -39,6 +39,28 @@
 
                 <x-baobab::forms.fields :fields="$fields" required />
 
+                {{-- Captcha (spec 14 §7.3, Pass D3), optionnel par formulaire
+                     — absent tant que `$captcha` est `null` (provider `none`
+                     ou clé de site manquante, `FormEmbed::resolveCaptcha()`).
+                     Le conteneur porte la classe que le script du fournisseur
+                     scrute pour s'y monter (`data-sitekey`) ; le script
+                     externe lui-même est chargé une seule fois par provider
+                     (`@once` nommé), jamais empaqueté via Vite — les deux
+                     fournisseurs déconseillent explicitement de le figer en
+                     dépendance, leur défense anti-abus évolue côté CDN. --}}
+                @if ($captcha !== null)
+                    <div class="mb-4">
+                        <div class="{{ $captcha['widget_class'] }}" data-sitekey="{{ $captcha['site_key'] }}"></div>
+                        @error('captcha')
+                            <p class="mt-1 text-xs text-danger">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    @once($captcha['provider'])
+                        <script src="{{ $captcha['script_src'] }}" async defer></script>
+                    @endonce
+                @endif
+
                 <x-baobab::button type="submit" variant="primary">{{ __('baobab::rendering.form_submit_action') }}</x-baobab::button>
             </x-baobab::form>
         @endif

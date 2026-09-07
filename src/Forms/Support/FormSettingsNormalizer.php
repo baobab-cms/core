@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Baobab\Forms\Support;
 
+use Baobab\Forms\Captcha\CaptchaProviders;
+
 /**
  * Normalisation des réglages de suites (spec 14 §8) et d'anti-spam (§7) saisis
  * à l'écran `admin/forms/{form}/edit` (M8 point 6, Pass B3) — stockés dans
@@ -15,8 +17,7 @@ namespace Baobab\Forms\Support;
  * **aucun réglage ici** : le premier est toujours actif (§7.1, « coût
  * utilisateur : zéro »), le second se câble par un module, pas par un
  * formulaire. Seul le niveau 3 (captcha, optionnel par formulaire) a une
- * configuration. La Pass D branchera l'exécution réelle sur ce que cette
- * classe produit — aucune vérification de captcha, aucun envoi n'a lieu ici.
+ * configuration, exécutée réellement depuis la Pass D3 (`CaptchaProviders`).
  *
  * `confirmation.message` ajouté en Pass C1 (spec 14 §4, « message de
  * confirmation configurable ») : chaîne vide ou absente → le contrôleur
@@ -25,18 +26,33 @@ namespace Baobab\Forms\Support;
  */
 final class FormSettingsNormalizer
 {
-    /** @var list<string> */
-    public const CAPTCHA_PROVIDERS = ['none', 'turnstile', 'hcaptcha'];
+    /**
+     * Liste dérivée de `CaptchaProviders::keys()` (Pass D3) plutôt qu'un
+     * tableau fermé : un module qui enregistre un provider via
+     * `Hook::modify('baobab.forms.captcha.providers', ...)` doit pouvoir le
+     * sélectionner ici, sinon la promesse d'extensibilité de la spec §11
+     * décision 2 ne tiendrait que côté vérification, jamais côté réglage.
+     *
+     * @return list<string>
+     */
+    public static function captchaProviders(): array
+    {
+        return ['none', ...CaptchaProviders::keys()];
+    }
 
     /**
      * @param  array<string, mixed>  $input
+     * @param  string|null  $existingCaptchaSecretKey  Valeur déjà enregistrée
+     *                                                 (Pass D3) : un champ laissé vide à l'édition conserve le
+     *                                                 secret existant plutôt que de l'effacer — jamais réaffiché en
+     *                                                 clair après enregistrement (patron `WebhookSubscriptionsController::validatedForUpdate()`).
      * @return array<string, mixed>
      */
-    public static function normalize(array $input): array
+    public static function normalize(array $input, ?string $existingCaptchaSecretKey = null): array
     {
         $provider = (string) ($input['captcha_provider'] ?? 'none');
 
-        if (! in_array($provider, self::CAPTCHA_PROVIDERS, true)) {
+        if (! in_array($provider, self::captchaProviders(), true)) {
             $provider = 'none';
         }
 
@@ -63,7 +79,9 @@ final class FormSettingsNormalizer
                 'captcha' => [
                     'provider' => $provider,
                     'site_key' => $provider === 'none' ? null : self::nullableString($input['captcha_site_key'] ?? null),
-                    'secret_key' => $provider === 'none' ? null : self::nullableString($input['captcha_secret_key'] ?? null),
+                    'secret_key' => $provider === 'none'
+                        ? null
+                        : (self::nullableString($input['captcha_secret_key'] ?? null) ?? $existingCaptchaSecretKey),
                 ],
             ],
         ];

@@ -7,6 +7,7 @@ use Baobab\Forms\FormSubmissionStatus;
 use Baobab\Forms\Models\FormSubmission;
 use Baobab\Forms\Support\FormSpamGuard;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -247,6 +248,60 @@ it('lets baobab.form.spam_checking clear a level-1 verdict, since it is a normal
     ]);
 
     expect($submission->status)->toBe(FormSubmissionStatus::New);
+});
+
+it('rejects the submission when a required captcha token is missing (spec 14 §7.3, Pass D3)', function () {
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [],
+        'settings' => ['anti_spam' => ['captcha' => ['provider' => 'turnstile', 'site_key' => '0x123', 'secret_key' => 'secret']]],
+    ]);
+
+    expect(fn () => app(SubmitForm::class)($form, []))->toThrow(ValidationException::class);
+    expect(FormSubmission::count())->toBe(0);
+});
+
+it('rejects the submission when the captcha provider itself refuses the token', function () {
+    Http::fake(['https://challenges.cloudflare.com/turnstile/v0/siteverify' => Http::response(['success' => false])]);
+
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [],
+        'settings' => ['anti_spam' => ['captcha' => ['provider' => 'turnstile', 'site_key' => '0x123', 'secret_key' => 'secret']]],
+    ]);
+
+    expect(fn () => app(SubmitForm::class)($form, ['cf-turnstile-response' => 'bad-token']))
+        ->toThrow(ValidationException::class);
+});
+
+it('accepts the submission once the correct provider confirms the token, reading its own response field name', function () {
+    Http::fake(['https://hcaptcha.com/siteverify' => Http::response(['success' => true])]);
+
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [['key' => 'email', 'type' => 'email', 'required' => true]],
+        'settings' => ['anti_spam' => ['captcha' => ['provider' => 'hcaptcha', 'site_key' => '0x123', 'secret_key' => 'secret']]],
+    ]);
+
+    $submission = app(SubmitForm::class)($form, [
+        'email' => 'jane@example.com',
+        'h-captcha-response' => 'good-token',
+    ]);
+
+    expect($submission->exists)->toBeTrue();
+});
+
+it('never calls out to a captcha provider when the form has none configured', function () {
+    Http::fake();
+
+    $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
+
+    app(SubmitForm::class)($form, []);
+
+    Http::assertNothingSent();
 });
 
 it('lets baobab.form.validating augment the rules before validation', function () {

@@ -8,6 +8,7 @@ use Baobab\Forms\Actions\DeleteForm;
 use Baobab\Forms\Actions\ExportForm;
 use Baobab\Forms\Actions\ImportForm;
 use Baobab\Forms\Actions\SaveForm;
+use Baobab\Forms\Captcha\CaptchaProviders;
 use Baobab\Forms\Exceptions\DuplicateFormSlugException;
 use Baobab\Forms\Exceptions\InvalidFormBlueprintException;
 use Baobab\Forms\Exceptions\InvalidFormExportException;
@@ -21,6 +22,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Str;
 
 /**
  * Écran « Formulaires » (spec 14 §3, M8 point 6). Shell (Pass B1) : liste,
@@ -82,6 +85,7 @@ final class FormsController
             'typesNeedingChoices' => FormFieldsNormalizer::TYPES_NEEDING_CHOICES,
             'previewFields' => $this->previewFields($form),
             'settingsForm' => $this->settingsForm($form),
+            'captchaProviderOptions' => $this->captchaProviderOptions(),
         ]);
     }
 
@@ -128,16 +132,18 @@ final class FormsController
             'suites.acknowledgement.enabled' => ['nullable', 'boolean'],
             'suites.admin_notification.enabled' => ['nullable', 'boolean'],
             'suites.webhook.enabled' => ['nullable', 'boolean'],
-            'captcha_provider' => ['nullable', 'string', 'in:'.implode(',', FormSettingsNormalizer::CAPTCHA_PROVIDERS)],
+            'captcha_provider' => ['nullable', 'string', 'in:'.implode(',', FormSettingsNormalizer::captchaProviders())],
             'captcha_site_key' => ['nullable', 'string', 'max:255'],
             'captcha_secret_key' => ['nullable', 'string', 'max:255'],
         ]);
+
+        $existingCaptchaSecretKey = (string) ($form->settings['anti_spam']['captcha']['secret_key'] ?? '');
 
         $action($form, [
             'title' => $form->title,
             'slug' => $form->slug,
             'fields' => (array) ($form->blueprint['fields'] ?? []),
-            'settings' => FormSettingsNormalizer::normalize($validated),
+            'settings' => FormSettingsNormalizer::normalize($validated, $existingCaptchaSecretKey !== '' ? $existingCaptchaSecretKey : null),
             'store_submissions' => (bool) ($validated['store_submissions'] ?? false),
             'retention_days' => $validated['retention_days'],
             'retain_ip' => (bool) ($validated['retain_ip'] ?? false),
@@ -219,8 +225,36 @@ final class FormsController
             'webhook_enabled' => (bool) ($settings['suites']['webhook']['enabled'] ?? false),
             'captcha_provider' => (string) ($settings['anti_spam']['captcha']['provider'] ?? 'none'),
             'captcha_site_key' => (string) ($settings['anti_spam']['captcha']['site_key'] ?? ''),
-            'captcha_secret_key' => (string) ($settings['anti_spam']['captcha']['secret_key'] ?? ''),
+            // Jamais le secret déjà enregistré (Pass D3) — patron
+            // `WebhookSubscriptionsController` : le champ reste vide à
+            // l'édition, un envoi vide conserve la valeur existante
+            // (`FormSettingsNormalizer::normalize()`).
+            'captcha_secret_key' => '',
+            'has_captcha_secret_key' => (string) ($settings['anti_spam']['captcha']['secret_key'] ?? '') !== '',
         ];
+    }
+
+    /**
+     * Options du `<select>` de provider (spec 14 §7.3) — jamais dans la vue
+     * (patron CLAUDE.md, les vues admin n'exécutent aucune logique) :
+     * `none` d'abord, puis chaque provider enregistré (patron
+     * `CaptchaProviders`, Pass D3). Libellé traduit pour les deux fournis
+     * par le Core (`admin.forms.captcha_provider_{clé}`) ; un provider
+     * ajouté par un module sans traduction déclarée reçoit un libellé dérivé
+     * de sa clé plutôt que rien du tout.
+     *
+     * @return array<string, string>
+     */
+    private function captchaProviderOptions(): array
+    {
+        $options = ['none' => __('baobab::admin.forms.captcha_provider_none')];
+
+        foreach (CaptchaProviders::keys() as $key) {
+            $translationKey = 'baobab::admin.forms.captcha_provider_'.$key;
+            $options[$key] = Lang::has($translationKey) ? __($translationKey) : Str::headline($key);
+        }
+
+        return $options;
     }
 
     /**

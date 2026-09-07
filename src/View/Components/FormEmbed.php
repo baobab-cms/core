@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\View\Components;
 
+use Baobab\Forms\Captcha\CaptchaProviders;
 use Baobab\Forms\Models\Form;
 use Baobab\Forms\Support\FormFieldPresenter;
 use Baobab\Forms\Support\FormSpamGuard;
@@ -33,7 +34,7 @@ use Illuminate\View\Component;
  * pas par détection : sans JavaScript, l'écouteur ne s'attache jamais et le
  * navigateur poste nativement, exactement comme en mode `redirect`. Une
  * valeur inconnue retombe sur `redirect` plutôt que de faire confiance à une
- * valeur arbitraire (patron `FormSettingsNormalizer::CAPTCHA_PROVIDERS`).
+ * valeur arbitraire (patron `FormSettingsNormalizer::captchaProviders()`).
  *
  * `hasFileField` (Pass C3) pilote l'`enctype` du `<form>` posé par la vue —
  * calculé une fois ici plutôt que dans la vue, qui ne fait qu'afficher.
@@ -42,6 +43,12 @@ use Illuminate\View\Component;
  * `FormSpamGuard` : recalculé à chaque exécution du constructeur, donc à
  * chaque swap de fragment (Pass C2) — le minuteur anti-spam repart bien de
  * zéro à chaque nouveau rendu, jamais du rendu initial de la page.
+ *
+ * `captcha` (Pass D3) reste `null` tant que le provider est `none` **ou**
+ * que la clé de site n'est pas renseignée — un provider choisi sans clé ne
+ * doit jamais afficher un widget cassé, il se comporte comme si le captcha
+ * n'était pas activé (la vérification côté `SubmitForm` fait de même : sans
+ * clé secrète exploitable, elle refuse plutôt que d'accepter en silence).
  */
 final class FormEmbed extends Component
 {
@@ -61,6 +68,9 @@ final class FormEmbed extends Component
 
     public string $renderToken = '';
 
+    /** @var array{provider: string, site_key: string, widget_class: string, script_src: string}|null */
+    public ?array $captcha = null;
+
     public function __construct(public string $slug, string $mode = 'redirect')
     {
         $this->mode = in_array($mode, self::MODES, true) ? $mode : 'redirect';
@@ -74,6 +84,7 @@ final class FormEmbed extends Component
         $this->fields = FormFieldPresenter::present((array) ($this->form->blueprint['fields'] ?? []));
         $this->hasFileField = collect($this->fields)->contains(fn (array $field): bool => $field['type'] === 'file');
         $this->renderToken = FormSpamGuard::renderToken();
+        $this->captcha = $this->resolveCaptcha();
 
         /** @var array{slug?: string, message?: string}|null $confirmation */
         $confirmation = session('baobab_form_confirmation');
@@ -86,6 +97,38 @@ final class FormEmbed extends Component
     public function shouldRender(): bool
     {
         return $this->form !== null;
+    }
+
+    /**
+     * @return array{provider: string, site_key: string, widget_class: string, script_src: string}|null
+     */
+    private function resolveCaptcha(): ?array
+    {
+        if ($this->form === null) {
+            return null;
+        }
+
+        /** @var array<string, mixed> $settings */
+        $settings = $this->form->settings ?? [];
+        $provider = (string) ($settings['anti_spam']['captcha']['provider'] ?? 'none');
+        $siteKey = $settings['anti_spam']['captcha']['site_key'] ?? null;
+
+        if ($provider === 'none' || ! is_string($siteKey) || $siteKey === '') {
+            return null;
+        }
+
+        $definition = CaptchaProviders::definition($provider);
+
+        if ($definition === null) {
+            return null;
+        }
+
+        return [
+            'provider' => $provider,
+            'site_key' => $siteKey,
+            'widget_class' => $definition['widget_class'],
+            'script_src' => $definition['script_src'],
+        ];
     }
 
     public function render(): View

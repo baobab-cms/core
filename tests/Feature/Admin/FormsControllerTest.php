@@ -211,6 +211,42 @@ it('updates the settings without touching the existing fields', function () {
         ->and($form->version)->toBe(2);
 });
 
+it('keeps the existing captcha secret when the settings form is resubmitted with it left blank (Pass D3)', function () {
+    $user = formsActor(['baobab.system.forms.manage']);
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [],
+        'settings' => ['anti_spam' => ['captcha' => ['provider' => 'turnstile', 'site_key' => '0x123', 'secret_key' => '0xoriginal']]],
+    ]);
+
+    $this->actingAs($user, 'baobab')
+        ->put(route('admin.forms.settings.update', ['form' => $form->id]), [
+            'retention_days' => '365',
+            'captcha_provider' => 'turnstile',
+            'captcha_site_key' => '0x123',
+            'captcha_secret_key' => '',
+        ])
+        ->assertRedirect(route('admin.forms.edit', ['form' => $form->id]));
+
+    expect($form->fresh()->settings['anti_spam']['captcha']['secret_key'])->toBe('0xoriginal');
+});
+
+it('never redisplays the saved captcha secret in the settings screen (Pass D3)', function () {
+    $user = formsActor(['baobab.system.forms.manage']);
+    $form = app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [],
+        'settings' => ['anti_spam' => ['captcha' => ['provider' => 'turnstile', 'site_key' => '0x123', 'secret_key' => 'super-secret-value']]],
+    ]);
+
+    $this->actingAs($user, 'baobab')
+        ->get(route('admin.forms.edit', ['form' => $form->id]))
+        ->assertOk()
+        ->assertDontSee('super-secret-value');
+});
+
 it('rejects a settings update with an invalid retention', function () {
     $user = formsActor(['baobab.system.forms.manage']);
     $form = app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);

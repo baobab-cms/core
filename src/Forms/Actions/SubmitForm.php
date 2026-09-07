@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Baobab\Forms\Actions;
 
 use Baobab\Facades\Hook;
+use Baobab\Forms\Captcha\CaptchaProviders;
 use Baobab\Forms\FormSubmissionStatus;
 use Baobab\Forms\Models\Form;
 use Baobab\Forms\Models\FormSubmission;
@@ -13,6 +14,7 @@ use Baobab\Forms\Support\FormFileStorage;
 use Baobab\Forms\Support\FormSpamGuard;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Valide et enregistre une soumission (spec 14 §5-6). Action publique : pas
@@ -28,10 +30,20 @@ use Illuminate\Support\Facades\Validator;
  * le verdict du niveau 1 et peut l'étendre — un module de scoring externe
  * (Akismet…) vote après le socle silencieux, jamais à sa place ; aucun
  * réglage par formulaire ici non plus (spec §7.2), l'extension vit
- * entièrement côté module qui écoute le filtre. Ce que cette Action ne fait
- * **pas encore**, volontairement, par découpage de passe : le captcha
- * (Pass D3) et le pipeline de suites (Pass E — e-mail, notification,
- * webhook, hook `baobab.form.submitted`).
+ * entièrement côté module qui écoute le filtre.
+ *
+ * Niveau 3 (Pass D3, captcha) : logique différente des deux premiers — un
+ * échec **rejette** (`ValidationException`, exactement comme un champ
+ * invalide) plutôt que de marquer et continuer. Le captcha est un défi actif
+ * que l'utilisateur doit résoudre avant l'envoi, pas un signal passif ; le
+ * rejeter en silence laisserait passer une soumission jamais vérifiée,
+ * contrairement au niveau 1 où « marquer » suffit puisque rien n'était
+ * demandé au visiteur. Vérifié avant la construction de la soumission :
+ * inutile de fabriquer un `FormSubmission` qui ne sera jamais retourné.
+ *
+ * Ce que cette Action ne fait **pas encore**, volontairement, par
+ * découpage de passe : le pipeline de suites (Pass E — e-mail,
+ * notification, webhook, hook `baobab.form.submitted`).
  *
  * Un champ `file` validé arrive ici comme un `UploadedFile` — jamais laissé
  * tel quel dans `payload` : le cast `array` d'Eloquent encode en JSON **dès
@@ -60,6 +72,8 @@ final class SubmitForm
         $validated = Validator::make($input, $rules)->validate();
         $validated = $this->normalizeUploadedFiles($form, $validated);
 
+        $this->verifyCaptcha($form, $input, $ip);
+
         /** @var array<string, mixed>|null $consentField */
         $consentField = collect((array) ($form->blueprint['fields'] ?? []))->firstWhere('type', 'consent');
         $consentAt = $consentField !== null && (bool) ($validated[(string) $consentField['key']] ?? false)
@@ -85,6 +99,33 @@ final class SubmitForm
         }
 
         return $submission;
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function verifyCaptcha(Form $form, array $input, ?string $ip): void
+    {
+        /** @var array<string, mixed> $settings */
+        $settings = $form->settings;
+        $provider = (string) ($settings['anti_spam']['captcha']['provider'] ?? 'none');
+
+        if ($provider === 'none') {
+            return;
+        }
+
+        $definition = CaptchaProviders::definition($provider);
+        $secretKey = (string) ($settings['anti_spam']['captcha']['secret_key'] ?? '');
+        $token = $definition !== null ? (string) ($input[$definition['response_field']] ?? '') : '';
+
+        $verified = $definition !== null
+            && $secretKey !== ''
+            && $token !== ''
+            && (CaptchaProviders::resolve($provider)?->verify($token, $secretKey, $ip) ?? false);
+
+        if (! $verified) {
+            throw ValidationException::withMessages(['captcha' => [__('baobab::rendering.form_captcha_failed')]]);
+        }
     }
 
     /**

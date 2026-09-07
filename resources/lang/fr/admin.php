@@ -678,6 +678,7 @@ return [
         'captcha_provider_hcaptcha' => 'hCaptcha',
         'captcha_site_key' => 'Clé de site',
         'captcha_secret_key' => 'Clé secrète',
+        'captcha_secret_key_keep_help' => 'Laisser vide pour conserver la clé secrète actuelle.',
         'retain_ip' => 'Conserver l\'adresse IP des soumissions',
         'retention_title' => 'Rétention',
         'store_submissions' => 'Stocker les soumissions',

@@ -125,3 +125,39 @@ it('renders a different render token on every render, so the fragment mode reset
     expect(Str::match('/name="_form_rt" value="([^"]+)"/', $first))
         ->not->toBe(Str::match('/name="_form_rt" value="([^"]+)"/', $second));
 });
+
+it('renders the captcha widget and its script when the form has a provider and site key configured (Pass D3)', function () {
+    app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [],
+        'settings' => ['anti_spam' => ['captcha' => ['provider' => 'turnstile', 'site_key' => '0xsitekey', 'secret_key' => 'secret']]],
+    ]);
+
+    $html = Blade::render('<x-baobab::form-embed slug="contact" />');
+
+    expect($html)->toContain('class="cf-turnstile"')
+        ->toContain('data-sitekey="0xsitekey"')
+        ->toContain('src="https://challenges.cloudflare.com/turnstile/v0/api.js"');
+});
+
+it('renders no captcha widget when the provider is none', function () {
+    app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
+
+    $html = Blade::render('<x-baobab::form-embed slug="contact" />');
+
+    expect($html)->not->toContain('cf-turnstile')->not->toContain('h-captcha');
+});
+
+it('renders no captcha widget when a provider is set but the site key is missing, rather than a broken widget', function () {
+    app(SaveForm::class)(null, [
+        'slug' => 'contact',
+        'title' => 'Contact',
+        'fields' => [],
+        'settings' => ['anti_spam' => ['captcha' => ['provider' => 'turnstile', 'site_key' => null, 'secret_key' => 'secret']]],
+    ]);
+
+    $html = Blade::render('<x-baobab::form-embed slug="contact" />');
+
+    expect($html)->not->toContain('cf-turnstile');
+});

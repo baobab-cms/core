@@ -35,4 +35,5 @@ return [
     'form_confirmation_default' => 'Merci, votre message a bien été envoyé.',
     'form_consent_privacy_link' => 'Voir la politique de confidentialité',
     'form_submit_action' => 'Envoyer',
+    'form_captcha_failed' => 'Merci de confirmer que vous n\'êtes pas un robot.',
 ];

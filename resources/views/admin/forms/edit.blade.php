@@ -70,13 +70,12 @@
                 <p class="mb-4 text-xs text-muted">{{ __('baobab::admin.forms.anti_spam_hint') }}</p>
 
                 <div class="mb-4 space-y-2">
-                    <x-baobab::field.select name="captcha_provider" :label="__('baobab::admin.forms.captcha_provider')" :value="$settingsForm['captcha_provider']" :options="[
-                        'none' => __('baobab::admin.forms.captcha_provider_none'),
-                        'turnstile' => __('baobab::admin.forms.captcha_provider_turnstile'),
-                        'hcaptcha' => __('baobab::admin.forms.captcha_provider_hcaptcha'),
-                    ]" />
+                    <x-baobab::field.select name="captcha_provider" :label="__('baobab::admin.forms.captcha_provider')" :value="$settingsForm['captcha_provider']" :options="$captchaProviderOptions" />
                     <x-baobab::field.text name="captcha_site_key" :label="__('baobab::admin.forms.captcha_site_key')" :value="$settingsForm['captcha_site_key']" />
                     <x-baobab::field.text name="captcha_secret_key" :label="__('baobab::admin.forms.captcha_secret_key')" :value="$settingsForm['captcha_secret_key']" />
+                    @if ($settingsForm['has_captcha_secret_key'])
+                        <p class="-mt-3 text-xs text-muted">{{ __('baobab::admin.forms.captcha_secret_key_keep_help') }}</p>
+                    @endif
                     <x-baobab::field.checkbox name="retain_ip" :label="__('baobab::admin.forms.retain_ip')" :checked="$settingsForm['retain_ip']" />
                 </div>
 
