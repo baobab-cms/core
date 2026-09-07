@@ -910,6 +910,8 @@ return [
             'field_required' => 'Requis',
             'field_unique' => 'Unique',
             'field_indexed' => 'Indexé',
+            'field_searchable' => 'Cherchable',
+            'field_weight' => 'Poids',
             'field_choices' => 'Choix, un par ligne',
             'remove_field' => 'Retirer ce champ',
             'drag_to_reorder' => 'Glisser pour réordonner',

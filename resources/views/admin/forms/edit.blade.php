@@ -29,6 +29,7 @@
                         :extra-fields="true"
                         :show-unique-indexed="false"
                         :draggable="true"
+                        :show-searchable="false"
                     />
 
                     <div class="mt-4">

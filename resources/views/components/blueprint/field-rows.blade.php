@@ -18,6 +18,13 @@
     galerie n'ont que des boutons ↑/↓). Les trois défauts préservent le
     comportement des deux appelants existants à l'identique.
 
+    Étendu à nouveau (suivi n° 274, chantier 5) : `showSearchable` affiche
+    `searchable`/`weight` (spec 11 §3.1) — le schéma de blueprint et
+    `ContentsSearchSource` savaient déjà les lire, seul cet écran ne les
+    exposait pas. Patron `showUniqueIndexed` à l'identique : défaut `true`
+    (Content Types, Studio), le formulaire de Pass B2 l'éteint explicitement
+    — un champ de soumission n'entre jamais dans l'index Scout.
+
     Les primitives Alpine attendues dans cette portée (`addField`,
     `needsChoices`) sont définies localement par chaque appelant — patron
     dupliqué trois fois plutôt qu'un composant partagé, contrairement à ce
@@ -34,6 +41,7 @@
     @param bool    $extraFields      Ajoute label/placeholder/aide (spec 14 §2.2).
     @param bool    $showUniqueIndexed Affiche unique/indexed (défaut : oui, comme avant).
     @param bool    $draggable        Active le glisser-déposer pour réordonner.
+    @param bool    $showSearchable   Affiche searchable/weight (spec 11 §3.1, défaut : oui).
 --}}
 @props([
     'collection',
@@ -42,6 +50,7 @@
     'extraFields' => false,
     'showUniqueIndexed' => true,
     'draggable' => false,
+    'showSearchable' => true,
 ])
 
 <div>
@@ -112,6 +121,23 @@
                         <label class="flex items-center gap-1 text-xs text-muted">
                             <input type="checkbox" x-model="field.indexed" class="rounded border-border">
                             {{ __('baobab::admin.studio.entities.field_indexed') }}
+                        </label>
+                    @endif
+
+                    @if ($showSearchable)
+                        <label class="flex items-center gap-1 text-xs text-muted">
+                            <input type="checkbox" x-model="field.searchable" class="rounded border-border">
+                            {{ __('baobab::admin.studio.entities.field_searchable') }}
+                        </label>
+                        <label class="flex items-center gap-1 text-xs text-muted" x-show="field.searchable" x-cloak>
+                            {{ __('baobab::admin.studio.entities.field_weight') }}
+                            <input
+                                type="number"
+                                min="1"
+                                x-model.number="field.weight"
+                                aria-label="{{ __('baobab::admin.studio.entities.field_weight') }}"
+                                class="w-14 rounded-md border border-border px-1 py-0.5 text-sm text-foreground"
+                            >
                         </label>
                     @endif
 

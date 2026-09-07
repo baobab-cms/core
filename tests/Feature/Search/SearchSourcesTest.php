@@ -1,10 +1,12 @@
 <?php
 
 use Baobab\Access\Actions\GrantPermission;
+use Baobab\Modules\Models\Module;
 use Baobab\Search\Exceptions\UnknownSearchSourceException;
 use Baobab\Search\SearchRegistry;
 use Baobab\Search\Sources\ContentsSearchSource;
 use Baobab\Search\Sources\MediaSearchSource;
+use Baobab\Search\Sources\ModulesSearchSource;
 use Baobab\Search\Sources\UsersSearchSource;
 use Baobab\Users\Models\User;
 use Illuminate\Support\Facades\File;
@@ -33,12 +35,13 @@ function buildSearchableCar(): array
     ]);
 }
 
-it('has the three Core sources registered at boot', function () {
+it('has the four Core sources registered at boot', function () {
     $registry = app(SearchRegistry::class);
 
     expect($registry->has('core.contents'))->toBeTrue()
         ->and($registry->has('core.users'))->toBeTrue()
-        ->and($registry->has('core.media'))->toBeTrue();
+        ->and($registry->has('core.media'))->toBeTrue()
+        ->and($registry->has('core.modules'))->toBeTrue();
 });
 
 it('throws for an unknown source key', function () {
@@ -102,4 +105,40 @@ it('MediaSearchSource returns nothing without the viewAny permission', function 
     $results = app(MediaSearchSource::class)->query('anything', $actor);
 
     expect($results->items)->toBe([]);
+});
+
+function createFindableModule(string $suffix = ''): Module
+{
+    return Module::create([
+        'name' => "acme/findable-module{$suffix}",
+        'title' => "Findable Module{$suffix}",
+        'type' => 'module',
+        'version' => '1.0.0',
+        'provider' => "Acme\\FindableModule{$suffix}\\Providers\\ServiceProvider",
+        'source' => 'local',
+        'path' => "/tmp/acme-findable-module{$suffix}",
+        'manifest' => [],
+        'status' => 'active',
+    ]);
+}
+
+it('ModulesSearchSource returns nothing without the modules.manage permission', function () {
+    createFindableModule();
+    $actor = User::create(['name' => 'No Access', 'email' => 'modules-no-access@example.com', 'password' => 'secret']);
+
+    $results = app(ModulesSearchSource::class)->query('Findable', $actor);
+
+    expect($results->items)->toBe([]);
+});
+
+it('ModulesSearchSource matches by title or name for an actor with modules.manage', function () {
+    createFindableModule();
+    $actor = User::create(['name' => 'Admin', 'email' => 'modules-admin@example.com', 'password' => 'secret']);
+    app(GrantPermission::class)($actor, 'baobab.system.modules.manage');
+
+    $results = app(ModulesSearchSource::class)->query('Findable', $actor);
+
+    expect($results->items)->toHaveCount(1)
+        ->and($results->items[0]->title)->toBe('Findable Module')
+        ->and($results->items[0]->excerpt)->toBe('acme/findable-module');
 });
