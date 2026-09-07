@@ -184,6 +184,8 @@
                     },
                     fields: (entity.fields ?? []).map((field) => ({
                         ...field,
+                        searchable: field.searchable ?? false,
+                        weight: field.weight ?? 1,
                         _choicesText: (field.options?.choices ?? []).join('\n'),
                     })),
                     relations: entity.relations ?? [],
@@ -205,6 +207,8 @@
                             required: field.required,
                             unique: field.unique,
                             indexed: field.indexed,
+                            searchable: field.searchable,
+                            weight: field.weight,
                             options: {
                                 choices: (field._choicesText ?? '')
                                     .split('\n')
@@ -254,6 +258,8 @@
                         required: false,
                         unique: false,
                         indexed: false,
+                        searchable: false,
+                        weight: 1,
                         _choicesText: '',
                     });
                 },

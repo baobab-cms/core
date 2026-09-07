@@ -44,6 +44,8 @@ final class BlueprintFields
                 'required' => (bool) ($field['required'] ?? false),
                 'unique' => (bool) ($field['unique'] ?? false),
                 'indexed' => (bool) ($field['indexed'] ?? false),
+                'searchable' => (bool) ($field['searchable'] ?? false),
+                'weight' => max(1, (int) ($field['weight'] ?? 1)),
             ];
 
             // Seul `choices` est exposé par le formulaire (obligatoire pour

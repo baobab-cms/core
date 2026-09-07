@@ -101,6 +101,28 @@ it('builds a real content type through BuildContentType, with its table and its 
     expect(Schema::hasColumn('ct_gizmos', 'title'))->toBeTrue();
 });
 
+it('persists searchable/weight submitted through the field editor (suivi n° 274)', function (): void {
+    $this->actingAs(builderActor(), 'baobab')
+        ->post('/admin/content-types', builderPayload([
+            'key' => 'SearchableGadget',
+            'fields' => json_encode([
+                ['key' => 'title', 'type' => 'text', 'required' => true, 'unique' => false, 'indexed' => false, 'searchable' => true, 'weight' => 5],
+                ['key' => 'internal_note', 'type' => 'text', 'required' => false, 'unique' => false, 'indexed' => false, 'searchable' => false, 'weight' => 1],
+            ]),
+        ]))
+        ->assertRedirect();
+
+    $type = ContentType::where('key', 'SearchableGadget')->first();
+
+    expect($type)->not->toBeNull();
+
+    $fields = collect($type->blueprint['fields'])->keyBy('key');
+
+    expect($fields['title']['searchable'])->toBeTrue()
+        ->and($fields['title']['weight'])->toBe(5)
+        ->and($fields['internal_note']['searchable'])->toBeFalse();
+});
+
 it('refuses a key that is not English singular PascalCase, before reaching the action', function (): void {
     $this->actingAs(builderActor(), 'baobab')
         ->post('/admin/content-types', builderPayload(['key' => 'gizmo']))

@@ -113,6 +113,7 @@ use Baobab\Scheduler\SchedulerRegistrar;
 use Baobab\Search\SearchRegistry;
 use Baobab\Search\Sources\ContentsSearchSource;
 use Baobab\Search\Sources\MediaSearchSource;
+use Baobab\Search\Sources\ModulesSearchSource;
 use Baobab\Search\Sources\UsersSearchSource;
 use Baobab\Seo\Actions\CreateRedirect;
 use Baobab\Seo\Actions\DeleteRedirect;
@@ -2018,6 +2019,7 @@ class BaobabServiceProvider extends ServiceProvider
             ContentsSearchSource::class,
             UsersSearchSource::class,
             MediaSearchSource::class,
+            ModulesSearchSource::class,
         ] as $source) {
             $registry->register($source);
         }

@@ -94,8 +94,29 @@ it('saves an entity with its fields and relations', function () {
             'required' => false,
             'unique' => true,
             'indexed' => true,
+            'searchable' => false,
+            'weight' => 1,
         ])
         ->and($entities[1]['relations'][0]['target'])->toBe('entity:Brand');
+});
+
+it('saves searchable/weight submitted through the field editor (suivi n° 274)', function () {
+    $draft = studioEntitiesDraft();
+
+    postEntities($draft, studioEntitiesActor(), [
+        [
+            'key' => 'Announcement',
+            'table' => 'announcements',
+            'options' => ['timestamps' => true, 'soft_deletes' => false, 'uuid' => false],
+            'fields' => [['key' => 'headline', 'type' => 'text', 'required' => true, 'unique' => false, 'indexed' => false, 'searchable' => true, 'weight' => 7]],
+            'relations' => [],
+        ],
+    ])->assertRedirect();
+
+    $entities = $draft->fresh()->blueprint['entities'];
+
+    expect($entities[0]['fields'][0]['searchable'])->toBeTrue()
+        ->and($entities[0]['fields'][0]['weight'])->toBe(7);
 });
 
 it('derives the table name from the key when left empty', function () {
