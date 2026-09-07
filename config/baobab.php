@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use Baobab\Forms\Mail\FormSubmissionMailSample;
 use Baobab\Mail\Resolvers\CoreTestMailResolver;
 use Baobab\Users\Models\User;
 
@@ -353,6 +354,21 @@ return [
                 ],
                 'defaults' => __DIR__.'/../resources/mails/core/security-impersonation-started.json',
             ],
+            [
+                'key' => 'core.form_submission',
+                'description' => 'Envoyé aux destinataires configurés d\'un formulaire à chaque soumission (spec 14 §8.2, M8 point 6, Pass E).',
+                'variables' => [
+                    'form_title' => 'Titre du formulaire',
+                    'submitted_at' => 'Date/heure de la soumission',
+                    'fields_summary' => 'Valeurs soumises, une par ligne',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/form-submission.json',
+                // Pas de resolver (spec 13 §4.2) : les valeurs soumises ne
+                // sont pas dérivables du seul destinataire conservé par le
+                // journal — même famille que les core.content.review_*, non
+                // renvoyables pour la même raison.
+                'sample' => FormSubmissionMailSample::class,
+            ],
         ],
     ],
 
@@ -404,6 +420,13 @@ return [
                 'description' => 'Un abonnement webhook a été désactivé après trop d\'échecs consécutifs.',
                 'channels' => ['database'],
                 'configurable' => false,
+            ],
+            [
+                'key' => 'core.form.submission_received',
+                'description' => 'Une soumission a été reçue sur un formulaire (spec 14 §8.4, M8 point 6, Pass E).',
+                'channels' => ['database', 'mail'],
+                'mail_template' => 'core.form_submission',
+                'configurable' => true,
             ],
         ],
     ],
@@ -473,13 +496,23 @@ return [
     | Webhooks sortants (spec 08 §5, M7 point 4 Pass A)
     |--------------------------------------------------------------------------
     |
-    | hooks : catalogue Core des événements abonnables
-    | (Baobab\Webhooks\Support\WebhookEventCatalog), patron
-    | notifications.declarations — HookRegistry ne peut pas fournir cette
-    | liste elle-même (elle ne connaît que les hooks ayant déjà un listener).
-    | Volontairement non exhaustif pour cette passe : cycle de vie contenu +
-    | module, extensible sans redesign. Les modules ajoutent les leurs via
-    | manifest['hooks']['emits'].
+    | hooks : catalogue Core des événements abonnables, auto-câblés
+    | (Baobab\Webhooks\Support\WebhookEventCatalog + `registerWebhookDispatchListeners()`,
+    | patron notifications.declarations) — HookRegistry ne peut pas fournir
+    | cette liste elle-même (elle ne connaît que les hooks ayant déjà un
+    | listener). Volontairement non exhaustif pour cette passe : cycle de vie
+    | contenu + module, extensible sans redesign. Les modules ajoutent les
+    | leurs via manifest['hooks']['emits'].
+    | manual_hooks : catalogue aussi (même validation `WebhookEventCatalog::all()`),
+    | mais jamais auto-câblés — un domaine qui a besoin de décider lui-même,
+    | par instance, si l'événement part (M8 point 6, Pass E, suivi n° 278) :
+    | `baobab.form.submitted` sert aussi de hook d'extension libre (module) et
+    | de notification interne (e-mail, admin), tous deux **toujours**
+    | déclenchés, quand seul le webhook a un réglage par formulaire — le
+    | câblage générique de `hooks` ci-dessus livre tout ou rien pour un même
+    | nom de hook, incapable de distinguer ses écouteurs. `Baobab\Forms`
+    | appelle donc `DispatchWebhookEvent` directement, gardé par ce réglage,
+    | plutôt que de laisser `registerWebhookDispatchListeners()` s'en charger.
     | max_consecutive_failures : désactivation automatique d'un abonnement
     | après ce nombre d'échecs consécutifs (Baobab\Webhooks\Jobs\DeliverWebhook).
     |
@@ -492,6 +525,9 @@ return [
             'baobab.module.activated',
             'baobab.module.deactivated',
             'baobab.module.uninstalled',
+        ],
+        'manual_hooks' => [
+            'baobab.form.submitted',
         ],
         'max_consecutive_failures' => (int) env('BAOBAB_WEBHOOKS_MAX_CONSECUTIVE_FAILURES', 10),
     ],

@@ -62,6 +62,8 @@
                     <x-baobab::field.textarea name="suites[email_notification][recipients]" :label="__('baobab::admin.forms.suite_email_notification_recipients')" :value="$settingsForm['email_notification_recipients']" />
 
                     <x-baobab::field.checkbox name="suites[acknowledgement][enabled]" :label="__('baobab::admin.forms.suite_acknowledgement')" :checked="$settingsForm['acknowledgement_enabled']" />
+                    <x-baobab::field.text name="suites[acknowledgement][subject]" :label="__('baobab::admin.forms.suite_acknowledgement_subject')" :value="$settingsForm['acknowledgement_subject']" />
+                    <x-baobab::field.textarea name="suites[acknowledgement][body]" :label="__('baobab::admin.forms.suite_acknowledgement_body')" :placeholder="__('baobab::admin.forms.suite_acknowledgement_body_placeholder')" :value="$settingsForm['acknowledgement_body']" />
                     <x-baobab::field.checkbox name="suites[admin_notification][enabled]" :label="__('baobab::admin.forms.suite_admin_notification')" :checked="$settingsForm['admin_notification_enabled']" />
                     <x-baobab::field.checkbox name="suites[webhook][enabled]" :label="__('baobab::admin.forms.suite_webhook')" :checked="$settingsForm['webhook_enabled']" />
                 </div>

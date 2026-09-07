@@ -10,6 +10,17 @@ it('includes the Core catalog from config', function () {
         ->toContain('baobab.module.activated');
 });
 
+/**
+ * `manual_hooks` (M8 point 6, Pass E, suivi n° 278) : sélectionnable comme
+ * n'importe quel autre événement (même catalogue, même validation `in:` de
+ * `admin/webhooks`), mais jamais auto-câblé par
+ * `registerWebhookDispatchListeners()` — c'est `DispatchWebhookEventTest`
+ * qui couvre ce second point, hors de portée de ce catalogue.
+ */
+it('includes manual_hooks alongside the auto-wired catalog', function () {
+    expect(WebhookEventCatalog::all())->toContain('baobab.form.submitted');
+});
+
 it('includes events declared by an active module manifest, deduplicated', function () {
     Module::create([
         'name' => 'acme/blog',

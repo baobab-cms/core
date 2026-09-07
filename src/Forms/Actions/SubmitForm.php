@@ -41,9 +41,16 @@ use Illuminate\Validation\ValidationException;
  * demandé au visiteur. Vérifié avant la construction de la soumission :
  * inutile de fabriquer un `FormSubmission` qui ne sera jamais retourné.
  *
- * Ce que cette Action ne fait **pas encore**, volontairement, par
- * découpage de passe : le pipeline de suites (Pass E — e-mail,
- * notification, webhook, hook `baobab.form.submitted`).
+ * Pipeline de suites (Pass E, spec 14 §8) : un seul hook, `baobab.form.submitted`,
+ * déclenché **seulement si la soumission n'est pas spam** — décision prise
+ * avec l'utilisateur (suivi n° 278) : notifier l'admin ou déclencher un
+ * webhook à chaque tentative de bot bloquée irait à l'exact opposé de ce que
+ * l'anti-spam cherche à obtenir. `BaobabServiceProvider` écoute ce hook pour
+ * dérouler les étapes 2 à 5 (e-mail, accusé, notification admin, webhook) —
+ * cette Action ne connaît ni Mail, ni Notify, ni Webhooks, seulement le hook
+ * qu'elle déclenche. Le même hook sert aussi de point d'extension libre pour
+ * un module (étape 6) : les deux ne peuvent pas être séparés, le système de
+ * hooks du Core ne cible jamais un écouteur en particulier (n° 278).
  *
  * Un champ `file` validé arrive ici comme un `UploadedFile` — jamais laissé
  * tel quel dans `payload` : le cast `array` d'Eloquent encode en JSON **dès
@@ -96,6 +103,10 @@ final class SubmitForm
 
         if ($form->store_submissions) {
             $submission->save();
+        }
+
+        if (! $isSpam) {
+            Hook::action('baobab.form.submitted', $form, $submission);
         }
 
         return $submission;

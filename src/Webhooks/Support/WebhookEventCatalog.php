@@ -18,6 +18,13 @@ use Illuminate\Support\Facades\Schema;
  * cycle de vie contenu + module, les plus pertinents pour un consommateur
  * externe) + `manifest['hooks']['emits']` de chaque module actif — champ
  * déjà documenté (spec 01 §2.2) mais lu par aucun autre code à ce jour.
+ *
+ * `config('baobab.webhooks.manual_hooks')` rejoint le catalogue au même
+ * titre (sélectionnable, validé `in:`) sans être auto-câblé par
+ * `BaobabServiceProvider::registerWebhookDispatchListeners()` — un domaine
+ * qui a besoin de décider lui-même, par instance, si l'événement part
+ * (M8 point 6, Pass E, suivi n° 278) appelle `DispatchWebhookEvent`
+ * directement plutôt que de subir un câblage tout-ou-rien par nom de hook.
  */
 final class WebhookEventCatalog
 {
@@ -29,7 +36,10 @@ final class WebhookEventCatalog
         /** @var list<string> $coreHooks */
         $coreHooks = config('baobab.webhooks.hooks', []);
 
-        $events = $coreHooks;
+        /** @var list<string> $manualHooks */
+        $manualHooks = config('baobab.webhooks.manual_hooks', []);
+
+        $events = [...$coreHooks, ...$manualHooks];
 
         if (Schema::hasTable('modules')) {
             foreach (Module::where('status', 'active')->get() as $module) {

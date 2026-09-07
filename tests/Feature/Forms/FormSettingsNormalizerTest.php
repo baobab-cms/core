@@ -8,9 +8,21 @@ it('normalizes suites, defaulting every step to disabled', function () {
 
     expect($normalized['suites'])->toBe([
         'email_notification' => ['enabled' => false, 'recipients' => []],
-        'acknowledgement' => ['enabled' => false],
+        'acknowledgement' => ['enabled' => false, 'subject' => null, 'body' => null],
         'admin_notification' => ['enabled' => false],
         'webhook' => ['enabled' => false],
+    ]);
+});
+
+it('normalizes the acknowledgement subject/body (Pass E, §8.3)', function () {
+    $normalized = FormSettingsNormalizer::normalize([
+        'suites' => ['acknowledgement' => ['enabled' => true, 'subject' => 'Merci', 'body' => 'Reçu, {{ form_title }}.']],
+    ]);
+
+    expect($normalized['suites']['acknowledgement'])->toBe([
+        'enabled' => true,
+        'subject' => 'Merci',
+        'body' => 'Reçu, {{ form_title }}.',
     ]);
 });
 

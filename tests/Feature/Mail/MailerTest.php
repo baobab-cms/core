@@ -81,3 +81,28 @@ it('does not leave blank-line holes where the HTML was merely indented', functio
 
     Queue::assertPushed(SendQueuedMail::class, fn (SendQueuedMail $job) => ! str_contains($job->text, "\n\n\n"));
 });
+
+/**
+ * `sendCustom()` (M8 point 6, Pass E) : un sujet/corps qui ne vient d'aucun
+ * template déclaré au registre — l'accusé de réception d'un formulaire,
+ * « dédié par formulaire » (spec 14 §8.3) plutôt que personnalisable
+ * globalement depuis `admin/mails`. Même rendu/journal/queue que `send()`.
+ */
+it('renders and dispatches an ad-hoc subject/body outside the template registry', function () {
+    Queue::fake();
+
+    app(Mailer::class)->sendCustom(
+        'forms.acknowledgement:contact',
+        'submitter@example.com',
+        'Merci {{ name }}',
+        '<p>Reçu le {{ sent_at }}.</p>',
+        ['name' => 'Jane', 'sent_at' => '14/07/2026 10:00'],
+    );
+
+    Queue::assertPushedOn('baobab', SendQueuedMail::class, function (SendQueuedMail $job) {
+        return $job->templateKey === 'forms.acknowledgement:contact'
+            && $job->to === 'submitter@example.com'
+            && $job->subject === 'Merci Jane'
+            && str_contains($job->html, 'Reçu le 14/07/2026 10:00.');
+    });
+});

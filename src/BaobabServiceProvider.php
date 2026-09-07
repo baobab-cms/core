@@ -86,6 +86,8 @@ use Baobab\ContentTypes\Fields\Types\UrlField;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Facades\Hook;
 use Baobab\Forms\Models\Form;
+use Baobab\Forms\Models\FormSubmission;
+use Baobab\Forms\Support\FormSubmissionMailData;
 use Baobab\Hooks\HookRegistry;
 use Baobab\Install\Console\CheckCommand;
 use Baobab\Install\Console\InstallCommand;
@@ -95,6 +97,7 @@ use Baobab\Install\InstallDraft;
 use Baobab\Install\InstallPaths;
 use Baobab\Install\InstallSession;
 use Baobab\Install\InstallToken;
+use Baobab\Mail\Mailer;
 use Baobab\Media\Actions\SyncMediaUsagesFromEntry;
 use Baobab\Media\Conversions\PresetRegistry;
 use Baobab\Menus\Actions\InvalidateMenuCacheForEntry;
@@ -404,6 +407,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerWorkflowNotificationListeners();
 
         $this->registerSecurityNotificationListeners();
+
+        $this->registerFormSuitesListener();
 
         $this->registerWebhookDispatchListeners();
 
@@ -1178,6 +1183,66 @@ class BaobabServiceProvider extends ServiceProvider
                 [$target],
                 ['actor_name' => $actor->name, 'occurred_at' => now()->toIso8601String()],
             );
+        });
+    }
+
+    /**
+     * Étapes 2 à 5 du pipeline de suites d'un formulaire (spec 14 §8, M8
+     * point 6, Pass E) : e-mail de notification, accusé de réception,
+     * notification admin, webhook — dans cet ordre, chacune gardée par son
+     * propre réglage (`Form::settings.suites.*`). `SubmitForm` ne connaît ni
+     * Mail, ni Notify, ni Webhooks : elle déclenche `baobab.form.submitted`,
+     * uniquement pour une soumission non spam (suivi n° 278), et c'est ici
+     * que ce hook se traduit en envois réels — patron exact
+     * `registerWorkflowNotificationListeners()`.
+     *
+     * L'étape 5 (webhook) appelle `DispatchWebhookEvent` **directement**
+     * plutôt que de laisser `registerWebhookDispatchListeners()` s'en
+     * charger : ce câblage générique est tout-ou-rien par nom de hook,
+     * incapable de lire un réglage par formulaire — `baobab.form.submitted`
+     * est donc dans `config('baobab.webhooks.manual_hooks')`, catalogué
+     * (sélectionnable dans `admin/webhooks`) mais jamais auto-câblé (suivi
+     * n° 278). L'étape 6 (hook, extension libre d'un module) n'a besoin
+     * d'aucun code ici : elle **est** ce hook, déjà déclenché par
+     * `SubmitForm` pour tout le monde, y compris un futur écouteur externe.
+     */
+    private function registerFormSuitesListener(): void
+    {
+        /** @var HookRegistry $registry */
+        $registry = $this->app->make(HookRegistry::class);
+
+        $registry->listen('baobab.form.submitted', function (Form $form, FormSubmission $submission): void {
+            /** @var array<string, mixed> $suites */
+            $suites = (array) ($form->settings['suites'] ?? []);
+            $data = FormSubmissionMailData::build($form, $submission);
+
+            if ((bool) ($suites['email_notification']['enabled'] ?? false)) {
+                foreach ((array) ($suites['email_notification']['recipients'] ?? []) as $recipient) {
+                    $this->app->make(Mailer::class)->send('core.form_submission', (string) $recipient, $data);
+                }
+            }
+
+            if ((bool) ($suites['acknowledgement']['enabled'] ?? false)) {
+                $submitterEmail = FormSubmissionMailData::submitterEmail($submission);
+                $subject = (string) ($suites['acknowledgement']['subject'] ?? '');
+                $body = (string) ($suites['acknowledgement']['body'] ?? '');
+
+                if ($submitterEmail !== null && $subject !== '' && $body !== '') {
+                    $this->app->make(Mailer::class)->sendCustom('forms.acknowledgement:'.$form->slug, $submitterEmail, $subject, $body, $data);
+                }
+            }
+
+            if ((bool) ($suites['admin_notification']['enabled'] ?? false)) {
+                $recipients = $this->usersWithPermission('baobab.system.forms.submissions_view');
+
+                if ($recipients->isNotEmpty()) {
+                    $this->app->make(Notifier::class)->send('core.form.submission_received', $recipients, $data);
+                }
+            }
+
+            if ((bool) ($suites['webhook']['enabled'] ?? false)) {
+                $this->app->make(DispatchWebhookEvent::class)('baobab.form.submitted', [$form, $submission]);
+            }
         });
     }
 

@@ -1,0 +1,4 @@
+{
+  "subject": "Nouvelle soumission : {{ form_title }}",
+  "body": "Une nouvelle soumission a été reçue sur le formulaire « {{ form_title }} » le {{ submitted_at }}.<br><br>{{ fields_summary }}"
+}

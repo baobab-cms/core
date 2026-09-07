@@ -67,6 +67,8 @@ final class FormSettingsNormalizer
                 ],
                 'acknowledgement' => [
                     'enabled' => (bool) ($input['suites']['acknowledgement']['enabled'] ?? false),
+                    'subject' => self::nullableString($input['suites']['acknowledgement']['subject'] ?? null),
+                    'body' => self::nullableString($input['suites']['acknowledgement']['body'] ?? null),
                 ],
                 'admin_notification' => [
                     'enabled' => (bool) ($input['suites']['admin_notification']['enabled'] ?? false),

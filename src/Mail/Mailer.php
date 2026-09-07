@@ -36,14 +36,52 @@ final class Mailer
         $template = $this->templates->find($key);
         $to = $recipient instanceof User ? $recipient->email : $recipient;
 
-        $subject = $this->renderer->render($template->subject, $data);
-        $body = $this->renderer->render($template->body, $data);
+        $this->dispatch(
+            $key,
+            $to,
+            $this->renderer->render($template->subject, $data),
+            $this->renderer->render($template->body, $data),
+            $data,
+            $template->fromAddress,
+            $template->fromName,
+        );
+    }
 
+    /**
+     * Un e-mail dont le sujet/corps ne vient pas d'un template déclaré au
+     * registre (§3.1) mais d'un contenu propre à une instance — l'accusé de
+     * réception d'un formulaire (spec 14 §8.3, « template dédié par
+     * formulaire »), configuré par formulaire plutôt que globalement par
+     * l'admin. Même rendu, même journal, même queue que `send()` — seule la
+     * source du sujet/corps change, d'où l'extraction dans `dispatch()`
+     * plutôt qu'une duplication. `$logKey` n'a pas besoin de correspondre à
+     * un template déclaré : `TemplateRegistry::declaration()` peut ne pas le
+     * connaître, le journal le rend simplement non-renvoyable (patron déjà
+     * suivi pour un template disparu avec son module).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function sendCustom(string $logKey, string $recipient, string $subject, string $body, array $data = []): void
+    {
+        $this->dispatch(
+            $logKey,
+            $recipient,
+            $this->renderer->render($subject, $data),
+            $this->renderer->render($body, $data),
+            $data,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function dispatch(string $logKey, string $to, string $subject, string $body, array $data, ?string $fromAddress = null, ?string $fromName = null): void
+    {
         /** @var array{to: string, subject: string, data: array<string, mixed>}|null $payload */
-        $payload = Hook::filter('baobab.mail.sending', ['to' => $to, 'subject' => $subject, 'data' => $data], $key);
+        $payload = Hook::filter('baobab.mail.sending', ['to' => $to, 'subject' => $subject, 'data' => $data], $logKey);
 
         if ($payload === null) {
-            $this->logger->info('Envoi d\'e-mail annulé par un filtre baobab.mail.sending.', ['key' => $key, 'to' => $to]);
+            $this->logger->info('Envoi d\'e-mail annulé par un filtre baobab.mail.sending.', ['key' => $logKey, 'to' => $to]);
 
             return;
         }
@@ -58,7 +96,7 @@ final class Mailer
         // module qui en désenregistrerait un ne doit pas pouvoir aveugler le
         // journal.
         $entry = MailLogEntry::create([
-            'template_key' => $key,
+            'template_key' => $logKey,
             'recipient' => $payload['to'],
             'subject' => $payload['subject'],
             'status' => MailLogStatus::Queued,
@@ -66,13 +104,13 @@ final class Mailer
         ]);
 
         SendQueuedMail::dispatch(
-            $key,
+            $logKey,
             $payload['to'],
             $payload['subject'],
             $html,
             $this->toPlainText($body),
-            $template->fromAddress,
-            $template->fromName,
+            $fromAddress,
+            $fromName,
             $entry->id,
         )
             ->onConnection('baobab')
