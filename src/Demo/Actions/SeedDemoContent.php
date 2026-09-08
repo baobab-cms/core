@@ -220,7 +220,7 @@ final class SeedDemoContent
 
         return is_string($configured) && $configured !== ''
             ? rtrim($configured, '/\\')
-            : dirname(__DIR__, 3).'/ressources/demo';
+            : dirname(__DIR__, 3).'/resources/demo';
     }
 
     private function buildPrimaryMenu(Model $home, Model $about): void
@@ -335,7 +335,7 @@ final class SeedDemoContent
 
     /**
      * Les trois articles. Leur `slug` sert aussi de nom de fichier image :
-     * déposer `<slug>.jpg` dans `ressources/demo/` suffit à l'illustrer.
+     * déposer `<slug>.jpg` dans `resources/demo/` suffit à l'illustrer.
      *
      * @return list<array<string, mixed>>
      */

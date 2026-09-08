@@ -27,6 +27,6 @@ final class StubRenderer
 
     public static function stubPath(string $name): string
     {
-        return dirname(__DIR__, 3)."/ressources/stubs/content-type/{$name}.stub";
+        return dirname(__DIR__, 3)."/resources/stubs/content-type/{$name}.stub";
     }
 }

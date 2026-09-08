@@ -9,7 +9,7 @@ use Opis\JsonSchema\Validator;
 
 /**
  * Valide un blueprint de thème (`theme.json`) contre le contrat de
- * ressources/schemas/theme-blueprint.schema.json (spec 17 §2) — patron exact
+ * resources/schemas/theme-blueprint.schema.json (spec 17 §2) — patron exact
  * `Baobab\ContentTypes\Blueprint\BlueprintValidator`. Distinct de
  * `module.schema.json`, qui valide la sortie déjà générée/installée, pas
  * l'entrée du générateur.
@@ -46,6 +46,6 @@ final class ThemeBlueprintValidator
 
     public static function schemaPath(): string
     {
-        return dirname(__DIR__, 3).'/ressources/schemas/theme-blueprint.schema.json';
+        return dirname(__DIR__, 3).'/resources/schemas/theme-blueprint.schema.json';
     }
 }

@@ -9,7 +9,7 @@ use Opis\JsonSchema\Validator;
 
 /**
  * Valide un blueprint de Content Type contre le contrat de
- * ressources/schemas/content-type-blueprint.schema.json (spec 02 §1.2, §9).
+ * resources/schemas/content-type-blueprint.schema.json (spec 02 §1.2, §9).
  */
 final class BlueprintValidator
 {
@@ -43,6 +43,6 @@ final class BlueprintValidator
 
     public static function schemaPath(): string
     {
-        return dirname(__DIR__, 3).'/ressources/schemas/content-type-blueprint.schema.json';
+        return dirname(__DIR__, 3).'/resources/schemas/content-type-blueprint.schema.json';
     }
 }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Baobab\Api\GraphQL;
 
 /**
- * Résolveur du champ `Query.ping` (M7 point 3, `ressources/graphql/schema-core.graphql`)
+ * Résolveur du champ `Query.ping` (M7 point 3, `resources/graphql/schema-core.graphql`)
  * — un champ racine sans directive de résolveur explicite lève une erreur à
  * la construction du schéma (`Nuwave\Lighthouse\Schema\ResolverProvider`,
  * les champs de `Query` n'ont pas de résolution implicite contrairement aux

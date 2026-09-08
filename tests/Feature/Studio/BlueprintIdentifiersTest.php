@@ -13,7 +13,7 @@ function schemaPattern(string ...$path): string
 {
     /** @var array<string, mixed> $schema */
     $schema = json_decode(
-        (string) file_get_contents(dirname(__DIR__, 3).'/ressources/schemas/module-blueprint.schema.json'),
+        (string) file_get_contents(dirname(__DIR__, 3).'/resources/schemas/module-blueprint.schema.json'),
         associative: true
     );
 
