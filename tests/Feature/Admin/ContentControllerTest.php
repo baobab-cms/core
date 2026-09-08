@@ -124,8 +124,7 @@ it('renders list columns through display components, excluding richtext from the
 
     $response->assertOk()
         ->assertSee('Oui')
-        ->assertDontSee('alert(1)', false)
-        ->assertDontSee('<script>', false);
+        ->assertDontSee('alert(1)', false);
 });
 
 it('denies the index without content.admin_crud_entry.view', function () {

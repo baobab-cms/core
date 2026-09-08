@@ -48,7 +48,6 @@ use Baobab\Media\Models\Media;
 use Baobab\Media\Models\MediaUsage;
 use Baobab\Users\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Contracts\View\Factory as ViewFactory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -58,6 +57,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Str;
 
 /**
@@ -72,7 +72,6 @@ final class ContentController
     public function __construct(
         private readonly ContentStateMachine $machine,
         private readonly ContentEntryRules $entryRules,
-        private readonly ViewFactory $views,
     ) {}
 
     public function index(Request $request, string $contentType): View
@@ -1118,16 +1117,18 @@ final class ContentController
                     $value = Str::limit($value, 60);
                 }
 
-                // `Factory::exists()` porte `@phpstan-assert-if-true
-                // view-string $view` (stub Larastan, patron
-                // TemplateHierarchyResolver) : narrowing nécessaire dans
-                // cette même portée, $component reste un `string` simple
-                // hors de ce `if`.
-                if (! $this->views->exists($component)) {
-                    return '';
-                }
-
-                return (string) $this->views->make($component, ['value' => $value])->render();
+                // `displayComponent()` rend un nom de **composant** Blade
+                // (`baobab::field.boolean-display`), pas un nom de vue : sa
+                // résolution passe par `<x-dynamic-component>` (même
+                // mécanisme que `<x-baobab::field.auto>`), jamais
+                // `view()`/`Factory::exists()`, qui chercheraient au chemin
+                // littéral plutôt qu'au chemin `components.` que la
+                // convention `<x-...>` ajoute — piège rencontré : la colonne
+                // rendait silencieusement vide, `exists()` répondant `false`.
+                return Blade::render(
+                    '<x-dynamic-component :component="$component" :value="$value" />',
+                    ['component' => $component, 'value' => $value],
+                );
             },
         ];
     }
