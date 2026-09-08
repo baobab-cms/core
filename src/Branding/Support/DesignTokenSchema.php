@@ -17,7 +17,7 @@ final class DesignTokenSchema
      * @var array<string, list<string>>
      */
     public const array GROUPS = [
-        'colors' => ['primary', 'secondary', 'accent', 'success', 'warning', 'danger', 'info', 'surface', 'background', 'text', 'muted', 'border'],
+        'colors' => ['primary', 'on-primary', 'secondary', 'accent', 'success', 'warning', 'danger', 'info', 'surface', 'background', 'text', 'muted', 'border'],
         'fonts' => ['body', 'heading', 'mono'],
         'text' => ['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl'],
         'leading' => ['tight', 'normal', 'relaxed'],
@@ -35,6 +35,7 @@ final class DesignTokenSchema
     public const array CORE_DEFAULTS = [
         'colors' => [
             'primary' => '#C2571B',
+            'on-primary' => '#FFFFFF',
             'secondary' => '#3D6B45',
             'accent' => '#B5821C',
             'success' => '#3D6B45',

@@ -460,6 +460,7 @@
                     "additionalProperties": false,
                     "properties": {
                         "primary": {"type": "string"},
+                        "on-primary": {"type": "string"},
                         "secondary": {"type": "string"},
                         "accent": {"type": "string"},
                         "success": {"type": "string"},

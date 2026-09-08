@@ -13,6 +13,21 @@ it('resolves to Core defaults when no theme is active and no admin override exis
     expect($resolved)->toBe(DesignTokenSchema::CORE_DEFAULTS);
 });
 
+/**
+ * n° 145 — aucun token n'exprimait « le premier plan lisible sur un aplat
+ * de couleur » (amendement spec 18 §2.2/§13.4, 8 septembre 2026).
+ */
+it('carries an on-primary token defaulting to white, overridable like any other color', function () {
+    expect(DesignTokenSchema::CORE_DEFAULTS['colors']['on-primary'])->toBe('#FFFFFF')
+        ->and(DesignTokenSchema::cssVar('colors', 'on-primary'))->toBe('--bb-color-on-primary');
+
+    BrandingSetting::create(['tokens' => ['colors' => ['on-primary' => '#000000']]]);
+
+    $resolved = app(ResolveDesignTokens::class)();
+
+    expect($resolved['colors']['on-primary'])->toBe('#000000');
+});
+
 it('applies an admin override as a delta, leaving the rest at Core defaults', function () {
     BrandingSetting::create(['tokens' => ['colors' => ['primary' => '#123456']]]);
 
