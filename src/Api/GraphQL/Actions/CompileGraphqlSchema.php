@@ -12,7 +12,7 @@ use Nuwave\Lighthouse\Schema\AST\ASTCache;
 
 /**
  * Assemble le schéma GraphQL global (M7 point 3, spec 08 §3.2) — socle Core
- * (`ressources/graphql/schema-core.graphql`) + le fragment de chaque Content
+ * (`resources/graphql/schema-core.graphql`) + le fragment de chaque Content
  * Type dont le module est actif et l'API activée (`ContentType::apiEnabled()`,
  * même règle que `ResolveApiContentType`, jamais un type désactivé n'apparaît
  * dans le schéma). Patron `CompileDesignTokens` (spec 18 §4.1) : écrit un
@@ -52,7 +52,7 @@ final class CompileGraphqlSchema
             ->filter()
             ->implode("\n\n");
 
-        $core = (string) File::get(__DIR__.'/../../../../ressources/graphql/schema-core.graphql');
+        $core = (string) File::get(__DIR__.'/../../../../resources/graphql/schema-core.graphql');
 
         File::ensureDirectoryExists(dirname($path));
         File::put($path, $core."\n\n".$fragments);

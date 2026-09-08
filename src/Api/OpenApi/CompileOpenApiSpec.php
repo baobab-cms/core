@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 /**
  * Assemble le document OpenAPI 3.1 (M7 point 4b, spec 08 §7) : socle Core
- * (`ressources/openapi/openapi-core.json`) + `paths`/`components.schemas`
+ * (`resources/openapi/openapi-core.json`) + `paths`/`components.schemas`
  * pour chaque Content Type dont le module est actif et l'API activée
  * (`ContentType::apiEnabled()`, même règle que REST/GraphQL). Contrairement à
  * `CompileGraphqlSchema` (patron dont s'inspire cette Action), rien n'est
@@ -33,7 +33,7 @@ final class CompileOpenApiSpec
     public function __invoke(): array
     {
         /** @var array<string, mixed> $document */
-        $document = json_decode((string) File::get(__DIR__.'/../../../ressources/openapi/openapi-core.json'), true);
+        $document = json_decode((string) File::get(__DIR__.'/../../../resources/openapi/openapi-core.json'), true);
 
         $paths = [];
         $schemas = [];

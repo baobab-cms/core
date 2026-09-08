@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\File;
  * Auto-répare aussi le contenu : une police `source=bundled` dont les
  * fichiers ne sont pas encore présents sous `storage/app/baobab/fonts/{slug}/`
  * (premier boot, ou disque purgé) est copiée depuis les fichiers vendored du
- * package (`ressources/fonts/{slug}/`) — jamais une dépendance réseau,
+ * package (`resources/fonts/{slug}/`) — jamais une dépendance réseau,
  * jamais un import Vite (décision D6, spec 18 §12).
  */
 final class PublishFontAssets
@@ -50,7 +50,7 @@ final class PublishFontAssets
 
     private function ensureBundledFilesPresent(): void
     {
-        $vendored = dirname(__DIR__, 3).'/ressources/fonts';
+        $vendored = dirname(__DIR__, 3).'/resources/fonts';
 
         /** @var iterable<Font> $bundled */
         $bundled = Font::query()->where('source', Font::SOURCE_BUNDLED)->get();

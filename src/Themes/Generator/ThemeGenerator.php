@@ -79,7 +79,7 @@ final class ThemeGenerator
 
     public static function stubPath(string $name): string
     {
-        return dirname(__DIR__, 3)."/ressources/stubs/theme/{$name}.stub";
+        return dirname(__DIR__, 3)."/resources/stubs/theme/{$name}.stub";
     }
 
     /**

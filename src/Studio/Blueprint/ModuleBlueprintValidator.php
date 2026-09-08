@@ -9,7 +9,7 @@ use Opis\JsonSchema\Validator;
 
 /**
  * Valide un blueprint de module contre le contrat de
- * ressources/schemas/module-blueprint.schema.json (spec 05, spec-modules §5.4).
+ * resources/schemas/module-blueprint.schema.json (spec 05, spec-modules §5.4).
  */
 final class ModuleBlueprintValidator
 {
@@ -43,6 +43,6 @@ final class ModuleBlueprintValidator
 
     public static function schemaPath(): string
     {
-        return dirname(__DIR__, 3).'/ressources/schemas/module-blueprint.schema.json';
+        return dirname(__DIR__, 3).'/resources/schemas/module-blueprint.schema.json';
     }
 }

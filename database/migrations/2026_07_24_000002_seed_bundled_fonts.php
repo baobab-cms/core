@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Les 3 polices d'identité Core (spec 18 §13.5.1, §5.3 source `bundled`) :
- * fichiers vendored sous `ressources/fonts/{slug}/` (extraits des paquets
+ * fichiers vendored sous `resources/fonts/{slug}/` (extraits des paquets
  * `@fontsource-*` en développement, jamais une dépendance runtime — décision
  * D6, §12), publiés à l'exécution par `PublishFontAssets`. `license_attested`
  * à `true` : Core-authored, aucune attestation utilisateur à recueillir pour

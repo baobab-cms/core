@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
  * écrit (les policies ne se saisissent pas, elles se dérivent).
  *
  * Les méthodes listées par `policyMethods()` sont exactement celles que
- * `ressources/stubs/studio/policy.stub` produit — ni plus (pas de
+ * `resources/stubs/studio/policy.stub` produit — ni plus (pas de
  * `restore`/`forceDelete`, même quand l'entité active `soft_deletes`), ni
  * moins.
  */
