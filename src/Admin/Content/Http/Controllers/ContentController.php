@@ -34,6 +34,7 @@ use Baobab\ContentTypes\Editorial\Support\RevisionDiffer;
 use Baobab\ContentTypes\Exceptions\ContentLockedException;
 use Baobab\ContentTypes\Exceptions\InvalidContentTransitionException;
 use Baobab\ContentTypes\Exceptions\UnknownRelationTargetException;
+use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\ContentTypes\Relations\BelongsToRelations;
 use Baobab\ContentTypes\Relations\RelationOptions;
@@ -47,6 +48,7 @@ use Baobab\Media\Models\Media;
 use Baobab\Media\Models\MediaUsage;
 use Baobab\Users\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\View\Factory as ViewFactory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -70,6 +72,7 @@ final class ContentController
     public function __construct(
         private readonly ContentStateMachine $machine,
         private readonly ContentEntryRules $entryRules,
+        private readonly ViewFactory $views,
     ) {}
 
     public function index(Request $request, string $contentType): View
@@ -1034,14 +1037,32 @@ final class ContentController
     }
 
     /**
+     * Types dont l'affichage tient dans une cellule de tableau — liste
+     * blanche plutôt que noire (n° 133) : un type de champ futur (ou déjà
+     * présent, `richtext`/`json`/`gallery`) n'atterrit dans une colonne de
+     * liste que si on l'y a explicitement admis, jamais par défaut.
+     *
+     * @var list<string>
+     */
+    private const LIST_COLUMN_TYPES = ['text', 'integer', 'decimal', 'boolean', 'date', 'select', 'email', 'url', 'tel'];
+
+    /**
      * @return list<array<string, mixed>>
      */
     private function listColumns(ContentType $type, string $slug, bool $trashed = false): array
     {
         $columns = [['key' => 'id', 'label' => 'ID', 'sortable' => true]];
 
+        $registry = app(FieldRegistry::class);
+
         foreach (array_slice((array) ($type->blueprint['fields'] ?? []), 0, 3) as $field) {
-            $columns[] = ['key' => $field['key'], 'label' => FieldDisplay::label($field)];
+            $fieldType = (string) ($field['type'] ?? '');
+
+            if (! in_array($fieldType, self::LIST_COLUMN_TYPES, true) || ! $registry->has($fieldType)) {
+                continue;
+            }
+
+            $columns[] = $this->displayColumn($field, $registry->resolve($fieldType)->displayComponent());
         }
 
         if (! $trashed) {
@@ -1066,6 +1087,49 @@ final class ContentController
         ];
 
         return $columns;
+    }
+
+    /**
+     * Colonne d'un champ affiché par son composant `field.*-display` (n° 133)
+     * plutôt que par la valeur brute — le même défaut touchait un `richtext`
+     * (HTML non échappé, surface d'injection) et un `boolean` (`1`/`0` bruts) :
+     * un seul mécanisme les corrige tous les deux. `raw: true` parce que le
+     * composant échappe déjà sa valeur (`{{ $value }}`) ; laisser la table la
+     * rééchapper doublerait les entités. Rendu propre à l'admin, distinct du
+     * rendu public riche — la liste est un tableau de gestion, pas une
+     * prévisualisation : les chaînes sont tronquées, jamais le HTML d'une
+     * fiche publique.
+     *
+     * @param  array<string, mixed>  $field
+     * @return array<string, mixed>
+     */
+    private function displayColumn(array $field, string $component): array
+    {
+        $key = (string) ($field['key'] ?? '');
+
+        return [
+            'key' => $key,
+            'label' => FieldDisplay::label($field),
+            'raw' => true,
+            'render' => function (Model $row) use ($key, $component): string {
+                $value = $row->getAttribute($key);
+
+                if (is_string($value)) {
+                    $value = Str::limit($value, 60);
+                }
+
+                // `Factory::exists()` porte `@phpstan-assert-if-true
+                // view-string $view` (stub Larastan, patron
+                // TemplateHierarchyResolver) : narrowing nécessaire dans
+                // cette même portée, $component reste un `string` simple
+                // hors de ce `if`.
+                if (! $this->views->exists($component)) {
+                    return '';
+                }
+
+                return (string) $this->views->make($component, ['value' => $value])->render();
+            },
+        ];
     }
 
     /**
