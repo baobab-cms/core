@@ -40,15 +40,26 @@ it('never exposes a field not marked exposed_in_api in the GraphQL schema', func
     $response->assertOk()->assertJsonPath('errors.0.message', fn (string $message) => str_contains($message, 'internalNote'));
 });
 
-it('resolves a single entry by id through the find query', function () {
+it('resolves a single entry by its route key through the find id argument, mirroring REST (n° 168)', function () {
     [, $carClass] = buildApiArticle();
     $car = $carClass::create(['brand' => 'Peugeot', 'price' => 25000, 'internal_note' => '', 'slug' => 'peugeot', 'status' => 'published']);
 
-    $response = graphqlQuery('query($id: ID) { apiArticle(id: $id) { brand slug } }', ['id' => $car->getKey()]);
+    $response = graphqlQuery('query($id: ID) { apiArticle(id: $id) { id brand slug } }', ['id' => $car->getRouteKey()]);
 
     $response->assertOk()
+        ->assertJsonPath('data.apiArticle.id', $car->getRouteKey())
         ->assertJsonPath('data.apiArticle.brand', 'Peugeot')
         ->assertJsonPath('data.apiArticle.slug', 'peugeot');
+});
+
+it('no longer resolves an entry by its raw primary key through the find id argument (n° 168 — bascule franche)', function () {
+    [, $carClass] = buildApiArticle();
+    $car = $carClass::create(['brand' => 'Peugeot', 'price' => 25000, 'internal_note' => '', 'slug' => 'peugeot', 'status' => 'published']);
+
+    $response = graphqlQuery('query($id: ID) { apiArticle(id: $id) { brand } }', ['id' => $car->getKey()]);
+
+    $response->assertOk()->assertJsonMissingPath('errors');
+    expect($response->json('data.apiArticle'))->toBeNull();
 });
 
 it('restricts a public list to published entries and errors without authentication for a draft-only request context', function () {

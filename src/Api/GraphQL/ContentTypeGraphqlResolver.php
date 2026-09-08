@@ -67,6 +67,11 @@ final class ContentTypeGraphqlResolver
      * REST (`ContentController::show()`/`authorizeShow()`), traduite en
      * erreurs GraphQL plutôt qu'en 401/403 HTTP.
      *
+     * `id` se résout sur la **clé de route** (`slug`/`uuid`), jamais la clé
+     * primaire (spec 02 §4.2, n° 168) : même raison et même bascule franche
+     * que `ContentController::whereRouteKey()` — l'entier n'est plus accepté
+     * en repli, un repli laisserait l'énumération possible.
+     *
      * @param  array{id?: int|string, slug?: string}  $args
      */
     public function find(mixed $root, array $args): ?Model
@@ -77,7 +82,7 @@ final class ContentTypeGraphqlResolver
         $modelClass = $contentType->modelClass();
 
         $model = match (true) {
-            isset($args['id']) => $modelClass::query()->find($args['id']),
+            isset($args['id']) => $this->whereRouteKey($modelClass, $args['id'])->first(),
             isset($args['slug']) && $contentType->is_addressable => $modelClass::query()
                 ->where('slug', $args['slug'])->first(),
             default => null,
@@ -94,6 +99,15 @@ final class ContentTypeGraphqlResolver
         }
 
         return $model;
+    }
+
+    /**
+     * @param  class-string<Model>  $modelClass
+     * @return Builder<Model>
+     */
+    private function whereRouteKey(string $modelClass, int|string $entry): Builder
+    {
+        return $modelClass::query()->where((new $modelClass)->getRouteKeyName(), $entry);
     }
 
     private function resolveOrFail(): ContentType

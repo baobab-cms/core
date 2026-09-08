@@ -1,6 +1,6 @@
 """{{ label }}"""
 type {{ key }} {
-  id: ID!
+  id: ID! @method(name: "getRouteKey")
   status: String!
   published_at: DateTime
   created_at: DateTime!
