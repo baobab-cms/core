@@ -6,20 +6,27 @@ namespace Baobab\Branding\Support;
 
 use Baobab\Branding\Models\BrandingSetting;
 use Baobab\Facades\Hook;
-use Baobab\Rendering\ActiveThemeResolver;
+use Baobab\Rendering\RenderedTheme;
 use Throwable;
 
 /**
  * Cascade de résolution des design tokens (spec 18 §3) : défauts Core →
- * `tokens` du thème actif (`theme.json`, niveau 2) → surcharges admin
+ * `tokens` du thème **rendu** (`theme.json`, niveau 2) → surcharges admin
  * (niveau 4). Le niveau 3 (profil de marque) est Pass B, no-op ici — rien à
  * fusionner tant qu'aucune Action n'écrit `BrandingSetting::brand_profile`.
  * Résolu à l'écriture (§3.2), jamais au rendu — consommé uniquement par
  * `CompileDesignTokens`.
+ *
+ * Lit `RenderedTheme` plutôt qu'`ActiveThemeResolver` (n° 135) : sur une
+ * requête publique en préview, c'est le thème candidat qui doit fournir le
+ * niveau 2, pas le thème réellement actif — `RenderedTheme::current()`
+ * retombe sur le thème actif tant qu'aucune préview n'est décidée (jamais
+ * le cas hors des routes publiques), donc `CompileDesignTokens` et l'écran
+ * de marque (admin, jamais en préview) ne changent pas de comportement.
  */
 final class ResolveDesignTokens
 {
-    public function __construct(private readonly ActiveThemeResolver $themeResolver) {}
+    public function __construct(private readonly RenderedTheme $themeResolver) {}
 
     /**
      * @return array<string, array<string, string>>

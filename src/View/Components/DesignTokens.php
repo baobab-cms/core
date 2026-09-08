@@ -7,6 +7,8 @@ namespace Baobab\View\Components;
 use Baobab\Branding\Actions\CompileDesignTokens;
 use Baobab\Branding\Support\FontFaceGenerator;
 use Baobab\Branding\Support\ResolveDesignTokens;
+use Baobab\Rendering\ActiveThemeResolver;
+use Baobab\Rendering\RenderedTheme;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Facades\File;
 use Illuminate\View\Component;
@@ -21,6 +23,14 @@ use Illuminate\View\Component;
  *
  * Depuis Pass B, émet aussi un unique `<link rel="preload">` pour le fichier
  * de la police `body` (§4.3 : « une seule, la plus critique »).
+ *
+ * **En préview (n° 135)**, l'artefact statique sur disque reste celui du
+ * thème actif — l'écrire refléterait les tokens d'un candidat jamais activé
+ * et `CompileDesignTokens::__invoke()` supprimerait au passage l'artefact du
+ * thème réellement servi aux autres visiteurs. La préview sert donc toujours
+ * ses tokens en `<style>` inline, jamais persisté, en réutilisant le même
+ * repli que « aucun artefact sur disque » plutôt que d'ouvrir un chemin de
+ * compilation/cache-busting dédié.
  */
 final class DesignTokens extends Component
 {
@@ -30,22 +40,34 @@ final class DesignTokens extends Component
 
     public ?string $preloadHref = null;
 
-    public function __construct(ResolveDesignTokens $resolve, CompileDesignTokens $compile, FontFaceGenerator $fontFaces)
-    {
+    public function __construct(
+        ResolveDesignTokens $resolve,
+        CompileDesignTokens $compile,
+        FontFaceGenerator $fontFaces,
+        RenderedTheme $rendered,
+        ActiveThemeResolver $active,
+    ) {
         $tokens = $resolve();
         $this->preloadHref = $fontFaces->primaryFileUrl($tokens['fonts']['body'] ?? '');
 
-        $directory = public_path('baobab');
-        $existing = File::isDirectory($directory) ? glob("{$directory}/tokens-*.css") : [];
+        $isPreviewing = $rendered->current()?->id !== $active->current()?->id;
 
-        if ($existing !== [] && $existing !== false) {
-            $this->href = '/baobab/'.basename($existing[0]);
+        if (! $isPreviewing) {
+            $directory = public_path('baobab');
+            $existing = File::isDirectory($directory) ? glob("{$directory}/tokens-*.css") : [];
 
-            return;
+            if ($existing !== [] && $existing !== false) {
+                $this->href = '/baobab/'.basename($existing[0]);
+
+                return;
+            }
         }
 
         $this->inlineCss = $compile->buildCss($tokens);
-        $compile();
+
+        if (! $isPreviewing) {
+            $compile();
+        }
     }
 
     public function render(): ViewContract
