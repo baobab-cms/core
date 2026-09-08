@@ -9,7 +9,7 @@
                     @class([$item['css_class'] ?? ''])
                     @if ($item['is-active']) aria-current="page" @endif
                 >
-                    @if ($item['icon'])<span aria-hidden="true">{{ $item['icon'] }}</span>@endif
+                    @if ($item['icon'])<x-baobab::icon :name="$item['icon']" class="h-4 w-4" />@endif
                     {{ $item['label'] }}
                 </a>
             @else

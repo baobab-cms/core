@@ -30,3 +30,22 @@ it('renders nothing for a location with no assignment', function () {
 
     expect(trim($html))->toBe('');
 });
+
+/**
+ * n° 182 — l'icône imprimait le nom brut (`bi-cup-straw`) au lieu de passer
+ * par `<x-baobab::icon>` : amendement spec 10 §2.2 du 8 septembre 2026, le
+ * Core rend l'icône par défaut, pas un point de personnalisation par thème.
+ */
+it('renders a menu item icon through the icon component rather than printing its name', function () {
+    ThemeMenuLocation::create(['key' => 'primary', 'label' => 'Primary', 'is_active' => true]);
+    $menu = Menu::create(['name' => 'Main']);
+    MenuItem::create(['menu_id' => $menu->id, 'order' => 0, 'type' => 'custom_link', 'url' => '/cafe', 'label' => 'Café', 'icon' => 'bi-cup-straw']);
+    MenuAssignment::create(['menu_id' => $menu->id, 'location_key' => 'primary']);
+
+    app()->instance('request', Request::create('/'));
+
+    $html = Blade::render('<x-baobab::menu location="primary" />');
+
+    expect($html)->not->toContain('>bi-cup-straw<')
+        ->and($html)->toContain('<svg');
+});
