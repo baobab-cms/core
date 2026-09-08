@@ -88,6 +88,45 @@ it('lists content entries for a user with content.admin_crud_entry.view', functi
         ->assertSee('Peugeot');
 });
 
+/**
+ * n° 133 — la liste admin affichait des valeurs brutes (`1`/`0` pour un
+ * booléen, du HTML richtext en clair) au lieu des composants d'affichage.
+ * Content Type dédié (schéma propre, pas `AdminCrudEntry`/`Car`) : `headline`
+ * (text, tronqué), `is_featured` (boolean, « Oui »/« Non »), `body`
+ * (richtext, exclu des colonnes de liste — jamais rendu, jamais de surface
+ * d'injection à réexaminer).
+ */
+it('renders list columns through display components, excluding richtext from the list entirely', function () {
+    $contentType = app(BuildContentType::class)((string) json_encode([
+        'key' => 'AdminListDisplay',
+        'label' => ['singular' => 'Article de liste', 'plural' => 'Articles de liste'],
+        'fields' => [
+            ['key' => 'headline', 'type' => 'text', 'required' => true],
+            ['key' => 'is_featured', 'type' => 'boolean'],
+            ['key' => 'body', 'type' => 'richtext'],
+        ],
+    ]));
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    /** @var class-string<Model> $modelClass */
+    $modelClass = $contentType->fresh()->modelClass();
+    $owner = contentCrudActor(['content.admin_list_display.view']);
+    (new $modelClass([
+        'headline' => str_repeat('Un titre bien trop long pour une colonne. ', 5),
+        'is_featured' => true,
+        'body' => '<script>alert(1)</script>',
+        'author_id' => $owner->id,
+    ]))->save();
+
+    $response = $this->actingAs($owner, 'baobab')
+        ->get(route('admin.content.index', ['contentType' => 'admin-list-displays']));
+
+    $response->assertOk()
+        ->assertSee('Oui')
+        ->assertDontSee('alert(1)', false);
+});
+
 it('denies the index without content.admin_crud_entry.view', function () {
     buildCarForAdminCrud();
     $user = contentCrudActor([]);
