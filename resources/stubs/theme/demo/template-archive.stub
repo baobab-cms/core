@@ -3,15 +3,17 @@
 @section('title', $title)
 
 @section('content')
-    <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-        <h1 class="font-display text-3xl font-semibold tracking-tight text-foreground">{{ $title }}</h1>
+    <div class="mx-auto max-w-2xl px-4 py-20 sm:px-6">
+        <h1 class="text-center font-display text-3xl font-semibold tracking-tight text-foreground">{{ $title }}</h1>
+
+        <div class="mx-auto my-10 h-px w-16 bg-gradient-to-r from-primary via-secondary to-accent"></div>
 
         @if ($entries->isEmpty())
-            <p class="mt-6 text-muted">Aucun contenu publié pour le moment.</p>
+            <p class="text-center text-muted">Aucun contenu publié pour le moment.</p>
         @else
-            <ul class="mt-8 divide-y divide-border">
+            <ul class="divide-y divide-border/70">
                 @foreach ($entries as $entry)
-                    <li class="py-4">
+                    <li class="py-6">
                         <a href="{{ rtrim(request()->url(), '/') }}/{{ $entry->getAttribute('slug') }}" class="text-lg font-medium text-foreground hover:text-muted">
                             {{ $entry->getAttribute('slug') }}
                         </a>
@@ -19,7 +21,7 @@
                 @endforeach
             </ul>
 
-            <div class="mt-8">
+            <div class="mt-10">
                 {{ $entries->links() }}
             </div>
         @endif

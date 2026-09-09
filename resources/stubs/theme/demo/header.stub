@@ -1,9 +1,11 @@
-<header class="border-b border-border">
-    <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
-        <a href="{{ url('/') }}" class="font-display text-lg font-semibold tracking-tight text-foreground">
+<header class="bg-surface">
+    <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-8 sm:px-6">
+        <a href="{{ url('/') }}" class="font-display text-xl font-semibold tracking-tight text-foreground">
             {{ config('app.name', '{{ site_name }}') }}
         </a>
 
 {{ primary_menu }}
     </div>
+
+    <div class="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent"></div>
 </header>
