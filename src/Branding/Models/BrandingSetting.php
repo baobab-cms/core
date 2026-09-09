@@ -40,9 +40,27 @@ class BrandingSetting extends Model
         'tokens' => 'array',
     ];
 
+    /**
+     * `id` n'est pas dans `$fillable` (par construction — ce n'est jamais une
+     * valeur de formulaire légitime), donc `firstOrNew(['id' => 1])` ne le
+     * fixe pas sur l'instance neuve : `fill()` l'ignore silencieusement, et
+     * `save()` insère alors une ligne avec un id auto-incrémenté au lieu de
+     * réoccuper la ligne 1. Une fois la ligne 1 absente, plus aucune
+     * sauvegarde n'est jamais relue par `current()` — le singleton se
+     * transforme en lignes orphelines qui s'accumulent en silence.
+     */
     public static function current(): self
     {
-        return self::query()->firstOrNew(['id' => 1]);
+        $current = self::query()->find(1);
+
+        if ($current instanceof self) {
+            return $current;
+        }
+
+        $new = new self;
+        $new->id = 1;
+
+        return $new;
     }
 
     /**
