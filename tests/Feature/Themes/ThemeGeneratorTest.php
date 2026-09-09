@@ -189,10 +189,11 @@ it('resolves a distinct stub path for the demo starter than for the sober defaul
     }
 });
 
-it('generates a complete theme skeleton with --starter=demo, plumbing only at this pass', function () {
-    $blueprint = ['name' => 'Sample Theme', 'slug' => 'sample-theme'];
-
-    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), $blueprint, 'demo');
+it('generates a complete theme skeleton with --starter=demo', function () {
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), [
+        'name' => 'Sample Theme',
+        'slug' => 'sample-theme',
+    ], 'demo');
 
     $dir = generatedThemePath();
 
@@ -202,15 +203,93 @@ it('generates a complete theme skeleton with --starter=demo, plumbing only at th
     foreach (['index', 'single', 'archive', 'page', '404', '500', '503'] as $template) {
         expect(File::isFile("{$dir}/resources/views/templates/{$template}.blade.php"))->toBeTrue();
     }
+});
 
-    // Pass A ne fait que brancher l'option sur des stubs distincts, sans y
-    // affirmer de style ni de contenu (suivi n° 284) : la sortie est donc
-    // encore identique au squelette sobre, Pass B la fera diverger.
+it('keeps the layout shell identical to the sober skeleton — pure plumbing, no style opinion', function () {
+    $blueprint = ['name' => 'Sample Theme', 'slug' => 'sample-theme'];
+
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), $blueprint, 'demo');
+
     File::deleteDirectory(generatedThemePath().'-sober');
     app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath().'-sober', $blueprint);
 
-    expect(File::get("{$dir}/resources/views/layouts/app.blade.php"))
+    expect(File::get(generatedThemePath().'/resources/views/layouts/app.blade.php'))
         ->toBe(File::get(generatedThemePath().'-sober/resources/views/layouts/app.blade.php'));
+
+    File::deleteDirectory(generatedThemePath().'-sober');
+});
+
+/**
+ * Pass B (suivi n° 284/285, direction « Savane » choisie avec l'utilisateur)
+ * affirme le style du starter démonstratif à travers header/footer/templates
+ * — jamais par des valeurs codées en dur, seulement par les rôles sémantiques
+ * déjà exposés au thème (spec 18 §2.2 : un thème n'a jamais accès aux paliers
+ * 50-900, réservés au chrome fixe de l'admin, §13.1). Deux usages du même
+ * principe : le filet de chrome (header/footer, `primary` seul — la
+ * « marque ») et le dégradé terre → feuillage → soleil (`primary` →
+ * `secondary` → `accent`) qui signe chaque séparateur de contenu.
+ */
+it('applies the Savane chrome accent — primary only — to header and footer', function () {
+    $blueprint = ['name' => 'Sample Theme', 'slug' => 'sample-theme'];
+
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), $blueprint, 'demo');
+
+    $dir = generatedThemePath();
+
+    foreach ([
+        'resources/views/partials/header.blade.php',
+        'resources/views/partials/footer.blade.php',
+    ] as $relativePath) {
+        expect(File::get("{$dir}/{$relativePath}"))->toContain('primary/40');
+    }
+});
+
+it('applies the Savane content signature — a terre/feuillage/soleil gradient — to every template', function () {
+    $blueprint = ['name' => 'Sample Theme', 'slug' => 'sample-theme'];
+
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), $blueprint, 'demo');
+
+    $dir = generatedThemePath();
+
+    foreach ([
+        'resources/views/templates/index.blade.php',
+        'resources/views/templates/single.blade.php',
+        'resources/views/templates/page.blade.php',
+        'resources/views/templates/archive.blade.php',
+        'resources/views/templates/404.blade.php',
+        'resources/views/templates/500.blade.php',
+        'resources/views/templates/503.blade.php',
+    ] as $relativePath) {
+        expect(File::get("{$dir}/{$relativePath}"))->toContain('from-primary via-secondary to-accent');
+    }
+});
+
+it('marks the publication date with the "état publié" role (secondary/success, spec 18 §13.3.1)', function () {
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), [
+        'name' => 'Sample Theme',
+        'slug' => 'sample-theme',
+    ], 'demo');
+
+    expect(File::get(generatedThemePath().'/resources/views/templates/single.blade.php'))
+        ->toContain('text-secondary');
+});
+
+it('diverges from the sober skeleton on header, footer and templates', function () {
+    $blueprint = ['name' => 'Sample Theme', 'slug' => 'sample-theme'];
+
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), $blueprint, 'demo');
+
+    File::deleteDirectory(generatedThemePath().'-sober');
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath().'-sober', $blueprint);
+
+    foreach ([
+        'resources/views/partials/header.blade.php',
+        'resources/views/partials/footer.blade.php',
+        'resources/views/templates/index.blade.php',
+    ] as $relativePath) {
+        expect(File::get(generatedThemePath()."/{$relativePath}"))
+            ->not->toBe(File::get(generatedThemePath()."-sober/{$relativePath}"));
+    }
 
     File::deleteDirectory(generatedThemePath().'-sober');
 });

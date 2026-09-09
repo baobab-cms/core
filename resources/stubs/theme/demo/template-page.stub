@@ -3,7 +3,9 @@
 @section('title', $title)
 
 @section('content')
-    <article class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-        <h1 class="font-display text-3xl font-semibold tracking-tight text-foreground">{{ $title }}</h1>
+    <article class="mx-auto max-w-2xl px-4 py-20 sm:px-6">
+        <h1 class="text-center font-display text-3xl font-semibold tracking-tight text-foreground">{{ $title }}</h1>
+
+        <div class="mx-auto my-10 h-px w-16 bg-gradient-to-r from-primary via-secondary to-accent"></div>
     </article>
 @endsection

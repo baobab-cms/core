@@ -3,9 +3,10 @@
 @section('title', __('baobab::rendering.not_found_title'))
 
 @section('content')
-    <div class="mx-auto max-w-3xl px-4 py-24 text-center sm:px-6">
+    <div class="mx-auto max-w-2xl px-4 py-32 text-center sm:px-6">
         <p class="text-sm font-semibold text-muted">404</p>
         <h1 class="mt-2 font-display text-3xl font-semibold text-foreground">{{ __('baobab::rendering.not_found_title') }}</h1>
-        <a href="{{ url('/') }}" class="mt-6 inline-block text-sm font-medium text-muted hover:text-foreground">&larr; Retour à l'accueil</a>
+        <div class="mx-auto my-8 h-px w-16 bg-gradient-to-r from-primary via-secondary to-accent"></div>
+        <a href="{{ url('/') }}" class="text-sm font-medium text-muted hover:text-foreground">&larr; Retour à l'accueil</a>
     </div>
 @endsection
