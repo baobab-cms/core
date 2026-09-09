@@ -2,8 +2,19 @@
 
 use Baobab\ContentTypes\Actions\BuildContentType;
 use Baobab\ContentTypes\Exceptions\GeneratedFileConflictException;
+use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Themes\Generator\ThemeGenerator;
+use Baobab\Users\Models\User;
 use Illuminate\Support\Facades\File;
+use Spatie\Permission\Models\Role;
+
+function themeGeneratorSuperAdmin(string $email = 'boss-theme-generator@example.com'): User
+{
+    $admin = User::create(['name' => 'Boss', 'email' => $email, 'password' => 'secret']);
+    $admin->assignRole(Role::findByName('super-admin', 'baobab'));
+
+    return $admin;
+}
 
 beforeEach(function () {
     File::deleteDirectory(generatedThemePath());
@@ -319,4 +330,76 @@ it('generates an archive template with image/excerpt markup, driven by content_t
     expect($archive)->toContain("<x-baobab::field.media-display :value=\"\$entry->getAttribute('cover')\" />")
         ->and($archive)->toContain("\$entry->getAttribute('summary')")
         ->and(File::isFile(generatedThemePath().'/resources/views/templates/single-article.blade.php'))->toBeFalse();
+});
+
+/**
+ * Pass C (suivi n° 284/288) : le contenu de démonstration, posé par la
+ * commande elle-même — `SeedDemoContent` (spec 19 §7.2) réutilisée telle
+ * quelle, mécanisme d'installation/retrait compris, jamais réécrite. Les
+ * gabarits pilotés par les champs (`single-page`, `single-article`,
+ * `archive-article`) sont auto-déclarés pour que le rendu soit complet dès
+ * ce seul passage, sans que le développeur ait à connaître `Page`/`Article`.
+ */
+it('seeds the demo content and auto-generates field-aware Page/Article templates for --starter=demo', function () {
+    $admin = themeGeneratorSuperAdmin();
+
+    $outcome = app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), [
+        'name' => 'Sample Theme',
+        'slug' => 'sample-theme',
+    ], 'demo', $admin);
+
+    $dir = generatedThemePath();
+
+    expect($outcome)->toContain('Content Types créés : Page, Article.')
+        ->and(ContentType::where('key', 'Page')->exists())->toBeTrue()
+        ->and(ContentType::where('key', 'Article')->exists())->toBeTrue()
+        ->and(File::isFile("{$dir}/resources/views/templates/single-page.blade.php"))->toBeTrue()
+        ->and(File::isFile("{$dir}/resources/views/templates/single-article.blade.php"))->toBeTrue()
+        ->and(File::isFile("{$dir}/resources/views/templates/archive-article.blade.php"))->toBeTrue();
+
+    // Gabarit piloté par les champs réels de la démo (excerpt/body/cover),
+    // pas le repli générique de la Pass B (qui ignore le contenu).
+    expect((string) File::get("{$dir}/resources/views/templates/single-article.blade.php"))
+        ->toContain("\$entry->getAttribute('body')");
+});
+
+it('does not seed demo content for the sober skeleton, even when an actor is given', function () {
+    $admin = themeGeneratorSuperAdmin();
+
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), [
+        'name' => 'Sample Theme',
+        'slug' => 'sample-theme',
+    ], null, $admin);
+
+    expect(ContentType::where('key', 'Page')->exists())->toBeFalse()
+        ->and(ContentType::where('key', 'Article')->exists())->toBeFalse();
+});
+
+it('lets an explicit content_types declaration narrow the auto-added demo entry', function () {
+    $admin = themeGeneratorSuperAdmin();
+
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), [
+        'name' => 'Sample Theme',
+        'slug' => 'sample-theme',
+        'content_types' => [
+            'Page' => ['templates' => ['show']],
+        ],
+    ], 'demo', $admin);
+
+    $dir = generatedThemePath();
+
+    expect(File::isFile("{$dir}/resources/views/templates/single-page.blade.php"))->toBeTrue()
+        ->and(File::isFile("{$dir}/resources/views/templates/archive-page.blade.php"))->toBeFalse()
+        // Article n'a pas été déclaré explicitement : l'ajout automatique s'applique toujours à lui.
+        ->and(File::isFile("{$dir}/resources/views/templates/archive-article.blade.php"))->toBeTrue();
+});
+
+it('is idempotent across repeated --starter=demo runs, without duplicating content', function () {
+    $admin = themeGeneratorSuperAdmin();
+    $blueprint = ['name' => 'Sample Theme', 'slug' => 'sample-theme'];
+
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), $blueprint, 'demo', $admin);
+    $second = app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), $blueprint, 'demo', $admin);
+
+    expect($second)->toContain('Le contenu de démonstration est déjà en place.');
 });

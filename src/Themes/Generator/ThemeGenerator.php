@@ -8,6 +8,8 @@ use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Generator\GeneratedFileChecksums;
 use Baobab\ContentTypes\Generator\StubRenderer;
 use Baobab\ContentTypes\Models\ContentType;
+use Baobab\Demo\Actions\SeedDemoContent;
+use Baobab\Users\Models\User;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -26,18 +28,35 @@ final class ThemeGenerator
         private readonly StubRenderer $renderer,
         private readonly GeneratedFileChecksums $checksums,
         private readonly FieldRegistry $fields,
+        private readonly SeedDemoContent $seedDemoContent,
     ) {}
 
     /**
      * @param  array<string, mixed>  $blueprint  Blueprint theme.json décodé (associatif), déjà validé.
      * @param  string|null  $starter  Variante de squelette — `demo` (spec 17 §4) ou `null` pour le sobre par défaut.
+     * @param  User|null  $actor  Acteur auquel attribuer le contenu de démo (requis, et déjà résolu par l'appelant, quand `$starter === 'demo'`).
+     * @return list<string> Lignes affichables décrivant le contenu de démo posé (vide hors `--starter=demo`).
      */
-    public function __invoke(string $name, string $themeDir, array $blueprint, ?string $starter = null): void
+    public function __invoke(string $name, string $themeDir, array $blueprint, ?string $starter = null, ?User $actor = null): array
     {
         $this->generateSkeleton($name, $themeDir, $blueprint, $starter);
 
         /** @var array<string, array{templates?: list<string>}> $contentTypes */
         $contentTypes = $blueprint['content_types'] ?? [];
+        $demoOutcome = [];
+
+        if ($starter === 'demo' && $actor instanceof User) {
+            $demoOutcome = ($this->seedDemoContent)($actor);
+
+            // Le développeur garde la main : ses propres déclarations
+            // `content_types.Page`/`content_types.Article` (portée, templates
+            // choisis) l'emportent sur cet ajout automatique — l'union de
+            // tableaux ne complète que les clés absentes.
+            $contentTypes += [
+                'Page' => ['templates' => ['show', 'index']],
+                'Article' => ['templates' => ['show', 'index']],
+            ];
+        }
 
         foreach ($contentTypes as $key => $config) {
             $contentType = ContentType::where('key', $key)->firstOrFail();
@@ -53,6 +72,8 @@ final class ThemeGenerator
         }
 
         $this->generateSupports($blueprint, $themeDir);
+
+        return $demoOutcome;
     }
 
     /**

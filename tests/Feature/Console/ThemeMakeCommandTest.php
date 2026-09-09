@@ -1,7 +1,18 @@
 <?php
 
+use Baobab\ContentTypes\Models\ContentType;
+use Baobab\Users\Models\User;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Spatie\Permission\Models\Role;
+
+function themeMakeCommandSuperAdmin(): User
+{
+    $admin = User::create(['name' => 'Boss', 'email' => 'boss-theme-make-command@example.com', 'password' => 'secret']);
+    $admin->assignRole(Role::findByName('super-admin', 'baobab'));
+
+    return $admin;
+}
 
 /**
  * `ThemeMakeCommand` calcule `base_path("themes/{dirSlug}")` lui-même — pas
@@ -60,7 +71,7 @@ it('rejects an unknown --starter value', function () {
         ->and(Artisan::output())->toContain('Unknown starter');
 });
 
-it('generates a valid theme end to end with --starter=demo and reports success', function () {
+it('fails clearly when --starter=demo has no super-admin to attribute the demo content to', function () {
     writeThemeMakeCommandBlueprint([
         'name' => 'Pest Theme',
         'slug' => 'pest-theme-make-test',
@@ -71,13 +82,79 @@ it('generates a valid theme end to end with --starter=demo and reports success',
         '--starter' => 'demo',
     ]);
 
+    expect($exitCode)->toBe(1)
+        ->and(Artisan::output())->toContain('requires an existing super-admin');
+});
+
+it('auto-creates a super-admin via --admin-email when none exists yet, and attributes the demo content to it', function () {
+    writeThemeMakeCommandBlueprint([
+        'name' => 'Pest Theme',
+        'slug' => 'pest-theme-make-test',
+    ]);
+
+    $exitCode = Artisan::call('baobab:make:theme', [
+        'name' => 'acme/pest-theme-make-test',
+        '--starter' => 'demo',
+        '--admin-email' => 'fresh-admin@example.com',
+    ]);
+
+    expect($exitCode)->toBe(0);
+
+    $admin = User::where('email', 'fresh-admin@example.com')->firstOrFail();
+
+    expect($admin->hasRole('super-admin'))->toBeTrue()
+        ->and(ContentType::where('key', 'Article')->exists())->toBeTrue();
+});
+
+it('forces the existing super-admin and ignores --admin-email when one already exists', function () {
+    $existing = themeMakeCommandSuperAdmin();
+
+    writeThemeMakeCommandBlueprint([
+        'name' => 'Pest Theme',
+        'slug' => 'pest-theme-make-test',
+    ]);
+
+    $exitCode = Artisan::call('baobab:make:theme', [
+        'name' => 'acme/pest-theme-make-test',
+        '--starter' => 'demo',
+        '--admin-email' => 'should-not-be-created@example.com',
+    ]);
+
     expect($exitCode)->toBe(0)
-        ->and(Artisan::output())->toContain('generated at');
+        ->and(User::where('email', 'should-not-be-created@example.com')->exists())->toBeFalse()
+        ->and(User::count())->toBe(1);
+
+    $article = ContentType::where('key', 'Article')->firstOrFail();
+    $entry = $article->modelClass()::query()->firstOrFail();
+
+    expect($entry->author_id)->toBe($existing->id);
+});
+
+it('generates a valid theme end to end with --starter=demo, seeding the demo content, and reports success', function () {
+    themeMakeCommandSuperAdmin();
+
+    writeThemeMakeCommandBlueprint([
+        'name' => 'Pest Theme',
+        'slug' => 'pest-theme-make-test',
+    ]);
+
+    // `Artisan::output()` ne reflète que le dernier sous-appel Artisan
+    // imbriqué (ici la migration déclenchée par BuildContentType via
+    // SeedDemoContent) — le succès se vérifie donc sur le code de sortie et
+    // les effets réels, pas sur le buffer de sortie.
+    $exitCode = Artisan::call('baobab:make:theme', [
+        'name' => 'acme/pest-theme-make-test',
+        '--starter' => 'demo',
+    ]);
+
+    expect($exitCode)->toBe(0);
 
     $dir = themeMakeCommandDir();
 
     expect(File::isFile("{$dir}/module.json"))->toBeTrue()
-        ->and(File::isFile("{$dir}/resources/views/layouts/app.blade.php"))->toBeTrue();
+        ->and(File::isFile("{$dir}/resources/views/layouts/app.blade.php"))->toBeTrue()
+        ->and(File::isFile("{$dir}/resources/views/templates/single-article.blade.php"))->toBeTrue()
+        ->and(ContentType::where('key', 'Article')->exists())->toBeTrue();
 });
 
 it('generates a valid theme end to end and reports success', function () {
