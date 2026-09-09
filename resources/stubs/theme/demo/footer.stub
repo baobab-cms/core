@@ -1,0 +1,11 @@
+<footer class="border-t border-border bg-background">
+    <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+{{ widget_zones }}
+
+        <div class="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6 text-sm text-muted">
+            <p>&copy; {{ now()->year }} {{ config('app.name', '{{ site_name }}') }}</p>
+
+{{ other_menus }}
+        </div>
+    </div>
+</footer>

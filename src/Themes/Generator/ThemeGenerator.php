@@ -30,10 +30,11 @@ final class ThemeGenerator
 
     /**
      * @param  array<string, mixed>  $blueprint  Blueprint theme.json décodé (associatif), déjà validé.
+     * @param  string|null  $starter  Variante de squelette — `demo` (spec 17 §4) ou `null` pour le sobre par défaut.
      */
-    public function __invoke(string $name, string $themeDir, array $blueprint): void
+    public function __invoke(string $name, string $themeDir, array $blueprint, ?string $starter = null): void
     {
-        $this->generateSkeleton($name, $themeDir, $blueprint);
+        $this->generateSkeleton($name, $themeDir, $blueprint, $starter);
 
         /** @var array<string, array{templates?: list<string>}> $contentTypes */
         $contentTypes = $blueprint['content_types'] ?? [];
@@ -77,15 +78,21 @@ final class ThemeGenerator
         }
     }
 
-    public static function stubPath(string $name): string
+    /**
+     * @param  string|null  $starter  Variante de squelette (`demo`, spec 17 §4) — stubs distincts du sobre par
+     *                                défaut, sous `resources/stubs/theme/demo/`. `null` pour le sobre.
+     */
+    public static function stubPath(string $name, ?string $starter = null): string
     {
-        return dirname(__DIR__, 3)."/resources/stubs/theme/{$name}.stub";
+        $variant = $starter === null ? '' : "{$starter}/";
+
+        return dirname(__DIR__, 3)."/resources/stubs/theme/{$variant}{$name}.stub";
     }
 
     /**
      * @param  array<string, mixed>  $blueprint
      */
-    private function generateSkeleton(string $name, string $themeDir, array $blueprint): void
+    private function generateSkeleton(string $name, string $themeDir, array $blueprint, ?string $starter): void
     {
         $siteName = addslashes((string) ($blueprint['name'] ?? $name));
         $studly = Str::studly((string) Str::afterLast($name, '/'));
@@ -102,17 +109,17 @@ final class ThemeGenerator
         );
 
         $this->checksums->write($themeDir, 'resources/views/layouts/app.blade.php', $this->renderer->render(
-            self::stubPath('layout'),
+            self::stubPath('layout', $starter),
             ['site_name' => $siteName],
         ));
 
         $this->checksums->write($themeDir, 'resources/views/partials/header.blade.php', $this->renderer->render(
-            self::stubPath('header'),
+            self::stubPath('header', $starter),
             ['site_name' => $siteName, 'primary_menu' => $this->primaryMenuBlock($blueprint)],
         ));
 
         $this->checksums->write($themeDir, 'resources/views/partials/footer.blade.php', $this->renderer->render(
-            self::stubPath('footer'),
+            self::stubPath('footer', $starter),
             [
                 'site_name' => $siteName,
                 'widget_zones' => $this->widgetZonesBlock($blueprint),
@@ -122,12 +129,12 @@ final class ThemeGenerator
 
         foreach (['index', 'single', 'archive', 'page', '404', '500', '503'] as $template) {
             $this->checksums->write($themeDir, "resources/views/templates/{$template}.blade.php", $this->renderer->render(
-                self::stubPath("template-{$template}"),
+                self::stubPath("template-{$template}", $starter),
                 ['site_name' => $siteName],
             ));
         }
 
-        $this->checksums->write($themeDir, 'resources/assets/css/app.css', $this->renderer->render(self::stubPath('app-css'), []));
+        $this->checksums->write($themeDir, 'resources/assets/css/app.css', $this->renderer->render(self::stubPath('app-css', $starter), []));
 
         $this->checksums->write($themeDir, 'vite.config.js', $this->renderer->render(self::stubPath('vite-config'), ['dir_slug' => $dirSlug]));
 

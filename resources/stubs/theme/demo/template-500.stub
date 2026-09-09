@@ -1,0 +1,11 @@
+@extends('theme::layouts.app')
+
+@section('title', 'Erreur serveur')
+
+@section('content')
+    <div class="mx-auto max-w-3xl px-4 py-24 text-center sm:px-6">
+        <p class="text-sm font-semibold text-muted">500</p>
+        <h1 class="mt-2 font-display text-3xl font-semibold text-foreground">Une erreur est survenue</h1>
+        <a href="{{ url('/') }}" class="mt-6 inline-block text-sm font-medium text-muted hover:text-foreground">&larr; Retour à l'accueil</a>
+    </div>
+@endsection

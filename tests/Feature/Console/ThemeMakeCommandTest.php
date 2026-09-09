@@ -45,6 +45,41 @@ it('fails and reports validation errors for an invalid blueprint', function () {
         ->and(Artisan::output())->toContain('Blueprint de thème invalide');
 });
 
+it('rejects an unknown --starter value', function () {
+    writeThemeMakeCommandBlueprint([
+        'name' => 'Pest Theme',
+        'slug' => 'pest-theme-make-test',
+    ]);
+
+    $exitCode = Artisan::call('baobab:make:theme', [
+        'name' => 'acme/pest-theme-make-test',
+        '--starter' => 'blank',
+    ]);
+
+    expect($exitCode)->toBe(1)
+        ->and(Artisan::output())->toContain('Unknown starter');
+});
+
+it('generates a valid theme end to end with --starter=demo and reports success', function () {
+    writeThemeMakeCommandBlueprint([
+        'name' => 'Pest Theme',
+        'slug' => 'pest-theme-make-test',
+    ]);
+
+    $exitCode = Artisan::call('baobab:make:theme', [
+        'name' => 'acme/pest-theme-make-test',
+        '--starter' => 'demo',
+    ]);
+
+    expect($exitCode)->toBe(0)
+        ->and(Artisan::output())->toContain('generated at');
+
+    $dir = themeMakeCommandDir();
+
+    expect(File::isFile("{$dir}/module.json"))->toBeTrue()
+        ->and(File::isFile("{$dir}/resources/views/layouts/app.blade.php"))->toBeTrue();
+});
+
 it('generates a valid theme end to end and reports success', function () {
     writeThemeMakeCommandBlueprint([
         'name' => 'Pest Theme',

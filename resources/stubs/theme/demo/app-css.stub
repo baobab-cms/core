@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/*
+ * Mapping des design tokens (spec 18 §4.4) : le thème compile contre des
+ * variables, jamais des valeurs codées en dur — changer le branding en admin
+ * ne déclenche aucun rebuild de ce thème.
+ */
+@theme {
+    --color-primary: var(--bb-color-primary);
+    --color-secondary: var(--bb-color-secondary);
+    --color-accent: var(--bb-color-accent);
+    --color-success: var(--bb-color-success);
+    --color-warning: var(--bb-color-warning);
+    --color-danger: var(--bb-color-danger);
+    --color-info: var(--bb-color-info);
+    --color-surface: var(--bb-color-surface);
+    --color-background: var(--bb-color-background);
+    --color-foreground: var(--bb-color-text);
+    --color-muted: var(--bb-color-muted);
+    --color-border: var(--bb-color-border);
+
+    --font-sans: var(--bb-font-body);
+    --font-display: var(--bb-font-heading);
+    --font-mono: var(--bb-font-mono);
+
+    --text-xs: var(--bb-text-xs);
+    --text-sm: var(--bb-text-sm);
+    --text-base: var(--bb-text-base);
+    --text-lg: var(--bb-text-lg);
+    --text-xl: var(--bb-text-xl);
+    --text-2xl: var(--bb-text-2xl);
+    --text-3xl: var(--bb-text-3xl);
+
+    --radius-sm: var(--bb-radius-sm);
+    --radius-md: var(--bb-radius-md);
+    --radius-lg: var(--bb-radius-lg);
+    --radius-full: var(--bb-radius-full);
+
+    --spacing-xs: var(--bb-spacing-xs);
+    --spacing-sm: var(--bb-spacing-sm);
+    --spacing-md: var(--bb-spacing-md);
+    --spacing-lg: var(--bb-spacing-lg);
+    --spacing-xl: var(--bb-spacing-xl);
+
+    --shadow-sm: var(--bb-shadow-sm);
+    --shadow-md: var(--bb-shadow-md);
+    --shadow-lg: var(--bb-shadow-lg);
+}

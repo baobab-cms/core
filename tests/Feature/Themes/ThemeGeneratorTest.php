@@ -178,6 +178,43 @@ it('does not generate a search template when "search" is not declared', function
     expect($manifest['theme']['supports'])->toBe([]);
 });
 
+it('resolves a distinct stub path for the demo starter than for the sober default', function () {
+    foreach (['layout', 'header', 'footer', 'app-css', 'template-index'] as $stub) {
+        $soberPath = ThemeGenerator::stubPath($stub);
+        $demoPath = ThemeGenerator::stubPath($stub, 'demo');
+
+        expect($demoPath)->not->toBe($soberPath)
+            ->and(File::isFile($soberPath))->toBeTrue()
+            ->and(File::isFile($demoPath))->toBeTrue();
+    }
+});
+
+it('generates a complete theme skeleton with --starter=demo, plumbing only at this pass', function () {
+    $blueprint = ['name' => 'Sample Theme', 'slug' => 'sample-theme'];
+
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), $blueprint, 'demo');
+
+    $dir = generatedThemePath();
+
+    expect(File::isFile("{$dir}/module.json"))->toBeTrue()
+        ->and(File::isFile("{$dir}/resources/views/layouts/app.blade.php"))->toBeTrue();
+
+    foreach (['index', 'single', 'archive', 'page', '404', '500', '503'] as $template) {
+        expect(File::isFile("{$dir}/resources/views/templates/{$template}.blade.php"))->toBeTrue();
+    }
+
+    // Pass A ne fait que brancher l'option sur des stubs distincts, sans y
+    // affirmer de style ni de contenu (suivi n° 284) : la sortie est donc
+    // encore identique au squelette sobre, Pass B la fera diverger.
+    File::deleteDirectory(generatedThemePath().'-sober');
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath().'-sober', $blueprint);
+
+    expect(File::get("{$dir}/resources/views/layouts/app.blade.php"))
+        ->toBe(File::get(generatedThemePath().'-sober/resources/views/layouts/app.blade.php'));
+
+    File::deleteDirectory(generatedThemePath().'-sober');
+});
+
 it('generates an archive template with image/excerpt markup, driven by content_types', function () {
     $contentType = app(BuildContentType::class)(contentTypeBlueprintJson('Article', [
         'label' => ['singular' => 'Article', 'plural' => 'Articles'],
