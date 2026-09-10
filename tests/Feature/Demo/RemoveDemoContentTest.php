@@ -3,6 +3,8 @@
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Demo\Actions\RemoveDemoContent;
 use Baobab\Demo\Actions\SeedDemoContent;
+use Baobab\Demo\Actions\SeedDemoForm;
+use Baobab\Forms\Models\Form;
 use Baobab\Media\Models\Media;
 use Baobab\Menus\Models\Menu;
 use Baobab\Menus\Models\MenuAssignment;
@@ -114,6 +116,30 @@ it('ne touche pas à l\'emplacement primary si l\'administrateur y a assigné un
         // Le menu de la démonstration, lui, a bien été retiré — seule sa
         // trace sur `primary` a été respectée, pas sa suppression.
         ->and(Menu::where('name', 'Navigation principale')->exists())->toBeFalse();
+});
+
+/**
+ * Le formulaire n'est pas un Content Type (spec 14 §1) : sans une branche
+ * dédiée, la boucle générique de `RemoveDemoContent` ne trouverait aucun type
+ * pour lui via `ContentType::forModelClass()` et se contenterait de retirer
+ * sa marque, laissant le formulaire orphelin — jamais purgé.
+ */
+it('supprime le formulaire de contact de démonstration', function () {
+    app(SeedDemoForm::class)($this->acteur);
+
+    app(RemoveDemoContent::class)();
+
+    expect(Form::where('slug', 'contact')->exists())->toBeFalse();
+});
+
+it('rend le seeder de formulaire rejouable après un retrait', function () {
+    app(SeedDemoForm::class)($this->acteur);
+    app(RemoveDemoContent::class)();
+
+    $lignes = app(SeedDemoForm::class)($this->acteur);
+
+    expect($lignes)->not->toBe(['Le formulaire de démonstration est déjà en place.'])
+        ->and(Form::where('slug', 'contact')->count())->toBe(1);
 });
 
 it('rend le seeder rejouable après un retrait — le cycle complet promis par la spec 19 §7.3', function () {

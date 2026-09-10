@@ -7,6 +7,8 @@ namespace Baobab\Demo\Actions;
 use Baobab\ContentTypes\Actions\PurgeContentEntry;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Demo\Models\DemoContent;
+use Baobab\Forms\Actions\DeleteForm;
+use Baobab\Forms\Models\Form;
 use Baobab\Media\Actions\PurgeMedia;
 use Baobab\Media\Models\Media;
 use Baobab\Menus\Actions\DeleteMenu;
@@ -47,6 +49,7 @@ final class RemoveDemoContent
         private readonly PurgeMedia $purgeMedia,
         private readonly DeleteMenu $deleteMenu,
         private readonly UpdateReadingSettings $updateReading,
+        private readonly DeleteForm $deleteForm,
     ) {}
 
     /**
@@ -72,7 +75,13 @@ final class RemoveDemoContent
         foreach ($entryMarks as $mark) {
             $entry = $mark->demoable;
 
-            if ($entry !== null) {
+            if ($entry instanceof Form) {
+                // Un formulaire n'est pas un Content Type (spec 14 §1) : il
+                // n'a pas d'entrée dans `ContentType::forModelClass()`, la
+                // branche ci-dessous ne le trouverait donc jamais — sans ce
+                // cas, la marque partirait en laissant le formulaire orphelin.
+                ($this->deleteForm)($entry);
+            } elseif ($entry !== null) {
                 $type = ContentType::forModelClass($entry::class);
 
                 if ($type !== null) {

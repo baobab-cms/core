@@ -9,6 +9,7 @@ use Baobab\ContentTypes\Generator\GeneratedFileChecksums;
 use Baobab\ContentTypes\Generator\StubRenderer;
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Demo\Actions\SeedDemoContent;
+use Baobab\Demo\Actions\SeedDemoForm;
 use Baobab\Users\Models\User;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -29,6 +30,7 @@ final class ThemeGenerator
         private readonly GeneratedFileChecksums $checksums,
         private readonly FieldRegistry $fields,
         private readonly SeedDemoContent $seedDemoContent,
+        private readonly SeedDemoForm $seedDemoForm,
     ) {}
 
     /**
@@ -46,7 +48,10 @@ final class ThemeGenerator
         $demoOutcome = [];
 
         if ($starter === 'demo' && $actor instanceof User) {
-            $demoOutcome = ($this->seedDemoContent)($actor);
+            $demoOutcome = [
+                ...($this->seedDemoContent)($actor),
+                ...($this->seedDemoForm)($actor),
+            ];
 
             // Le développeur garde la main : ses propres déclarations
             // `content_types.Page`/`content_types.Article` (portée, templates

@@ -3,6 +3,7 @@
 use Baobab\ContentTypes\Actions\BuildContentType;
 use Baobab\ContentTypes\Exceptions\GeneratedFileConflictException;
 use Baobab\ContentTypes\Models\ContentType;
+use Baobab\Forms\Models\Form;
 use Baobab\Themes\Generator\ThemeGenerator;
 use Baobab\Users\Models\User;
 use Illuminate\Support\Facades\File;
@@ -363,6 +364,35 @@ it('seeds the demo content and auto-generates field-aware Page/Article templates
         ->toContain("\$entry->getAttribute('body')");
 });
 
+/**
+ * Pass D (suivi n° 284) : le formulaire de contact de démonstration, posé
+ * par `SeedDemoForm` (spec 14 §8) et embarqué directement dans le stub du
+ * pied de page — jamais via un embed richtext (choix tranché avec
+ * l'utilisateur en ouvrant la passe : le nœud Tiptap dédié à l'embarquement
+ * d'un formulaire n'était exercé nulle part ailleurs dans le code).
+ */
+it('seeds the demo contact form for --starter=demo', function () {
+    $admin = themeGeneratorSuperAdmin();
+
+    $outcome = app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), [
+        'name' => 'Sample Theme',
+        'slug' => 'sample-theme',
+    ], 'demo', $admin);
+
+    expect($outcome)->toContain('Formulaire de démonstration créé : Contact.')
+        ->and(Form::where('slug', 'contact')->exists())->toBeTrue();
+});
+
+it('embeds the demo contact form in the generated footer stub', function () {
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), [
+        'name' => 'Sample Theme',
+        'slug' => 'sample-theme',
+    ], 'demo');
+
+    expect(File::get(generatedThemePath().'/resources/views/partials/footer.blade.php'))
+        ->toContain('<x-baobab::form-embed slug="contact"');
+});
+
 it('does not seed demo content for the sober skeleton, even when an actor is given', function () {
     $admin = themeGeneratorSuperAdmin();
 
@@ -372,7 +402,8 @@ it('does not seed demo content for the sober skeleton, even when an actor is giv
     ], null, $admin);
 
     expect(ContentType::where('key', 'Page')->exists())->toBeFalse()
-        ->and(ContentType::where('key', 'Article')->exists())->toBeFalse();
+        ->and(ContentType::where('key', 'Article')->exists())->toBeFalse()
+        ->and(Form::where('slug', 'contact')->exists())->toBeFalse();
 });
 
 it('lets an explicit content_types declaration narrow the auto-added demo entry', function () {
@@ -401,5 +432,6 @@ it('is idempotent across repeated --starter=demo runs, without duplicating conte
     app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), $blueprint, 'demo', $admin);
     $second = app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), $blueprint, 'demo', $admin);
 
-    expect($second)->toContain('Le contenu de démonstration est déjà en place.');
+    expect($second)->toContain('Le contenu de démonstration est déjà en place.')
+        ->and($second)->toContain('Le formulaire de démonstration est déjà en place.');
 });
