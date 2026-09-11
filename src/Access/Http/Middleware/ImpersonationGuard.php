@@ -25,6 +25,12 @@ final class ImpersonationGuard
     private const BLOCKED_ROUTE_PREFIXES = [
         'admin.access.',
         'admin.account.security.',
+        // Audit sécurité du 7 septembre 2026 (constat n° 3) : sans ce blocage,
+        // l'identité impersonée pouvait créer un token API Sanctum portant ses
+        // propres abilities, puis conserver un accès durable une fois
+        // l'impersonation arrêtée — hors de toute session d'impersonation et
+        // hors bannière d'usurpation.
+        'admin.account.api-tokens.',
         // Écran système Recherche (spec 11 §4.3) — l'omnibox admin.omnibox.*
         // reste accessible, elle : chercher pendant une impersonation est
         // permis (résultats bornés par les policies de l'acteur impersoné),

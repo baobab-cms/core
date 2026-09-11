@@ -118,6 +118,25 @@ it('blocks the account security screen while impersonating', function () {
     $this->post('/admin/account/security/disable', ['current_password' => 'secret'])->assertForbidden();
 });
 
+/**
+ * Audit sécurité du 7 septembre 2026 (constat n° 3) : sans ce blocage,
+ * l'identité impersonée pouvait créer un token API Sanctum, arrêter
+ * l'impersonation, et conserver un accès durable hors de toute session
+ * d'impersonation.
+ */
+it('blocks creating and revoking API tokens while impersonating', function () {
+    $actor = impersonationActor('admin');
+    $target = impersonationTarget('editor');
+    app(GrantPermission::class)($target, 'baobab.admin.access');
+
+    $this->actingAs($actor, 'baobab')
+        ->post("/admin/users/{$target->id}/impersonate");
+
+    $this->get('/admin/account/api-tokens')->assertForbidden();
+    $this->post('/admin/account/api-tokens', ['name' => 'x', 'abilities' => ['baobab.admin.access']])->assertForbidden();
+    $this->delete('/admin/account/api-tokens/1')->assertForbidden();
+});
+
 it('records a user.impersonation.started audit entry naming the real actor', function () {
     $actor = impersonationActor('admin');
     $target = impersonationTarget('editor');
