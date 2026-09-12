@@ -26,11 +26,25 @@ use Illuminate\Database\Eloquent\Model;
  * distinct, traité à l'affichage via le filtre `baobab.richtext.display`
  * (`field.richtext-display.blade.php`), jamais ici.
  *
+ * **Le marqueur n'est jamais réinjecté tel quel** (audit sécurité du 7
+ * septembre 2026, constat n°1, `docs/audit-securite-2026-09-07.md`) : un
+ * marqueur conservé verbatim laissait passer n'importe quel attribut
+ * (`onclick`, …) ou enfant (`<img onerror>`) porté par le `<span>` original,
+ * puisque Purifier ne le voyait jamais. À la place, seule la **valeur** de
+ * `data-baobab-embed` est extraite, validée contre un format strict
+ * `type:slug` (les deux segments `[a-z0-9-]+`), et un span canonique est
+ * reconstruit à partir de zéro — aucun autre attribut, contenu interne
+ * réduit à du texte brut échappé (le HTML éventuel est retiré, jamais
+ * réinjecté). Un marqueur dont la valeur ne respecte pas ce format est
+ * purement jeté (pas préservé, pas passé à Purifier tel quel).
+ *
  * @implements CastsAttributes<string, string>
  */
 final class MarkerPreservingCleanHtml implements CastsAttributes
 {
-    private const MARKER_PATTERN = '/<span[^>]*\sdata-baobab-embed="[^"]*"[^>]*>.*?<\/span>/su';
+    private const MARKER_PATTERN = '/<span[^>]*\sdata-baobab-embed="([^"]*)"[^>]*>(.*?)<\/span>/su';
+
+    private const MARKER_VALUE_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/';
 
     public function get(Model $model, string $key, mixed $value, array $attributes): mixed
     {
@@ -51,8 +65,14 @@ final class MarkerPreservingCleanHtml implements CastsAttributes
         $markers = [];
 
         $withoutMarkers = preg_replace_callback(self::MARKER_PATTERN, function (array $match) use (&$markers): string {
+            $marker = $this->normalizeMarker($match[1], $match[2]);
+
+            if ($marker === null) {
+                return '';
+            }
+
             $token = 'baobabembedmarker'.count($markers).'token';
-            $markers[$token] = $match[0];
+            $markers[$token] = $marker;
 
             return $token;
         }, $value);
@@ -60,5 +80,16 @@ final class MarkerPreservingCleanHtml implements CastsAttributes
         $cleaned = (string) clean($withoutMarkers ?? $value);
 
         return $markers === [] ? $cleaned : strtr($cleaned, $markers);
+    }
+
+    private function normalizeMarker(string $value, string $innerHtml): ?string
+    {
+        if (preg_match(self::MARKER_VALUE_PATTERN, $value) !== 1) {
+            return null;
+        }
+
+        $label = trim(strip_tags($innerHtml));
+
+        return '<span data-baobab-embed="'.$value.'" contenteditable="false">'.e($label).'</span>';
     }
 }

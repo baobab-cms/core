@@ -81,6 +81,41 @@ it('preserves a form embed marker through the richtext cast while still strippin
         ->not->toContain('<script>');
 });
 
+it('strips attacker-controlled attributes and child markup from a form embed marker instead of preserving it verbatim', function () {
+    [$type, $modelClass] = buildFormEmbedArticle();
+
+    $body = '<p>Avant</p>'
+        .'<span data-baobab-embed="form:contact" onclick="alert(1)"><img src=x onerror="alert(2)">Contact</span>'
+        .'<p>Après</p>';
+
+    $entry = app(SaveContentEntry::class)($type, ['title' => 'Test', 'body' => $body], formEmbedActor());
+
+    $reloaded = $modelClass::query()->findOrFail($entry->getKey());
+
+    expect($reloaded->getAttribute('body'))
+        ->toContain('data-baobab-embed="form:contact"')
+        ->toContain('Contact')
+        ->not->toContain('onclick')
+        ->not->toContain('onerror')
+        ->not->toContain('<img');
+});
+
+it('drops a malformed embed marker entirely instead of preserving it verbatim', function () {
+    [$type, $modelClass] = buildFormEmbedArticle();
+
+    $body = '<p>Avant</p>'
+        .'<span data-baobab-embed="evil" onclick="alert(1)">click</span>'
+        .'<p>Après</p>';
+
+    $entry = app(SaveContentEntry::class)($type, ['title' => 'Test', 'body' => $body], formEmbedActor());
+
+    $reloaded = $modelClass::query()->findOrFail($entry->getKey());
+
+    expect($reloaded->getAttribute('body'))
+        ->not->toContain('data-baobab-embed')
+        ->not->toContain('onclick');
+});
+
 it('resolves a preserved form embed marker into the real form-embed render at display time', function () {
     app(SaveForm::class)(null, ['slug' => 'contact', 'title' => 'Contact', 'fields' => []]);
 
