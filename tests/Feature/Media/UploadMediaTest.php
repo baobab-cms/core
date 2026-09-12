@@ -90,6 +90,67 @@ it('sanitizes a malicious SVG before storing it', function () {
         ->and($stored)->not->toContain('onload');
 });
 
+it('strips dangerous SVG elements regardless of tag case', function () {
+    $svgPath = sys_get_temp_dir().'/baobab-test-uppercase-script.svg';
+    file_put_contents($svgPath, '<svg xmlns="http://www.w3.org/2000/svg"><SCRIPT>alert(1)</SCRIPT></svg>');
+    $file = new UploadedFile($svgPath, 'uppercase.svg', 'image/svg+xml', null, true);
+
+    $media = app(UploadMedia::class)($file, uploadActor());
+
+    $stored = Storage::disk('public')->get($media->path);
+
+    expect(mb_strtolower((string) $stored))->not->toContain('<script');
+});
+
+it('strips SMIL set/animate elements that could recreate an event handler', function () {
+    $svgPath = sys_get_temp_dir().'/baobab-test-smil.svg';
+    file_put_contents($svgPath, '<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1">'
+        .'<set attributeName="onmouseover" to="alert(1)" />'
+        .'<animate attributeName="onclick" from="0" to="alert(2)" />'
+        .'</rect></svg>');
+    $file = new UploadedFile($svgPath, 'smil.svg', 'image/svg+xml', null, true);
+
+    $media = app(UploadMedia::class)($file, uploadActor());
+
+    $stored = Storage::disk('public')->get($media->path);
+
+    expect($stored)->not->toContain('<set')
+        ->and($stored)->not->toContain('<animate');
+});
+
+it('strips foreignObject elements embedding foreign markup', function () {
+    $svgPath = sys_get_temp_dir().'/baobab-test-foreignobject.svg';
+    file_put_contents($svgPath, '<svg xmlns="http://www.w3.org/2000/svg"><foreignObject>'
+        .'<body xmlns="http://www.w3.org/1999/xhtml"><script>alert(1)</script></body>'
+        .'</foreignObject></svg>');
+    $file = new UploadedFile($svgPath, 'foreign.svg', 'image/svg+xml', null, true);
+
+    $media = app(UploadMedia::class)($file, uploadActor());
+
+    $stored = Storage::disk('public')->get($media->path);
+
+    expect(mb_strtolower((string) $stored))->not->toContain('foreignobject')
+        ->and($stored)->not->toContain('<script');
+});
+
+it('strips use elements entirely and blocks data:/external href schemes on remaining attributes', function () {
+    $svgPath = sys_get_temp_dir().'/baobab-test-use-href.svg';
+    file_put_contents($svgPath, '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+        .'<use xlink:href="https://evil.example/x.svg#y" />'
+        .'<a href="data:text/html,%3Cscript%3Ealert(1)%3C/script%3E"><rect width="1" height="1" /></a>'
+        .'<rect id="icon" width="1" height="1" /><use href="#icon" />'
+        .'</svg>');
+    $file = new UploadedFile($svgPath, 'use-href.svg', 'image/svg+xml', null, true);
+
+    $media = app(UploadMedia::class)($file, uploadActor());
+
+    $stored = Storage::disk('public')->get($media->path);
+
+    expect(mb_strtolower((string) $stored))->not->toContain('<use')
+        ->and($stored)->not->toContain('data:text/html')
+        ->and($stored)->not->toContain('evil.example');
+});
+
 it('strips EXIF GPS data and applies orientation when uploading a JPEG', function () {
     // Orientation 6 = "rotate 90 CW" : une source paysage (40x20) doit devenir portrait (20x40).
     $path = createTestJpegWithExif(orientation: 6, width: 40, height: 20);
