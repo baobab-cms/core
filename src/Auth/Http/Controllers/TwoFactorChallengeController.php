@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Auth\Http\Controllers;
 
+use Baobab\Auth\Actions\RedeemTwoFactorRecoveryCode;
 use Baobab\Auth\TwoFactorManager;
 use Baobab\Users\Models\User;
 use Illuminate\Contracts\View\View;
@@ -15,7 +16,10 @@ use Illuminate\Validation\ValidationException;
 
 final class TwoFactorChallengeController extends Controller
 {
-    public function __construct(private readonly TwoFactorManager $manager) {}
+    public function __construct(
+        private readonly TwoFactorManager $manager,
+        private readonly RedeemTwoFactorRecoveryCode $redeemRecoveryCode,
+    ) {}
 
     public function create(Request $request): View|RedirectResponse
     {
@@ -34,14 +38,24 @@ final class TwoFactorChallengeController extends Controller
             return redirect()->route('login');
         }
 
-        $request->validate(['code' => ['required', 'string']]);
+        $request->validate([
+            'code' => ['nullable', 'string'],
+            'recovery_code' => ['nullable', 'string'],
+        ]);
 
         /** @var User $user */
         $user = User::findOrFail($userId);
 
-        if (! $this->manager->verify($user, (string) $request->input('code'))) {
+        $recoveryCode = trim((string) $request->input('recovery_code'));
+        $code = trim((string) $request->input('code'));
+
+        $verified = $recoveryCode !== ''
+            ? ($this->redeemRecoveryCode)($user, $recoveryCode)
+            : $this->manager->verify($user, $code);
+
+        if (! $verified) {
             throw ValidationException::withMessages([
-                'code' => __('baobab::admin.auth.two_factor_invalid'),
+                $recoveryCode !== '' ? 'recovery_code' : 'code' => __('baobab::admin.auth.two_factor_invalid'),
             ]);
         }
 

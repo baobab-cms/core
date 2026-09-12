@@ -29,6 +29,10 @@ return [
         'two_factor_prompt' => 'Saisissez le code généré par votre application d\'authentification.',
         'two_factor_code' => 'Code',
         'two_factor_invalid' => 'Le code saisi est invalide.',
+        'two_factor_recovery_prompt' => 'Saisissez l\'un de vos codes de récupération à usage unique.',
+        'two_factor_recovery_code' => 'Code de récupération',
+        'two_factor_use_recovery_code' => 'Utiliser un code de récupération',
+        'two_factor_use_code' => 'Utiliser le code de l\'application à la place',
     ],
 
     'components' => [
