@@ -4,6 +4,12 @@
 
 @section('content')
     <x-baobab::page :title="__('baobab::admin.access.title')">
+        <x-slot:actions>
+            <x-baobab::button variant="secondary" :href="route('admin.access.direct-permissions.index')">
+                {{ __('baobab::admin.access.direct_permissions.title') }}
+            </x-baobab::button>
+        </x-slot:actions>
+
         <x-baobab::card class="mb-6">
             <x-slot:header>
                 <span class="font-medium text-foreground">{{ __('baobab::admin.access.create_role_title') }}</span>

@@ -1439,6 +1439,10 @@ class BaobabServiceProvider extends ServiceProvider
             $audit()->record('permission.revoked', $from, ['permission' => $permission]);
         });
 
+        $registry->listen('baobab.access.direct_permission.granted', function (Model $user, string $permission, string $justification) use ($audit): void {
+            $audit()->record('direct_permission.granted', $user, ['permission' => $permission, 'justification' => $justification]);
+        });
+
         $registry->listen('baobab.access.role.assigned', function (User $user, Role $role) use ($audit): void {
             $audit()->record('role.assigned', $user, ['role' => $role->name]);
         });

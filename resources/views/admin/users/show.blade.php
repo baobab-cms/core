@@ -34,6 +34,63 @@
             </x-baobab::card>
         </div>
 
+        <x-baobab::card class="mt-6" :header="__('baobab::admin.users.show.direct_permissions_title')">
+            <p class="mb-3 text-xs text-muted">{{ __('baobab::admin.users.show.direct_permissions_hint') }}</p>
+
+            @forelse ($directGrants as $grant)
+                <div class="flex items-start justify-between gap-4 border-b border-border py-2 last:border-0">
+                    <div>
+                        <p class="text-sm font-medium text-foreground">{{ $grant->permission->name }}</p>
+                        <p class="text-xs text-muted">{{ $grant->justification }}</p>
+                        <p class="mt-1 text-xs text-muted">
+                            {{ __('baobab::admin.users.show.direct_permission_granted_by', [
+                                'name' => $grant->grantedBy->name ?? __('baobab::admin.audit.system_actor'),
+                                'date' => $grant->created_at->format('Y-m-d H:i'),
+                            ]) }}
+                        </p>
+                    </div>
+
+                    @if ($canManageAccess)
+                        <form method="POST" action="{{ route('admin.users.permissions.destroy', ['user' => $user, 'permission' => $grant->permission->name]) }}">
+                            @csrf
+                            @method('DELETE')
+                            <x-baobab::button type="submit" variant="danger">
+                                {{ __('baobab::admin.users.show.direct_permission_revoke_action') }}
+                            </x-baobab::button>
+                        </form>
+                    @endif
+                </div>
+            @empty
+                <p class="text-sm text-muted">{{ __('baobab::admin.users.show.direct_permissions_empty') }}</p>
+            @endforelse
+
+            @if ($canManageAccess)
+                <x-baobab::form method="POST" action="{{ route('admin.users.permissions.store', ['user' => $user]) }}" class="mt-4 border-t border-border pt-4">
+                    <label for="permission" class="mb-1 block text-sm font-medium text-foreground">
+                        {{ __('baobab::admin.users.show.direct_permission_select_label') }}
+                    </label>
+                    <select id="permission" name="permission" class="mb-4 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm">
+                        @foreach ($permissionGroups as $group)
+                            <optgroup label="{{ $group['label'] }}">
+                                @foreach ($group['permissions'] as $permission)
+                                    <option value="{{ $permission['name'] }}">{{ $permission['label'] }}</option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
+                    </select>
+
+                    <x-baobab::field.textarea
+                        name="justification"
+                        label="{{ __('baobab::admin.users.show.direct_permission_justification_label') }}"
+                    />
+
+                    <x-baobab::button type="submit" variant="primary">
+                        {{ __('baobab::admin.users.show.direct_permission_grant_action') }}
+                    </x-baobab::button>
+                </x-baobab::form>
+            @endif
+        </x-baobab::card>
+
         <x-baobab::card class="mt-6" :header="__('baobab::admin.users.show.activity_title')">
             <x-baobab::table :columns="$activityColumns" :rows="$activity" />
         </x-baobab::card>

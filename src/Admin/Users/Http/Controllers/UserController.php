@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Baobab\Admin\Users\Http\Controllers;
 
+use Baobab\Access\Models\DirectPermissionGrant;
+use Baobab\Admin\Access\PermissionMatrixBuilder;
 use Baobab\Audit\Models\AuditEntry;
 use Baobab\Users\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -12,6 +14,8 @@ use Illuminate\Support\Facades\Auth;
 
 final class UserController
 {
+    public function __construct(private readonly PermissionMatrixBuilder $permissionMatrixBuilder) {}
+
     public function index(): View
     {
         $users = User::query()->with('roles')->orderBy('name')->get();
@@ -30,8 +34,14 @@ final class UserController
         return view('baobab::admin.users.show', [
             'user' => $user->load(['roles' => fn ($query) => $query->orderBy('name')]),
             'canImpersonate' => ! $user->is($actor) && $user->level() < $actor->level(),
+            'canManageAccess' => $actor->can('baobab.access.manage'),
             'activity' => $this->activity($user),
             'activityColumns' => $this->activityColumns(),
+            'directGrants' => DirectPermissionGrant::query()
+                ->where('user_id', $user->id)
+                ->with(['permission', 'grantedBy'])
+                ->get(),
+            'permissionGroups' => $this->permissionMatrixBuilder->build()['groups'],
         ]);
     }
 

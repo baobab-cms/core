@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Baobab\Admin\Access\Http\Controllers\AccessMatrixController;
+use Baobab\Admin\Access\Http\Controllers\DirectPermissionController;
 use Baobab\Admin\Account\Http\Controllers\ApiTokenController;
 use Baobab\Admin\Account\Http\Controllers\NotificationPreferencesController;
 use Baobab\Admin\Account\Http\Controllers\SecurityController;
@@ -91,6 +92,7 @@ Route::middleware('can:baobab.access.manage')
         Route::get('/', [AccessMatrixController::class, 'index'])->name('index');
         Route::post('/roles', [AccessMatrixController::class, 'store'])->name('roles.store');
         Route::post('/{role}/permissions/{permission}', [AccessMatrixController::class, 'toggle'])->name('toggle');
+        Route::get('/direct-permissions', [DirectPermissionController::class, 'index'])->name('direct-permissions.index');
         Route::get('/{role}', [AccessMatrixController::class, 'show'])->name('roles.show');
         Route::patch('/{role}/settings', [AccessMatrixController::class, 'updateSettings'])->name('roles.settings.update');
     });
@@ -321,6 +323,14 @@ Route::middleware('can:baobab.users.impersonate')
         Route::get('/', [UserController::class, 'index'])->name('index');
         Route::get('/{user}', [UserController::class, 'show'])->name('show');
         Route::post('/{user}/impersonate', [ImpersonationController::class, 'store'])->name('impersonate');
+    });
+
+Route::middleware('can:baobab.access.manage')
+    ->prefix('users')
+    ->name('users.')
+    ->group(function (): void {
+        Route::post('/{user}/permissions', [DirectPermissionController::class, 'store'])->name('permissions.store');
+        Route::delete('/{user}/permissions/{permission}', [DirectPermissionController::class, 'destroy'])->name('permissions.destroy');
     });
 
 Route::prefix('media')
