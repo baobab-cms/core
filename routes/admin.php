@@ -91,6 +91,8 @@ Route::middleware('can:baobab.access.manage')
         Route::get('/', [AccessMatrixController::class, 'index'])->name('index');
         Route::post('/roles', [AccessMatrixController::class, 'store'])->name('roles.store');
         Route::post('/{role}/permissions/{permission}', [AccessMatrixController::class, 'toggle'])->name('toggle');
+        Route::get('/{role}', [AccessMatrixController::class, 'show'])->name('roles.show');
+        Route::patch('/{role}/settings', [AccessMatrixController::class, 'updateSettings'])->name('roles.settings.update');
     });
 
 Route::middleware('can:baobab.system.branding.manage')

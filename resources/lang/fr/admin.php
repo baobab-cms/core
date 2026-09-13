@@ -1336,6 +1336,20 @@ return [
         'create_role_level' => 'Niveau',
         'create_role_submit' => 'Créer',
         'role_created' => 'Rôle « :name » créé.',
+
+        'show' => [
+            'level_title' => 'Niveau',
+            'level_description' => 'Niveau hiérarchique : :level. Détermine quels rôles et utilisateurs ce rôle peut gérer (spec 05 §4.1).',
+            'settings_title' => 'Réglages associés',
+            'requires_two_factor_label' => 'Authentification à deux facteurs requise',
+            'requires_two_factor_help' => 'Signale que les utilisateurs de ce rôle doivent activer la 2FA. Non appliqué au login pour le moment.',
+            'settings_save_action' => 'Enregistrer',
+            'settings_updated' => 'Réglages du rôle « :name » mis à jour.',
+            'users_title' => 'Utilisateurs porteurs',
+            'users_empty' => 'Aucun utilisateur ne porte ce rôle.',
+            'permissions_title' => 'Permissions',
+            'permissions_hint' => 'Modifiable depuis la matrice rôles × permissions.',
+        ],
     ],
 
 ];

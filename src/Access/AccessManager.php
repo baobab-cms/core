@@ -43,12 +43,24 @@ final class AccessManager
         return $role;
     }
 
-    /** @param array<string, mixed> $data */
+    /**
+     * `forceFill()` plutôt que `update()` : $data vient toujours d'une Action
+     * qui a déjà validé/restreint ses clés (name, level, requires_two_factor…),
+     * jamais d'une requête brute — le garde-fou de mass-assignment de Laravel
+     * n'a rien à protéger ici. Nécessaire en pratique : ce garde-fou met en
+     * cache, par classe et pour la durée du process, la liste des colonnes de
+     * la table au premier appel — en test, la migration de seed des rôles
+     * s'exécute avant toute migration ajoutant une colonne plus récente
+     * (`baobab_roles.requires_two_factor`), ce qui fige un cache obsolète et
+     * ferait ignorer silencieusement cette colonne sur chaque mise à jour.
+     *
+     * @param  array<string, mixed>  $data
+     */
     public function updateRole(RoleContract $role, array $data): RoleContract
     {
         $before = $role->getOriginal();
 
-        $role->update($data);
+        $role->forceFill($data)->save();
         $role->refresh();
 
         Hook::action('baobab.access.role.updated', $role, $before);

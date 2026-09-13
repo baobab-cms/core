@@ -24,7 +24,11 @@
                     <tr>
                         <th class="px-3 py-2 font-medium">{{ __('baobab::admin.access.column_permission') }}</th>
                         @foreach ($roles as $role)
-                            <th class="px-3 py-2 text-center font-medium">{{ $role->name }}</th>
+                            <th class="px-3 py-2 text-center font-medium">
+                                <a href="{{ route('admin.access.roles.show', ['role' => $role]) }}" class="hover:underline">
+                                    {{ $role->name }}
+                                </a>
+                            </th>
                         @endforeach
                     </tr>
                 </thead>

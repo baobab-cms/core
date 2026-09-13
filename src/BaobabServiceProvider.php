@@ -1414,8 +1414,16 @@ class BaobabServiceProvider extends ServiceProvider
 
         $registry->listen('baobab.access.role.updated', function (Role $role, array $before) use ($audit): void {
             $audit()->record('role.updated', $role, [
-                'before' => ['name' => $before['name'] ?? null, 'level' => $before['level'] ?? null],
-                'after' => ['name' => $role->name, 'level' => $role->getAttribute('level')],
+                'before' => [
+                    'name' => $before['name'] ?? null,
+                    'level' => $before['level'] ?? null,
+                    'requires_two_factor' => isset($before['requires_two_factor']) ? (bool) $before['requires_two_factor'] : null,
+                ],
+                'after' => [
+                    'name' => $role->name,
+                    'level' => $role->getAttribute('level'),
+                    'requires_two_factor' => (bool) $role->getAttribute('requires_two_factor'),
+                ],
             ]);
         });
 
