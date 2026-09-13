@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Baobab\Admin\Users\Http\Controllers;
 
+use Baobab\Audit\Models\AuditEntry;
 use Baobab\Users\Models\User;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 
@@ -12,24 +14,77 @@ final class UserController
 {
     public function index(): View
     {
-        /** @var User $actor */
-        $actor = Auth::guard('baobab')->user();
-
         $users = User::query()->with('roles')->orderBy('name')->get();
 
         return view('baobab::admin.users.index', [
             'users' => $users,
-            'columns' => $this->columns($actor),
+            'columns' => $this->columns(),
         ]);
+    }
+
+    public function show(User $user): View
+    {
+        /** @var User $actor */
+        $actor = Auth::guard('baobab')->user();
+
+        return view('baobab::admin.users.show', [
+            'user' => $user->load(['roles' => fn ($query) => $query->orderBy('name')]),
+            'canImpersonate' => ! $user->is($actor) && $user->level() < $actor->level(),
+            'activity' => $this->activity($user),
+            'activityColumns' => $this->activityColumns(),
+        ]);
+    }
+
+    /**
+     * Spec 05 §5 : fiche utilisateur, onglet activité — le journal d'audit
+     * n'a pas de colonne dédiée « sujet » distincte du polymorphe
+     * `auditable` ; ce qui concerne cet utilisateur, c'est donc ce qu'il a
+     * fait lui-même (`actor_id`) autant que ce qui lui a été fait (rôle
+     * assigné, impersonation démarrée…, `auditable_type` = `User::class`).
+     *
+     * @return LengthAwarePaginator<int, AuditEntry>
+     */
+    private function activity(User $user): LengthAwarePaginator
+    {
+        return AuditEntry::query()
+            ->with(['actor', 'impersonator'])
+            ->where(function ($query) use ($user): void {
+                $query->where('actor_id', $user->id)
+                    ->orWhere(function ($query) use ($user): void {
+                        $query->where('auditable_type', User::class)->where('auditable_id', $user->id);
+                    });
+            })
+            ->orderByDesc('created_at')
+            ->paginate(20)
+            ->withQueryString();
     }
 
     /**
      * @return list<array<string, mixed>>
      */
-    private function columns(User $actor): array
+    private function activityColumns(): array
     {
         return [
-            ['key' => 'name', 'label' => __('baobab::admin.users.column_name')],
+            ['key' => 'created_at', 'label' => __('baobab::admin.audit.column_date'), 'render' => fn (AuditEntry $entry) => $entry->created_at->format('Y-m-d H:i')],
+            ['key' => 'actor', 'label' => __('baobab::admin.audit.column_actor'), 'render' => fn (AuditEntry $entry) => $entry->actor !== null ? $entry->actor->name : __('baobab::admin.audit.system_actor')],
+            ['key' => 'impersonator', 'label' => __('baobab::admin.audit.column_impersonator'), 'render' => fn (AuditEntry $entry) => $entry->impersonator !== null ? $entry->impersonator->name : '—'],
+            ['key' => 'action', 'label' => __('baobab::admin.audit.column_action')],
+            ['key' => 'data', 'label' => __('baobab::admin.audit.column_data'), 'render' => fn (AuditEntry $entry) => json_encode($entry->data)],
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function columns(): array
+    {
+        return [
+            [
+                'key' => 'name',
+                'label' => __('baobab::admin.users.column_name'),
+                'raw' => true,
+                'render' => fn (User $user) => '<a href="'.route('admin.users.show', ['user' => $user]).'" class="hover:underline">'.e($user->name).'</a>',
+            ],
             ['key' => 'email', 'label' => __('baobab::admin.users.column_email')],
             [
                 'key' => 'roles',
@@ -40,18 +95,6 @@ final class UserController
                 'key' => 'level',
                 'label' => __('baobab::admin.users.column_level'),
                 'render' => fn (User $user) => (string) $user->level(),
-            ],
-            [
-                'key' => 'actions',
-                'label' => '',
-                'raw' => true,
-                'render' => function (User $user) use ($actor) {
-                    if ($user->is($actor) || $user->level() >= $actor->level()) {
-                        return '';
-                    }
-
-                    return view('baobab::admin.users.partials.impersonate-button', ['user' => $user])->render();
-                },
             ],
         ];
     }

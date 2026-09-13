@@ -319,6 +319,7 @@ Route::middleware('can:baobab.users.impersonate')
     ->name('users.')
     ->group(function (): void {
         Route::get('/', [UserController::class, 'index'])->name('index');
+        Route::get('/{user}', [UserController::class, 'show'])->name('show');
         Route::post('/{user}/impersonate', [ImpersonationController::class, 'store'])->name('impersonate');
     });
 

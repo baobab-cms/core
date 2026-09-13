@@ -112,6 +112,13 @@ return [
         'column_roles' => 'Rôles',
         'column_level' => 'Niveau',
         'impersonate_action' => 'Se connecter en tant que',
+
+        'show' => [
+            'identity_title' => 'Identité',
+            'roles_title' => 'Rôles',
+            'roles_empty' => 'Aucun rôle attribué.',
+            'activity_title' => 'Activité',
+        ],
     ],
 
     'impersonation' => [
