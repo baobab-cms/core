@@ -35,6 +35,18 @@ return [
         'two_factor_use_code' => 'Utiliser le code de l\'application à la place',
     ],
 
+    'errors' => [
+        'forbidden_title' => 'Accès refusé',
+        'forbidden_body' => 'Vous n\'avez pas la permission d\'accéder à cette page.',
+        'not_found_title' => 'Page introuvable',
+        'not_found_body' => 'Cette page n\'existe pas ou plus.',
+        'session_expired_title' => 'Session expirée',
+        'session_expired_body' => 'Votre session a expiré. Rechargez la page et réessayez.',
+        'server_error_title' => 'Une erreur est survenue',
+        'server_error_body' => 'Une erreur inattendue s\'est produite. Réessayez, ou contactez un administrateur si le problème persiste.',
+        'back_to_dashboard' => 'Retour au tableau de bord',
+    ],
+
     'components' => [
         'no_results' => 'Aucun résultat.',
         'select_all' => 'Tout sélectionner',

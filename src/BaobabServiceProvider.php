@@ -106,6 +106,7 @@ use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
 use Baobab\Modules\ModuleDiscovery;
 use Baobab\Notify\Notifier;
+use Baobab\Rendering\Actions\RenderAdminError;
 use Baobab\Rendering\Actions\RenderServerError;
 use Baobab\Rendering\PublicRouteRegistrar;
 use Baobab\Rendering\RenderedTheme;
@@ -334,6 +335,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->loadApiRoutes();
         $this->registerApiExceptionRendering();
         $this->registerPublicErrorRendering();
+        $this->registerAdminErrorRendering();
         $this->registerApiDocsRoutes();
         $this->configureScout();
         $this->registerThemePreviewRoutes();
@@ -921,6 +923,71 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             return $this->app->make(RenderServerError::class)();
+        });
+    }
+
+    /**
+     * Filet d'exception admin (spec 04, suivi n° 202) — l'admin était la
+     * seule surface du produit sans filet : une exception non rattrapée par
+     * son contrôleur y servait la page brute de Laravel (incident n° 147).
+     *
+     * Prend le relais exact du `return null` que `registerPublicErrorRendering()`
+     * pose sur `admin/*` : les deux se partagent le territoire sans jamais se
+     * recouvrir. Mêmes trois abstentions non négociables (`HttpResponseException`,
+     * `AuthenticationException`, `ValidationException` — un `renderable()` agit
+     * avant le `match(true)` du handler Laravel, sans elles on casserait les
+     * redirections d'authentification et les retours de validation).
+     *
+     * Périmètre volontairement élargi au-delà du seul 500 (décision du 12
+     * septembre 2026, suivi n° 295) : 403, 404 et 419 sont les trois codes
+     * qu'un utilisateur admin peut réellement rencontrer (refus de policy,
+     * mauvaise URL, jeton CSRF expiré) — les autres codes sous 500
+     * (400/405/406/408/409/429) restent au comportement par défaut de
+     * Laravel, aucun chemin utilisateur réel ne les atteint aujourd'hui.
+     *
+     * Sur un 500, le message affiché dépend de la classe de l'exception :
+     * une exception métier (namespace `Baobab\*\Exceptions\*`, déjà écrite
+     * pour être lue par un humain — `ContentLockedException`,
+     * `HierarchyViolationException`…) affiche son propre message ; tout le
+     * reste affiche un message générique, jamais la trace ni le message brut.
+     */
+    private function registerAdminErrorRendering(): void
+    {
+        /** @var Handler $handler */
+        $handler = $this->app->make(ExceptionHandler::class);
+
+        $handler->renderable(function (Throwable $e, Request $request): ?SymfonyResponse {
+            if ((bool) config('app.debug')) {
+                return null;
+            }
+
+            $adminPath = (string) config('baobab.admin.path', 'admin');
+
+            if (! $request->is($adminPath) && ! $request->is($adminPath.'/*')) {
+                return null;
+            }
+
+            if ($e instanceof HttpResponseException
+                || $e instanceof AuthenticationException
+                || $e instanceof ValidationException) {
+                return null;
+            }
+
+            $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500;
+
+            if (in_array($status, [403, 404, 419], true)) {
+                return $this->app->make(RenderAdminError::class)($status);
+            }
+
+            if ($status < 500) {
+                return null;
+            }
+
+            $businessMessage = str_starts_with($e::class, 'Baobab\\') && str_contains($e::class, '\\Exceptions\\')
+                ? $e->getMessage()
+                : null;
+
+            return $this->app->make(RenderAdminError::class)(500, $businessMessage);
         });
     }
 
