@@ -192,6 +192,20 @@ it('renders a flashed session toast', function () {
     expect($html)->toContain('Saved');
 });
 
+it('gives each x-baobab::toasts item a live region role and a keyboard-focusable close button', function () {
+    $html = Blade::render('<x-baobab::toasts />');
+
+    expect($html)
+        // suivi n° 307 constat 4 : alerte assertive pour ce qui ne s'efface jamais
+        // seul (danger/warning), statut poli pour ce qui disparaît de soi-même.
+        ->toContain("toast.type === 'danger' || toast.type === 'warning' ? 'alert' : 'status'")
+        ->toContain("toast.type === 'danger' || toast.type === 'warning' ? 'assertive' : 'polite'")
+        // un vrai bouton, pas un <div x-on:click> — focusable et activable au clavier.
+        ->toContain('<button')
+        ->toContain('aria-label="Fermer"')
+        ->toContain('dismiss(toast.id)');
+});
+
 /**
  * Position et persistance, demandées en vérification du chantier 2 (n° 205) :
  * en bas de page, un message long chevauchait le pied de la sidebar ; en

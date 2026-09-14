@@ -18,11 +18,17 @@ it('renders a nested menu as semantic ul/li with is-active/has-children classes'
 
     $html = Blade::render('<x-baobab::menu location="primary" />');
 
-    expect($html)->toContain('role="menu"')
+    expect($html)->toContain('<ul>')
         ->and($html)->toContain('Parent')
         ->and($html)->toContain('Child')
         ->and($html)->toContain('has-children')
-        ->and($html)->toContain('is-ancestor');
+        ->and($html)->toContain('is-ancestor')
+        // suivi n° 307 constat 5 : ni role="menu"/"none"/"menuitem", qui
+        // annoncent un widget applicatif qu'aucun script ne fournit ici —
+        // une navigation de site est une simple liste de liens.
+        ->and($html)->not->toContain('role="menu"')
+        ->and($html)->not->toContain('role="none"')
+        ->and($html)->not->toContain('role="menuitem"');
 });
 
 it('renders nothing for a location with no assignment', function () {

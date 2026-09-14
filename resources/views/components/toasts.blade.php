@@ -47,10 +47,18 @@
     class="relative z-40 mx-auto flex w-full max-w-2xl flex-col items-center gap-2 px-4"
 >
     <template x-for="toast in toasts" :key="toast.id">
+        {{--
+            `role`/`aria-live` distincts selon le type (suivi n° 307 constat 4) :
+            `alert` (assertif) pour `danger`/`warning`, qui ne s'effacent jamais
+            seuls et méritent une interruption ; `status`/`polite` pour
+            `info`/`success`, qui disparaissent d'eux-mêmes et ne doivent pas
+            couper la parole à ce que l'utilisateur écoute déjà.
+        --}}
         <div
             x-show="true"
-            x-on:click="dismiss(toast.id)"
-            class="w-full cursor-pointer rounded-md border px-4 py-2 text-sm shadow-lg first:mt-2 last:mb-2"
+            x-bind:role="toast.type === 'danger' || toast.type === 'warning' ? 'alert' : 'status'"
+            x-bind:aria-live="toast.type === 'danger' || toast.type === 'warning' ? 'assertive' : 'polite'"
+            class="flex w-full items-start gap-3 rounded-md border px-4 py-2 text-sm shadow-lg first:mt-2 last:mb-2"
             {{--
                 Fonds pleins et paliers 50/600-700, comme `<x-baobab::badge>` :
                 les opacités qui vivaient ici sont précisément ce que le n° 84
@@ -64,7 +72,21 @@
                 'border-danger-200 bg-danger-50 text-danger-700': toast.type === 'danger',
                 'border-border bg-surface text-foreground': toast.type === 'info',
             }"
-            x-text="toast.message"
-        ></div>
+        >
+            <span class="flex-1" x-text="toast.message"></span>
+
+            {{--
+                Un vrai `<button>` plutôt que le `<div x-on:click>` d'avant
+                (suivi n° 307 constat 4) : les toasts `danger`/`warning` ne
+                disparaissent jamais seuls (suivi n° 205), leur seule fermeture
+                ne peut pas dépendre de la souris.
+            --}}
+            <button
+                type="button"
+                x-on:click="dismiss(toast.id)"
+                aria-label="{{ __('baobab::admin.components.close') }}"
+                class="shrink-0 rounded p-0.5 opacity-70 hover:opacity-100"
+            >&#10005;</button>
+        </div>
     </template>
 </div>

@@ -1,9 +1,16 @@
-<ul role="menu">
+{{--
+    Ni `role="menu"`, ni `role="none"`, ni `role="menuitem"` (suivi n° 307
+    constat 5) : ces rôles annoncent une barre de menus applicative avec un
+    patron d'interaction au clavier (flèches, Home/End, roving tabindex)
+    qu'aucun script ne fournit ici — une simple navigation de site
+    (`<ul><li><a>`) n'a besoin d'aucun rôle explicite, la sémantique native
+    suffit et se comporte déjà correctement avec Tab.
+--}}
+<ul>
     @foreach ($items as $item)
-        <li role="none" class="{{ $item['has-children'] ? 'has-children' : '' }} {{ $item['is-active'] ? 'is-active' : '' }} {{ $item['is-ancestor'] ? 'is-ancestor' : '' }}">
+        <li class="{{ $item['has-children'] ? 'has-children' : '' }} {{ $item['is-active'] ? 'is-active' : '' }} {{ $item['is-ancestor'] ? 'is-ancestor' : '' }}">
             @if ($item['url'] !== null)
                 <a
-                    role="menuitem"
                     href="{{ $item['url'] }}"
                     target="{{ $item['target'] }}"
                     @class([$item['css_class'] ?? ''])
