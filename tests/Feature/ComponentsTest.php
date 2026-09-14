@@ -120,6 +120,27 @@ it('renders x-baobab::modal scaffold targeting the given name', function () {
         ->toContain('x-cloak');
 });
 
+it('gives x-baobab::modal a dialog role, a focus trap and an aria-label fallback', function () {
+    $html = Blade::render('<x-baobab::modal name="pick-media" aria-label="Media library">Content</x-baobab::modal>');
+
+    expect($html)
+        ->toContain('role="dialog"')
+        ->toContain('aria-modal="true"')
+        ->toContain('aria-label="Media library"')
+        ->toContain('x-ref="panel"')
+        ->toContain('trapFocus($event)')
+        ->toContain('function baobabModal(');
+});
+
+it('lets x-baobab::modal be labelled and described by ids instead of a plain aria-label', function () {
+    $html = Blade::render('<x-baobab::modal name="delete-role" aria-labelledby="delete-role-title" aria-describedby="delete-role-description">Content</x-baobab::modal>');
+
+    expect($html)
+        ->toContain('aria-labelledby="delete-role-title"')
+        ->toContain('aria-describedby="delete-role-description"')
+        ->not->toContain('aria-label="'); // no aria-label fallback once aria-labelledby is given
+});
+
 it('renders x-baobab::confirm with a retype gate when expectedText is set', function () {
     $html = Blade::render(<<<'BLADE'
     <x-baobab::confirm name="delete-role" title="Delete role" expected-text="acme-role">
@@ -130,13 +151,37 @@ it('renders x-baobab::confirm with a retype gate when expectedText is set', func
     expect($html)
         ->toContain('acme-role')
         ->toContain('typed !==')
-        ->toContain('Delete role');
+        ->toContain('Delete role')
+        // the title is exposed to the modal's aria-labelledby, not just displayed
+        ->toContain('id="delete-role-title"')
+        ->toContain('aria-labelledby="delete-role-title"')
+        // the dangerous action is disabled at the HTML level (fieldset), not just visually
+        ->toContain('<fieldset')
+        ->toContain("x-bind:disabled=\"typed !== 'acme-role'\"")
+        // the confirmation input has a real accessible name
+        ->toContain('for="delete-role-confirm-text"')
+        ->toContain('id="delete-role-confirm-text"');
 });
 
 it('renders x-baobab::confirm without a retype input when expectedText is omitted', function () {
     $html = Blade::render('<x-baobab::confirm name="logout" title="Log out"></x-baobab::confirm>');
 
-    expect($html)->not->toContain('typed !==');
+    expect($html)
+        ->not->toContain('typed !==')
+        ->not->toContain('x-bind:disabled');
+});
+
+it('links x-baobab::confirm\'s description to the modal via aria-describedby', function () {
+    $html = Blade::render(<<<'BLADE'
+    <x-baobab::confirm name="disable-2fa" title="Disable 2FA">
+        <x-slot:description>This will remove two-factor protection.</x-slot:description>
+        <form method="POST" action="/admin/account/security/disable"></form>
+    </x-baobab::confirm>
+    BLADE);
+
+    expect($html)
+        ->toContain('id="disable-2fa-description"')
+        ->toContain('aria-describedby="disable-2fa-description"');
 });
 
 it('renders a flashed session toast', function () {

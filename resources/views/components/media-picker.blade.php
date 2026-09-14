@@ -16,7 +16,7 @@
     via .window) — l'appelant doit imbriquer ce composant dans son propre wrapper x-data pour
     l'écouter sans collision si plusieurs champs médias existent sur le même formulaire.
 --}}
-<x-baobab::modal :name="$name" max-width="xl">
+<x-baobab::modal :name="$name" max-width="xl" :aria-label="__('baobab::admin.media.title')">
     <div
         x-data="mediaPicker({
             indexUrl: @js($indexUrl),

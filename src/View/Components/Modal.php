@@ -30,6 +30,9 @@ final class Modal extends Component
         public string $name,
         string $maxWidth = 'md',
         public bool $open = false,
+        public ?string $ariaLabel = null,
+        public ?string $ariaLabelledby = null,
+        public ?string $ariaDescribedby = null,
     ) {
         $this->maxWidthClass = self::MAX_WIDTHS[$maxWidth] ?? self::MAX_WIDTHS['md'];
     }
