@@ -91,6 +91,34 @@
             @endif
         </x-baobab::card>
 
+        <x-baobab::card class="mt-6" :header="__('baobab::admin.users.show.sessions_title')">
+            <p class="mb-3 text-xs text-muted">{{ __('baobab::admin.users.show.sessions_hint') }}</p>
+
+            @forelse ($activeSessions as $activeSession)
+                <div class="flex items-center justify-between gap-4 border-b border-border py-2 last:border-0">
+                    <div>
+                        <p class="text-sm text-foreground">{{ $activeSession['ip_address'] ?? '—' }}</p>
+                        <p class="text-xs text-muted">{{ $activeSession['user_agent'] ?? '—' }}</p>
+                        <p class="mt-1 text-xs text-muted">
+                            {{ __('baobab::admin.users.show.session_last_activity', ['date' => $activeSession['last_activity_label']]) }}
+                        </p>
+                    </div>
+
+                    @if ($canImpersonate)
+                        <form method="POST" action="{{ route('admin.users.sessions.destroy', ['user' => $user, 'sessionId' => $activeSession['id']]) }}">
+                            @csrf
+                            @method('DELETE')
+                            <x-baobab::button type="submit" variant="danger">
+                                {{ __('baobab::admin.users.show.session_revoke_action') }}
+                            </x-baobab::button>
+                        </form>
+                    @endif
+                </div>
+            @empty
+                <p class="text-sm text-muted">{{ __('baobab::admin.users.show.sessions_empty') }}</p>
+            @endforelse
+        </x-baobab::card>
+
         <x-baobab::card class="mt-6" :header="__('baobab::admin.users.show.activity_title')">
             <x-baobab::table :columns="$activityColumns" :rows="$activity" />
         </x-baobab::card>

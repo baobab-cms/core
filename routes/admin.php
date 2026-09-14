@@ -35,6 +35,7 @@ use Baobab\Admin\Studio\Http\Controllers\StudioController;
 use Baobab\Admin\Themes\Http\Controllers\ThemeBlueprintController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
+use Baobab\Admin\Users\Http\Controllers\SessionController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
 use Baobab\Admin\Webhooks\Http\Controllers\WebhookDeliveriesController;
 use Baobab\Admin\Webhooks\Http\Controllers\WebhookSubscriptionsController;
@@ -323,6 +324,7 @@ Route::middleware('can:baobab.users.impersonate')
         Route::get('/', [UserController::class, 'index'])->name('index');
         Route::get('/{user}', [UserController::class, 'show'])->name('show');
         Route::post('/{user}/impersonate', [ImpersonationController::class, 'store'])->name('impersonate');
+        Route::delete('/{user}/sessions/{sessionId}', [SessionController::class, 'destroy'])->name('sessions.destroy');
     });
 
 Route::middleware('can:baobab.access.manage')

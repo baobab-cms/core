@@ -2147,6 +2147,18 @@ class BaobabServiceProvider extends ServiceProvider
             'driver' => 'eloquent',
             'model' => $userModel,
         ]);
+
+        /**
+         * Le guard `web` par défaut du squelette Laravel n'authentifie jamais
+         * personne ici (tout l'admin passe par `Auth::guard('baobab')`
+         * explicitement) — mais le rester par défaut cassait silencieusement
+         * tout mécanisme qui résout le guard implicitement, notamment
+         * `DatabaseSessionHandler::addUserInformation()` (`sessions.user_id`
+         * restait toujours `null`, cf. suivi Pass 3.D). Aucun code du Core ne
+         * dépend du guard implicite (vérifié), donc pas de risque de
+         * régression côté Baobab à basculer le défaut.
+         */
+        $this->app->make('config')->set('auth.defaults.guard', 'baobab');
     }
 
     /**

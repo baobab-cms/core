@@ -128,6 +128,12 @@ return [
             'direct_permission_grant_action' => 'Accorder',
             'direct_permission_granted' => 'Permission directe accordée.',
             'direct_permission_revoked' => 'Permission directe révoquée.',
+            'sessions_title' => 'Sessions actives',
+            'sessions_hint' => 'Une session révoquée déconnecte immédiatement le navigateur correspondant à sa prochaine requête.',
+            'sessions_empty' => 'Aucune session active.',
+            'session_last_activity' => 'Dernière activité le :date',
+            'session_revoke_action' => 'Révoquer',
+            'session_revoked' => 'Session révoquée.',
         ],
     ],
 

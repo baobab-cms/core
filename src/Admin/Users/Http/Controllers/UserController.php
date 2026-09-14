@@ -7,9 +7,12 @@ namespace Baobab\Admin\Users\Http\Controllers;
 use Baobab\Access\Models\DirectPermissionGrant;
 use Baobab\Admin\Access\PermissionMatrixBuilder;
 use Baobab\Audit\Models\AuditEntry;
+use Baobab\Auth\Actions\ListActiveSessions;
 use Baobab\Users\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 final class UserController
@@ -42,6 +45,20 @@ final class UserController
                 ->with(['permission', 'grantedBy'])
                 ->get(),
             'permissionGroups' => $this->permissionMatrixBuilder->build()['groups'],
+            'activeSessions' => $this->activeSessions($user),
+        ]);
+    }
+
+    /**
+     * @return Collection<int, array{id: string, ip_address: ?string, user_agent: ?string, last_activity_label: string}>
+     */
+    private function activeSessions(User $user): Collection
+    {
+        return app(ListActiveSessions::class)($user)->map(fn ($session): array => [
+            'id' => (string) $session->id,
+            'ip_address' => $session->ip_address !== null ? (string) $session->ip_address : null,
+            'user_agent' => $session->user_agent !== null ? (string) $session->user_agent : null,
+            'last_activity_label' => Carbon::createFromTimestamp((int) $session->last_activity)->format('Y-m-d H:i'),
         ]);
     }
 
