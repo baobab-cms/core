@@ -34,7 +34,13 @@
             </template>
 
             <div class="flex gap-2">
-                <x-baobab::button type="button" variant="secondary" x-on:click="$dispatch('open-modal', 'media-picker-{{ $name }}')">
+                <x-baobab::button
+                    type="button"
+                    variant="secondary"
+                    x-on:click="$dispatch('open-modal', 'media-picker-{{ $name }}')"
+                    aria-invalid="{{ $errors->has($name) ? 'true' : 'false' }}"
+                    :aria-describedby="$errors->has($name) ? $name.'-error' : null"
+                >
                     <span x-text="selected ? @js(__('baobab::admin.media.picker_change_action')) : @js(__('baobab::admin.media.picker_choose_action'))"></span>
                 </x-baobab::button>
 
@@ -54,9 +60,7 @@
         />
     </div>
 
-    @error($name)
-        <p class="mt-1 text-xs text-danger">{{ $message }}</p>
-    @enderror
+    <x-baobab::field.error :name="$name" />
 </div>
 
 @once

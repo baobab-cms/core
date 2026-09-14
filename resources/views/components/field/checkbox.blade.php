@@ -12,12 +12,12 @@
             name="{{ $name }}"
             value="1"
             @checked(old($name, $checked))
+            aria-invalid="{{ $errors->has($name) ? 'true' : 'false' }}"
+            @if ($errors->has($name)) aria-describedby="{{ $name }}-error" @endif
             {{ $attributes->class(['rounded border-border']) }}
         >
         {{ $label }}
     </label>
 
-    @error($name)
-        <p class="mt-1 text-xs text-danger">{{ $message }}</p>
-    @enderror
+    <x-baobab::field.error :name="$name" />
 </div>

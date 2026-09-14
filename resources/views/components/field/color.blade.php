@@ -28,6 +28,8 @@
             name="{{ $name }}"
             value="{{ old($name, $value) }}"
             x-on:input="hex = $event.target.value"
+            aria-invalid="{{ $errors->has($name) ? 'true' : 'false' }}"
+            @if ($errors->has($name)) aria-describedby="{{ $name }}-error" @endif
             {{ $attributes->class([
                 'h-9 w-14 shrink-0 cursor-pointer rounded-md border p-1',
                 'border-danger' => $errors->has($name),
@@ -54,7 +56,5 @@
         @endif
     </div>
 
-    @error($name)
-        <p class="mt-1 text-xs text-danger">{{ $message }}</p>
-    @enderror
+    <x-baobab::field.error :name="$name" />
 </div>

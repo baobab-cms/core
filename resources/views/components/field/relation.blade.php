@@ -32,6 +32,8 @@
     <select
         id="{{ $name }}"
         name="{{ $name }}"
+        aria-invalid="{{ $errors->has($name) ? 'true' : 'false' }}"
+        @if ($errors->has($name)) aria-describedby="{{ $name }}-error" @endif
         {{ $attributes->class([
             'w-full rounded-md border bg-surface px-3 py-2 text-sm text-foreground',
             'border-danger' => $errors->has($name),
@@ -47,7 +49,5 @@
         @endforeach
     </select>
 
-    @error($name)
-        <p class="mt-1 text-xs text-danger">{{ $message }}</p>
-    @enderror
+    <x-baobab::field.error :name="$name" />
 </div>

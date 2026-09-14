@@ -250,7 +250,78 @@ it('renders a validation error under x-baobab::field.text', function () {
 
     $html = Blade::render('<x-baobab::field.text name="email" label="E-mail" />');
 
-    expect($html)->toContain('Invalid.')->toContain('border-danger');
+    expect($html)
+        ->toContain('Invalid.')
+        ->toContain('border-danger')
+        // suivi n° 307 constat 3 / n° 311 : l'erreur doit être reliée au champ pour les
+        // technologies d'assistance, pas seulement visible à l'écran.
+        ->toContain('aria-invalid="true"')
+        ->toContain('aria-describedby="email-error"')
+        ->toContain('id="email-error"');
+});
+
+it('marks x-baobab::field.text valid and without aria-describedby when there is no error', function () {
+    $html = Blade::render('<x-baobab::field.text name="email" label="E-mail" />');
+
+    expect($html)
+        ->toContain('aria-invalid="false"')
+        ->not->toContain('aria-describedby')
+        ->not->toContain('email-error');
+});
+
+it('repeats aria-invalid/aria-describedby on every option of x-baobab::field.radio', function () {
+    $errors = new ViewErrorBag;
+    $errors->put('default', new MessageBag(['plan' => 'Choose a plan.']));
+    view()->share('errors', $errors);
+
+    $html = Blade::render(
+        '<x-baobab::field.radio name="plan" label="Plan" :options="$options" />',
+        ['options' => ['free' => 'Free', 'pro' => 'Pro']]
+    );
+
+    expect(substr_count($html, 'aria-describedby="plan-error"'))->toBe(2)
+        ->and(substr_count($html, 'aria-invalid="true"'))->toBe(2)
+        ->and($html)->toContain('id="plan-error"');
+});
+
+it('puts aria-invalid/aria-describedby on the trigger button of x-baobab::field.media and field.gallery, not the hidden input', function () {
+    $errors = new ViewErrorBag;
+    $errors->put('default', new MessageBag(['cover' => 'Required.']));
+    view()->share('errors', $errors);
+
+    $media = Blade::render('<x-baobab::field.media name="cover" label="Cover" />');
+
+    expect($media)
+        ->toContain('<input type="hidden" name="cover"')
+        ->toContain('aria-describedby="cover-error"');
+
+    // Un aria-describedby porté par le <input type="hidden"> serait invisible pour les
+    // technologies d'assistance (display:none, hors de l'arbre d'accessibilité) — même
+    // défaut que le jeton CSRF corrigé en Pass 5.A (suivi n° 309) : vérifier qu'il est
+    // bien sur le bouton, pas sur l'input cache lui-même.
+    $hiddenInputLine = collect(explode("\n", $media))->first(fn ($line) => str_contains($line, 'type="hidden" name="cover"'));
+    expect($hiddenInputLine)->not->toContain('aria-describedby');
+
+    $galleryErrors = new ViewErrorBag;
+    $galleryErrors->put('default', new MessageBag(['photos' => 'Required.']));
+    view()->share('errors', $galleryErrors);
+
+    $gallery = Blade::render('<x-baobab::field.gallery name="photos" label="Photos" />');
+
+    expect($gallery)->toContain('aria-describedby="photos-error"');
+});
+
+it('passes hasError/errorId to the richtext editor config when there is an error', function () {
+    $errors = new ViewErrorBag;
+    $errors->put('default', new MessageBag(['body' => 'Required.']));
+    view()->share('errors', $errors);
+
+    $html = Blade::render('<x-baobab::field.richtext name="body" label="Body" />');
+
+    expect($html)
+        ->toContain('hasError: true')
+        ->toContain("errorId: 'body-error'")
+        ->toContain('id="body-error"');
 });
 
 it('renders x-baobab::field.textarea, field.select and field.checkbox', function () {

@@ -28,7 +28,12 @@
     @endif
 
     <div
-        x-data="richTextEditor({ initialValue: @js(old($name, $value)), forms: @js($forms !== []) })"
+        x-data="richTextEditor({
+            initialValue: @js(old($name, $value)),
+            forms: @js($forms !== []),
+            hasError: @js($errors->has($name)),
+            errorId: @js($name.'-error'),
+        })"
         x-init="mount($refs.editorRoot, $refs.hiddenInput)"
         @class([
             'overflow-hidden rounded-md border',
@@ -104,9 +109,7 @@
         <textarea id="{{ $name }}" name="{{ $name }}" x-ref="hiddenInput" class="hidden" {{ $attributes }}>{{ old($name, $value) }}</textarea>
     </div>
 
-    @error($name)
-        <p class="mt-1 text-xs text-danger">{{ $message }}</p>
-    @enderror
+    <x-baobab::field.error :name="$name" />
 </div>
 
 @once
@@ -155,6 +158,19 @@
                         onSelectionUpdate: () => this.updateActive(),
                         onTransaction: () => this.updateActive(),
                     });
+
+                    // L'`id`/`aria-describedby` posés en Blade sur le `<textarea>`
+                    // caché (`x-ref="hiddenInput"`) sont invisibles pour les
+                    // technologies d'assistance — un élément `display:none`
+                    // n'entre jamais dans l'arbre d'accessibilité (même défaut que
+                    // le jeton CSRF de la Pass 5.A, suivi n° 307/309). La vraie
+                    // zone éditable est le noeud `contenteditable` que Tiptap
+                    // monte dans `root` : `editor.view.dom`, seul élément que
+                    // l'utilisateur clavier/lecteur d'écran atteint réellement.
+                    if (config.hasError) {
+                        editor.view.dom.setAttribute('aria-invalid', 'true');
+                        editor.view.dom.setAttribute('aria-describedby', config.errorId);
+                    }
 
                     this.updateActive();
                 },

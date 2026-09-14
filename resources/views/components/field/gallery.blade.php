@@ -45,7 +45,13 @@
         </div>
 
         <div class="mt-2">
-            <x-baobab::button type="button" variant="secondary" x-on:click="$dispatch('open-modal', 'media-picker-{{ $name }}')">
+            <x-baobab::button
+                type="button"
+                variant="secondary"
+                x-on:click="$dispatch('open-modal', 'media-picker-{{ $name }}')"
+                aria-invalid="{{ $errors->has($name) ? 'true' : 'false' }}"
+                :aria-describedby="$errors->has($name) ? $name.'-error' : null"
+            >
                 {{ __('baobab::admin.media.gallery_add_action') }}
             </x-baobab::button>
         </div>
@@ -60,9 +66,7 @@
         />
     </div>
 
-    @error($name)
-        <p class="mt-1 text-xs text-danger">{{ $message }}</p>
-    @enderror
+    <x-baobab::field.error :name="$name" />
 </div>
 
 @once

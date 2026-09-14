@@ -15,6 +15,8 @@
         id="{{ $name }}"
         name="{{ $name }}"
         value="{{ old($name, $value) }}"
+        aria-invalid="{{ $errors->has($name) ? 'true' : 'false' }}"
+        @if ($errors->has($name)) aria-describedby="{{ $name }}-error" @endif
         {{ $attributes->class([
             'w-full rounded-md border px-3 py-2 text-sm text-foreground',
             'border-danger' => $errors->has($name),
@@ -22,7 +24,5 @@
         ]) }}
     >
 
-    @error($name)
-        <p class="mt-1 text-xs text-danger">{{ $message }}</p>
-    @enderror
+    <x-baobab::field.error :name="$name" />
 </div>

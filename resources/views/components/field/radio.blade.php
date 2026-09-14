@@ -26,6 +26,8 @@
                     name="{{ $name }}"
                     value="{{ $optionValue }}"
                     @checked((string) old($name, $value) === (string) $optionValue)
+                    aria-invalid="{{ $errors->has($name) ? 'true' : 'false' }}"
+                    @if ($errors->has($name)) aria-describedby="{{ $name }}-error" @endif
                     {{ $attributes->class(['border-border']) }}
                 >
                 {{ $optionLabel }}
@@ -33,7 +35,5 @@
         @endforeach
     </div>
 
-    @error($name)
-        <p class="mt-1 text-xs text-danger">{{ $message }}</p>
-    @enderror
+    <x-baobab::field.error :name="$name" />
 </div>

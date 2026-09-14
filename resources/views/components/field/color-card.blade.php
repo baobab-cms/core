@@ -27,11 +27,11 @@
             value="{{ old($name, $value) }}"
             x-on:input="hex = $event.target.value"
             aria-label="{{ $label }}"
+            aria-invalid="{{ $errors->has($name) ? 'true' : 'false' }}"
+            @if ($errors->has($name)) aria-describedby="{{ $name }}-error" @endif
             class="h-full w-full cursor-pointer border-0 bg-transparent p-0"
         >
     </x-baobab::token-card>
 
-    @error($name)
-        <p class="mt-1 text-xs text-danger">{{ $message }}</p>
-    @enderror
+    <x-baobab::field.error :name="$name" />
 </div>

@@ -23,13 +23,13 @@
         type="file"
         id="{{ $name }}"
         name="{{ $name }}"
+        aria-invalid="{{ $errors->has($name) ? 'true' : 'false' }}"
+        @if ($errors->has($name)) aria-describedby="{{ $name }}-error" @endif
         {{ $attributes->class([
             'block w-full text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-surface file:px-3 file:py-2 file:text-sm',
             'border-danger' => $errors->has($name),
         ]) }}
     >
 
-    @error($name)
-        <p class="mt-1 text-xs text-danger">{{ $message }}</p>
-    @enderror
+    <x-baobab::field.error :name="$name" />
 </div>
