@@ -325,6 +325,19 @@ it('puts aria-invalid/aria-describedby on the trigger button of x-baobab::field.
     expect($gallery)->toContain('aria-describedby="photos-error"');
 });
 
+it('exposes the media picker selection state and a loading indicator via ARIA', function () {
+    $html = Blade::render('<x-baobab::field.media name="cover" label="Cover" />');
+
+    // suivi n° 307 constat 9 : la vignette sélectionnée ne portait qu'une classe
+    // visuelle (ring-2), aucun état exposé aux technologies d'assistance.
+    expect($html)
+        ->toContain("x-bind:aria-pressed=\"isSelected(item.id) ? 'true' : 'false'\"")
+        // le chargement asynchrone n'avait ni texte, ni aria-busy.
+        ->toContain("x-bind:aria-busy=\"loading ? 'true' : 'false'\"")
+        ->toContain('x-if="loading"')
+        ->toContain(__('baobab::admin.components.loading'));
+});
+
 it('passes hasError/errorId to the richtext editor config when there is an error', function () {
     $errors = new ViewErrorBag;
     $errors->put('default', new MessageBag(['body' => 'Required.']));

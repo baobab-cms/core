@@ -49,10 +49,15 @@
         <div
             class="grid max-h-96 grid-cols-3 gap-2 overflow-y-auto rounded-md border border-border p-2 sm:grid-cols-4 md:grid-cols-5"
             x-bind:class="{ 'border-primary bg-surface-subtle': dragging }"
+            x-bind:aria-busy="loading ? 'true' : 'false'"
             x-on:dragover.prevent="dragging = true"
             x-on:dragleave.prevent="dragging = false"
             x-on:drop.prevent="dragging = false; onDrop($event)"
         >
+            <template x-if="loading">
+                <p class="col-span-full py-6 text-center text-sm text-muted">{{ __('baobab::admin.components.loading') }}</p>
+            </template>
+
             <template x-if="!loading && items.length === 0">
                 <p class="col-span-full py-6 text-center text-sm text-muted">{{ __('baobab::admin.components.no_results') }}</p>
             </template>
@@ -62,6 +67,7 @@
                     type="button"
                     x-on:click="select(item)"
                     x-bind:class="{ 'ring-2 ring-primary': isSelected(item.id) }"
+                    x-bind:aria-pressed="isSelected(item.id) ? 'true' : 'false'"
                     class="overflow-hidden rounded-md border border-border bg-surface text-left"
                 >
                     <template x-if="(item.mime_type && item.mime_type.startsWith('image/')) || item.source === 'external'">

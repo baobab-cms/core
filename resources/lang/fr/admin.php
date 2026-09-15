@@ -49,6 +49,7 @@ return [
 
     'components' => [
         'no_results' => 'Aucun résultat.',
+        'loading' => 'Chargement…',
         'select_all' => 'Tout sélectionner',
         'confirm_placeholder' => 'Retapez « :text » pour confirmer.',
         'close' => 'Fermer',
