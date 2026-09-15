@@ -41,7 +41,32 @@ final class SidebarBuilder
         /** @var Collection<int, SidebarItem> $result */
         $result = Hook::filter('baobab.admin.menu', $filtered, $user);
 
-        return $result;
+        return collect($this->applyActiveState(array_values($result->all()), '/'.ltrim(request()->path(), '/')));
+    }
+
+    /**
+     * Marque le lien dont l'URL correspond à la page courante (`aria-current`,
+     * spec-admin §10 — même patron que `ResolveMenuTree::applyLiveState`).
+     * Reconstruit l'arbre plutôt que de muter : `SidebarItem` est immuable.
+     *
+     * @param  list<SidebarItem>  $items
+     * @return list<SidebarItem>
+     */
+    private function applyActiveState(array $items, string $currentPath): array
+    {
+        return array_map(function (SidebarItem $item) use ($currentPath): SidebarItem {
+            $itemPath = $item->url !== null ? '/'.ltrim((string) parse_url($item->url, PHP_URL_PATH), '/') : null;
+
+            return new SidebarItem(
+                id: $item->id,
+                label: $item->label,
+                icon: $item->icon,
+                url: $item->url,
+                order: $item->order,
+                children: $this->applyActiveState($item->children, $currentPath),
+                isActive: $itemPath !== null && rtrim($itemPath, '/') === rtrim($currentPath, '/'),
+            );
+        }, $items);
     }
 
     /**

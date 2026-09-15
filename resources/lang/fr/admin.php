@@ -89,6 +89,7 @@ return [
         'demo_content' => 'Contenu de démonstration',
         'forms' => 'Formulaires',
         'toggle_collapse' => 'Réduire/étendre la barre latérale',
+        'nav_label' => 'Navigation admin',
     ],
 
     'audit' => [

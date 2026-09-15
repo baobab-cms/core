@@ -7,6 +7,7 @@
                 class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-foreground hover:bg-surface"
                 title="{{ $item->label }}"
                 aria-label="{{ $item->label }}"
+                x-bind:aria-expanded="open ? 'true' : 'false'"
             >
                 <x-baobab::icon :name="$item->icon ?? 'bi-app-indicator'" class="h-5 w-5 shrink-0" />
                 <span class="lg:group-data-[collapsed]:hidden">{{ $item->label }}</span>
@@ -21,6 +22,7 @@
                 class="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-surface"
                 title="{{ $item->label }}"
                 aria-label="{{ $item->label }}"
+                @if ($item->isActive) aria-current="page" @endif
             >
                 <x-baobab::icon :name="$item->icon ?? 'bi-app-indicator'" class="h-5 w-5 shrink-0" />
                 <span class="lg:group-data-[collapsed]:hidden">{{ $item->label }}</span>

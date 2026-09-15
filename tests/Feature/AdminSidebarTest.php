@@ -8,6 +8,7 @@ use Baobab\Admin\Sidebar\SidebarItem;
 use Baobab\Facades\Hook;
 use Baobab\Modules\Models\ModuleMenuItem;
 use Baobab\Users\Models\User;
+use Illuminate\Http\Request;
 
 // ── Intégration via un vrai manifest (fixture acme/blog) ─────────────────────────
 
@@ -100,6 +101,34 @@ it('resolves a parameterized route for a menu item declaring route_params', func
 
     expect($sidebar)->toHaveCount(1)
         ->and($sidebar->first()->url)->toBe(route('admin.content.index', ['contentType' => 'cars']));
+});
+
+// ── Active state (aria-current, suivi n° 307 constat 7) ───────────────────────
+
+it('marks the sidebar item whose URL matches the current request path as active', function () {
+    $user = User::create(['name' => 'Viewer', 'email' => 'viewer6@example.com', 'password' => 'secret']);
+    app(GrantPermission::class)($user, 'baobab.access.manage');
+
+    app()->instance('request', Request::create(route('admin.access.index')));
+
+    $sidebar = app(SidebarBuilder::class)->build($user->fresh());
+    $item = $sidebar->firstWhere('label', __('baobab::admin.sidebar.access'));
+
+    expect($item)->not->toBeNull()
+        ->and($item->isActive)->toBeTrue();
+});
+
+it('does not mark a sidebar item as active when the current path does not match its URL', function () {
+    $user = User::create(['name' => 'Viewer', 'email' => 'viewer7@example.com', 'password' => 'secret']);
+    app(GrantPermission::class)($user, 'baobab.access.manage');
+
+    app()->instance('request', Request::create('/admin/somewhere-else'));
+
+    $sidebar = app(SidebarBuilder::class)->build($user->fresh());
+    $item = $sidebar->firstWhere('label', __('baobab::admin.sidebar.access'));
+
+    expect($item)->not->toBeNull()
+        ->and($item->isActive)->toBeFalse();
 });
 
 // ── Extension via le hook baobab.admin.menu ───────────────────────────────────

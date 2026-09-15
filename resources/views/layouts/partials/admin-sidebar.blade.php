@@ -11,7 +11,7 @@
     :class="{ 'translate-x-0': sidebarOpen }"
     :data-collapsed="sidebarCollapsed ? '' : null"
 >
-    <nav class="flex h-full flex-col justify-between p-4">
+    <nav class="flex h-full flex-col justify-between p-4" aria-label="{{ __('baobab::admin.sidebar.nav_label') }}">
         <div>
             <button
                 type="button"

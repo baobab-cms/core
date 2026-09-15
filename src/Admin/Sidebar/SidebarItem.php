@@ -14,5 +14,6 @@ final class SidebarItem
         public readonly ?string $url,
         public readonly int $order,
         public readonly array $children = [],
+        public readonly bool $isActive = false,
     ) {}
 }
