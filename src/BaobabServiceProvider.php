@@ -38,6 +38,8 @@ use Baobab\Console\Commands\HookListCommand;
 use Baobab\Console\Commands\MailLogPurgeCommand;
 use Baobab\Console\Commands\MailTemplatesCommand;
 use Baobab\Console\Commands\MailTestCommand;
+use Baobab\Console\Commands\MaintenanceDownCommand;
+use Baobab\Console\Commands\MaintenanceUpCommand;
 use Baobab\Console\Commands\MediaPurgeTrashCommand;
 use Baobab\Console\Commands\MediaRegenerateCommand;
 use Baobab\Console\Commands\ModuleActivateCommand;
@@ -137,6 +139,7 @@ use Baobab\Studio\Wizard\RoutesStepHandler;
 use Baobab\Studio\Wizard\StudioWizardSteps;
 use Baobab\Studio\Wizard\WidgetsStepHandler;
 use Baobab\Support\Logger as SupportLogger;
+use Baobab\System\Http\Middleware\PreventAdminAccessDuringMaintenance;
 use Baobab\Users\Models\User;
 use Baobab\Webhooks\Actions\DispatchWebhookEvent;
 use Baobab\Widgets\Core\CustomHtmlWidget;
@@ -157,6 +160,7 @@ use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Exceptions\Handler;
+use Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
@@ -328,6 +332,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
         $this->registerInstallRoutes();
+        $this->registerMaintenanceModeExclusion();
         $this->loadAdminRoutes();
         $this->registerSanctumGuard();
         $this->excludeApiFromDefaultCors();
@@ -483,6 +488,8 @@ class BaobabServiceProvider extends ServiceProvider
                 OpenApiCompileCommand::class,
                 SearchReindexCommand::class,
                 SearchStatusCommand::class,
+                MaintenanceDownCommand::class,
+                MaintenanceUpCommand::class,
             ]);
         }
 
@@ -627,10 +634,26 @@ class BaobabServiceProvider extends ServiceProvider
      */
     private function loadAdminRoutes(): void
     {
-        Route::middleware([RedirectToInstaller::class, 'web', 'auth:baobab', 'verified', 'can:baobab.admin.access', ImpersonationGuard::class])
+        Route::middleware([RedirectToInstaller::class, 'web', 'auth:baobab', 'verified', 'can:baobab.admin.access', ImpersonationGuard::class, PreventAdminAccessDuringMaintenance::class])
             ->prefix($this->app->make('config')->get('baobab.admin.path', 'admin'))
             ->name('admin.')
             ->group(__DIR__.'/../routes/admin.php');
+    }
+
+    /**
+     * Sort tout `admin/*` du blocage global du mode maintenance
+     * (`PreventRequestsDuringMaintenance`, middleware global qui tourne avant
+     * toute session/auth — impossible d'y vérifier une permission). Nécessaire
+     * pour que la connexion admin reste joignable ; `PreventAdminAccessDuringMaintenance`,
+     * posé sur le groupe de routes admin après `auth:baobab`, réapplique
+     * ensuite le blocage à qui n'a pas `baobab.system.maintenance.toggle`
+     * (spec 12 §6.1).
+     */
+    private function registerMaintenanceModeExclusion(): void
+    {
+        $adminPath = (string) $this->app->make('config')->get('baobab.admin.path', 'admin');
+
+        PreventRequestsDuringMaintenance::except([$adminPath, "{$adminPath}/*"]);
     }
 
     /**
@@ -1981,6 +2004,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: 'bi-ui-checks-grid',
                     url: route('admin.forms.index'),
                     order: -6,
+                );
+            }
+
+            if ($user->can('baobab.system.maintenance.toggle')) {
+                $coreItems[] = new SidebarItem(
+                    id: -22,
+                    label: __('baobab::admin.sidebar.maintenance'),
+                    icon: 'bi-cone-striped',
+                    url: route('admin.system.maintenance.index'),
+                    order: -5,
                 );
             }
 

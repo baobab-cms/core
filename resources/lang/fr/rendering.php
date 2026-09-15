@@ -27,6 +27,12 @@ return [
     'error_title' => 'Une erreur est survenue',
     'error_body' => 'Le site n\'a pas pu afficher cette page. L\'incident a été enregistré.',
 
+    // Page de maintenance (spec 12 §6.1, spec 19 §6.4) — surchargeable par le
+    // thème actif, contrairement à la page 500.
+    'maintenance_title' => 'Site en maintenance',
+    'maintenance_body' => 'Ce site est temporairement indisponible pour maintenance. Merci de revenir dans quelques instants.',
+    'maintenance_retry' => 'Nouvelle tentative possible dans environ :seconds secondes.',
+
     // Bande admin — diagnostic réservé à qui peut agir (§6.5).
     'no_active_theme_notice' => 'Aucun thème actif : le rendu de repli du Core est servi.',
     'no_active_theme_action' => 'Choisir un thème',

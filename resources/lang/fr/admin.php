@@ -89,6 +89,7 @@ return [
         'mails' => 'E-mails',
         'demo_content' => 'Contenu de démonstration',
         'forms' => 'Formulaires',
+        'maintenance' => 'Maintenance',
         'toggle_collapse' => 'Réduire/étendre la barre latérale',
         'nav_label' => 'Navigation admin',
     ],
@@ -591,6 +592,21 @@ return [
         'save_action' => 'Enregistrer',
         'updated' => 'Réglages de lecture mis à jour.',
         'no_entries_hint' => 'Aucune entrée publiée pour ce type.',
+    ],
+
+    'maintenance' => [
+        'title' => 'Maintenance',
+        'status_active' => 'Le site est actuellement en maintenance.',
+        'status_inactive' => 'Le site fonctionne normalement.',
+        'retry_configured' => 'Nouvelle tentative annoncée après :seconds secondes.',
+        'retry_label' => 'Nouvelle tentative après (secondes)',
+        'redirect_label' => 'Rediriger vers',
+        'generate_secret_label' => 'Générer un lien de contournement',
+        'secret_shown_once' => 'Lien de contournement — affiché une seule fois, notez-le maintenant :',
+        'activate_action' => 'Activer la maintenance',
+        'deactivate_action' => 'Désactiver la maintenance',
+        'activated' => 'Mode maintenance activé.',
+        'deactivated' => 'Mode maintenance désactivé.',
     ],
 
     'seo' => [

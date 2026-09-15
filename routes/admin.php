@@ -32,6 +32,7 @@ use Baobab\Admin\Seo\Http\Controllers\NotFoundLogController;
 use Baobab\Admin\Seo\Http\Controllers\RedirectsController;
 use Baobab\Admin\Seo\Http\Controllers\SeoSettingsController;
 use Baobab\Admin\Studio\Http\Controllers\StudioController;
+use Baobab\Admin\System\Http\Controllers\MaintenanceController;
 use Baobab\Admin\Themes\Http\Controllers\ThemeBlueprintController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
@@ -123,6 +124,15 @@ Route::middleware('can:baobab.system.reading.manage')
     ->group(function (): void {
         Route::get('/', [ReadingSettingsController::class, 'index'])->name('index');
         Route::post('/', [ReadingSettingsController::class, 'update'])->name('update');
+    });
+
+Route::middleware('can:baobab.system.maintenance.toggle')
+    ->prefix('system/maintenance')
+    ->name('system.maintenance.')
+    ->group(function (): void {
+        Route::get('/', [MaintenanceController::class, 'index'])->name('index');
+        Route::post('/activate', [MaintenanceController::class, 'activate'])->name('activate');
+        Route::post('/deactivate', [MaintenanceController::class, 'deactivate'])->name('deactivate');
     });
 
 Route::middleware('can:baobab.system.api.manage')
