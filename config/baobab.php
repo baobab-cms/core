@@ -532,4 +532,18 @@ return [
         'max_consecutive_failures' => (int) env('BAOBAB_WEBHOOKS_MAX_CONSECUTIVE_FAILURES', 10),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Planificateur (spec 12 §2, M9 chantier 0.a Pass B)
+    |--------------------------------------------------------------------------
+    |
+    | run_retention_days : purge automatique de l'historique d'exécution
+    | (scheduled_task_runs, baobab:scheduler:purge-runs) au-delà de ce délai,
+    | patron redirects.not_found_retention_days.
+    |
+    */
+    'scheduler' => [
+        'run_retention_days' => (int) env('BAOBAB_SCHEDULER_RUN_RETENTION_DAYS', 30),
+    ],
+
 ];

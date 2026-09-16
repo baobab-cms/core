@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Scheduler\Models;
 
+use Baobab\Scheduler\ScheduledTaskRunStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -15,7 +16,7 @@ use Illuminate\Support\Carbon;
  * @property string $task_key
  * @property Carbon $started_at
  * @property Carbon|null $finished_at
- * @property string $status
+ * @property ScheduledTaskRunStatus $status
  * @property string|null $error
  */
 class ScheduledTaskRun extends Model
@@ -39,6 +40,7 @@ class ScheduledTaskRun extends Model
         return [
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
+            'status' => ScheduledTaskRunStatus::class,
         ];
     }
 }

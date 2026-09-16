@@ -256,6 +256,10 @@
                     "cron": {
                         "type": "string",
                         "description": "Cron expression (5 fields)."
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Human-readable description shown on the admin/system/scheduler screen (spec 12 §2.3)."
                     }
                 }
             }

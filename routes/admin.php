@@ -33,6 +33,7 @@ use Baobab\Admin\Seo\Http\Controllers\RedirectsController;
 use Baobab\Admin\Seo\Http\Controllers\SeoSettingsController;
 use Baobab\Admin\Studio\Http\Controllers\StudioController;
 use Baobab\Admin\System\Http\Controllers\MaintenanceController;
+use Baobab\Admin\System\Http\Controllers\SchedulerController;
 use Baobab\Admin\Themes\Http\Controllers\ThemeBlueprintController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
@@ -133,6 +134,23 @@ Route::middleware('can:baobab.system.maintenance.toggle')
         Route::get('/', [MaintenanceController::class, 'index'])->name('index');
         Route::post('/activate', [MaintenanceController::class, 'activate'])->name('activate');
         Route::post('/deactivate', [MaintenanceController::class, 'deactivate'])->name('deactivate');
+    });
+
+Route::middleware('can:baobab.system.scheduler.view')
+    ->prefix('system/scheduler')
+    ->name('system.scheduler.')
+    ->group(function (): void {
+        Route::get('/', [SchedulerController::class, 'index'])->name('index');
+
+        Route::post('/{taskKey}/run', [SchedulerController::class, 'run'])
+            ->middleware('can:baobab.system.scheduler.run')
+            ->name('run');
+        Route::post('/{taskKey}/suspend', [SchedulerController::class, 'suspend'])
+            ->middleware('can:baobab.system.scheduler.run')
+            ->name('suspend');
+        Route::post('/{taskKey}/resume', [SchedulerController::class, 'resume'])
+            ->middleware('can:baobab.system.scheduler.run')
+            ->name('resume');
     });
 
 Route::middleware('can:baobab.system.api.manage')

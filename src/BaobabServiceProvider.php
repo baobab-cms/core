@@ -54,6 +54,7 @@ use Baobab\Console\Commands\NotFoundPurgeCommand;
 use Baobab\Console\Commands\NotificationsPurgeCommand;
 use Baobab\Console\Commands\NotifyTestCommand;
 use Baobab\Console\Commands\OpenApiCompileCommand;
+use Baobab\Console\Commands\SchedulerPurgeRunsCommand;
 use Baobab\Console\Commands\SearchReindexCommand;
 use Baobab\Console\Commands\SearchStatusCommand;
 use Baobab\Console\Commands\SeoSitemapCommand;
@@ -490,25 +491,23 @@ class BaobabServiceProvider extends ServiceProvider
                 SearchStatusCommand::class,
                 MaintenanceDownCommand::class,
                 MaintenanceUpCommand::class,
+                SchedulerPurgeRunsCommand::class,
             ]);
         }
-
-        $this->registerMediaPurgeSchedule();
-
-        $this->registerNotFoundPurgeSchedule();
-
-        $this->registerMailLogPurgeSchedule();
-
-        $this->registerFormSubmissionsPurgeSchedule();
 
         $this->registerSchedulerTasks();
     }
 
     /**
-     * Tâches Core (publication/dépublication programmées, spec 09 §4) et
-     * tâches déclarées par les modules actifs (`schedule` au manifeste,
-     * spec 12 §2), toutes enregistrées et journalisées par
-     * SchedulerRegistrar — moteur générique, M5 point 7.
+     * Toutes les tâches planifiées Core (spec 09 §4, purges media/404/mail/
+     * formulaires/scheduler) et les tâches déclarées par les modules actifs
+     * (`schedule` au manifeste, spec 12 §2) passent par SchedulerRegistrar —
+     * moteur générique, M5 point 7 — qui les enregistre ET journalise chaque
+     * exécution dans `scheduled_task_runs`. Les 4 purges (media/404/mail/
+     * formulaires) étaient auparavant enregistrées ici directement en
+     * `daily()`, hors du registrar : elles n'apparaissaient donc jamais dans
+     * l'historique. Rattachées au registrar (M9 chantier 0.a Pass B) pour que
+     * l'écran `admin/system/scheduler` les liste comme les autres.
      */
     private function registerSchedulerTasks(): void
     {
@@ -517,64 +516,6 @@ class BaobabServiceProvider extends ServiceProvider
             $schedule = $this->app->make(Schedule::class);
 
             $this->app->make(SchedulerRegistrar::class)->register($schedule);
-        });
-    }
-
-    /**
-     * `media:purge-trash` (M4 point 3) embarquée directement par le package
-     * plutôt que documentée pour ajout manuel au Kernel de l'app
-     * consommatrice — patron standard Laravel pour qu'un package fournisse
-     * sa propre tâche planifiée.
-     */
-    private function registerMediaPurgeSchedule(): void
-    {
-        $this->app->booted(function (): void {
-            /** @var Schedule $schedule */
-            $schedule = $this->app->make(Schedule::class);
-
-            $schedule->command(MediaPurgeTrashCommand::class)->daily();
-        });
-    }
-
-    /**
-     * `seo:purge-404-log` (spec 07 §4) — même patron que
-     * `registerMediaPurgeSchedule()`.
-     */
-    private function registerNotFoundPurgeSchedule(): void
-    {
-        $this->app->booted(function (): void {
-            /** @var Schedule $schedule */
-            $schedule = $this->app->make(Schedule::class);
-
-            $schedule->command(NotFoundPurgeCommand::class)->daily();
-        });
-    }
-
-    /**
-     * `baobab:mail:purge-log` (spec 13 §4.2) — même patron que
-     * `registerNotFoundPurgeSchedule()`.
-     */
-    private function registerMailLogPurgeSchedule(): void
-    {
-        $this->app->booted(function (): void {
-            /** @var Schedule $schedule */
-            $schedule = $this->app->make(Schedule::class);
-
-            $schedule->command(MailLogPurgeCommand::class)->daily();
-        });
-    }
-
-    /**
-     * `baobab:forms:purge` (spec 14 §6.4) — même patron que
-     * `registerMailLogPurgeSchedule()`.
-     */
-    private function registerFormSubmissionsPurgeSchedule(): void
-    {
-        $this->app->booted(function (): void {
-            /** @var Schedule $schedule */
-            $schedule = $this->app->make(Schedule::class);
-
-            $schedule->command(FormSubmissionsPurgeCommand::class)->daily();
         });
     }
 
@@ -2014,6 +1955,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: 'bi-cone-striped',
                     url: route('admin.system.maintenance.index'),
                     order: -5,
+                );
+            }
+
+            if ($user->can('baobab.system.scheduler.view')) {
+                $coreItems[] = new SidebarItem(
+                    id: -23,
+                    label: __('baobab::admin.sidebar.scheduler'),
+                    icon: 'bi-clock-history',
+                    url: route('admin.system.scheduler.index'),
+                    order: -4,
                 );
             }
 
