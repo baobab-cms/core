@@ -1,5 +1,6 @@
 <?php
 
+use Baobab\Backups\Models\BackupSetting;
 use Baobab\Modules\Models\Module;
 use Baobab\Scheduler\Models\ScheduledTaskRun;
 use Baobab\Scheduler\Models\ScheduledTaskSuspension;
@@ -173,4 +174,29 @@ it('refuses to report a core task key as belonging to a module', function () {
 
     expect($registrar->isCoreTask('baobab.content.publish-due'))->toBeTrue()
         ->and($registrar->isCoreTask('acme.newsletter.digest'))->toBeFalse();
+});
+
+it('registers the daily backup task', function () {
+    $schedule = app(Schedule::class);
+
+    app(SchedulerRegistrar::class)->register($schedule);
+
+    $commands = collect($schedule->events())->map(fn ($event) => $event->command)->implode(' | ');
+
+    expect($commands)->toContain('baobab:backup');
+});
+
+it('gates the scheduled backup on BackupSetting::scheduled_enabled, unlike every other core task', function () {
+    BackupSetting::current()->fill(['scheduled_enabled' => false])->save();
+
+    $schedule = app(Schedule::class);
+    app(SchedulerRegistrar::class)->register($schedule);
+
+    $backupEvent = collect($schedule->events())->first(fn ($event) => str_contains((string) $event->command, 'baobab:backup'));
+
+    expect($backupEvent->filtersPass(app()))->toBeFalse();
+
+    BackupSetting::current()->fill(['scheduled_enabled' => true])->save();
+
+    expect($backupEvent->filtersPass(app()))->toBeTrue();
 });

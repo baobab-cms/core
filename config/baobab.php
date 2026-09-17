@@ -422,6 +422,12 @@ return [
                 'configurable' => false,
             ],
             [
+                'key' => 'core.backup.failed',
+                'description' => 'Une sauvegarde planifiée ou manuelle a échoué (spec 12 §4.3).',
+                'channels' => ['database'],
+                'configurable' => false,
+            ],
+            [
                 'key' => 'core.form.submission_received',
                 'description' => 'Une soumission a été reçue sur un formulaire (spec 14 §8.4, M8 point 6, Pass E).',
                 'channels' => ['database', 'mail'],
@@ -572,6 +578,33 @@ return [
     */
     'audit' => [
         'retention_days' => (int) env('BAOBAB_AUDIT_RETENTION_DAYS', 365),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sauvegardes (spec 12 §4, M9 chantier 0.a Pass D)
+    |--------------------------------------------------------------------------
+    |
+    | retention.{daily,weekly} : repli utilisé par BackupSetting tant que
+    | rien n'a été réglé depuis admin/system/backups (spec 12 §4.1 amendée
+    | le 17 septembre 2026 — l'écran est prioritaire sur ces valeurs).
+    | max_total_mb : illimité par défaut (null), en Mo si réglé.
+    | destinations : disques Flysystem cibles, séparés par une virgule —
+    | uniquement local et/ou s3-compatible (spec 12 §4.1, décision de
+    | séance du 17 septembre 2026 : pas d'autre provider en v1).
+    | name : sous-dossier de chaque disque de destination, patron
+    | spatie/laravel-backup (config('backup.backup.name') natif, jamais
+    | publié — assemblé à l'exécution par CreateBackup).
+    |
+    */
+    'backups' => [
+        'retention' => [
+            'daily' => (int) env('BAOBAB_BACKUPS_RETENTION_DAILY', 7),
+            'weekly' => (int) env('BAOBAB_BACKUPS_RETENTION_WEEKLY', 4),
+            'max_total_mb' => env('BAOBAB_BACKUPS_MAX_TOTAL_MB') !== null ? (int) env('BAOBAB_BACKUPS_MAX_TOTAL_MB') : null,
+        ],
+        'destinations' => array_values(array_filter(explode(',', (string) env('BAOBAB_BACKUPS_DESTINATIONS', 'local')))),
+        'name' => env('BAOBAB_BACKUPS_NAME', env('APP_NAME', 'baobab')),
     ],
 
 ];

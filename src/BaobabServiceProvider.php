@@ -24,6 +24,7 @@ use Baobab\Branding\Actions\CompileDesignTokens;
 use Baobab\Branding\Actions\SyncThemeFonts;
 use Baobab\Branding\Models\BrandingSetting;
 use Baobab\Console\Commands\AuditPurgeCommand;
+use Baobab\Console\Commands\BackupRunCommand;
 use Baobab\Console\Commands\ContentPublishDueCommand;
 use Baobab\Console\Commands\ContentPurgeTrashCommand;
 use Baobab\Console\Commands\ContentTypeBuildCommand;
@@ -200,6 +201,7 @@ use Nuwave\Lighthouse\Testing\TestingServiceProvider as LighthouseTestingService
 use Nuwave\Lighthouse\Validation\ValidationServiceProvider as LighthouseValidationServiceProvider;
 use OwenVoke\BladeFontAwesome\BladeFontAwesomeServiceProvider;
 use PragmaRX\Google2FA\Google2FA;
+use Spatie\Backup\BackupServiceProvider;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionServiceProvider;
@@ -219,6 +221,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->register(PermissionServiceProvider::class);
         $this->app->register(PurifierServiceProvider::class);
         $this->app->register(SitemapServiceProvider::class);
+        $this->app->register(BackupServiceProvider::class);
         $this->app->register(SanctumServiceProvider::class);
         $this->registerLighthouseProviders();
         $this->configureGraphqlRoute();
@@ -494,6 +497,7 @@ class BaobabServiceProvider extends ServiceProvider
                 MaintenanceUpCommand::class,
                 SchedulerPurgeRunsCommand::class,
                 AuditPurgeCommand::class,
+                BackupRunCommand::class,
             ]);
         }
 
@@ -1977,6 +1981,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: 'bi-list-task',
                     url: route('admin.system.queues.index'),
                     order: -3,
+                );
+            }
+
+            if ($user->can('baobab.system.backups.view')) {
+                $coreItems[] = new SidebarItem(
+                    id: -25,
+                    label: __('baobab::admin.sidebar.backups'),
+                    icon: 'bi-archive',
+                    url: route('admin.system.backups.index'),
+                    order: -2,
                 );
             }
 

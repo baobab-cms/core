@@ -32,6 +32,7 @@ use Baobab\Admin\Seo\Http\Controllers\NotFoundLogController;
 use Baobab\Admin\Seo\Http\Controllers\RedirectsController;
 use Baobab\Admin\Seo\Http\Controllers\SeoSettingsController;
 use Baobab\Admin\Studio\Http\Controllers\StudioController;
+use Baobab\Admin\System\Http\Controllers\BackupsController;
 use Baobab\Admin\System\Http\Controllers\MaintenanceController;
 use Baobab\Admin\System\Http\Controllers\QueuesController;
 use Baobab\Admin\System\Http\Controllers\SchedulerController;
@@ -171,6 +172,26 @@ Route::middleware('can:baobab.system.queues.view')
             ->name('retry');
         Route::post('/{failedJob:uuid}/delete', [QueuesController::class, 'delete'])
             ->middleware('can:baobab.system.queues.manage')
+            ->name('delete');
+    });
+
+Route::middleware('can:baobab.system.backups.view')
+    ->prefix('system/backups')
+    ->name('system.backups.')
+    ->group(function (): void {
+        Route::get('/', [BackupsController::class, 'index'])->name('index');
+
+        Route::post('/', [BackupsController::class, 'create'])
+            ->middleware('can:baobab.system.backups.create')
+            ->name('create');
+        Route::post('/settings', [BackupsController::class, 'updateSettings'])
+            ->middleware('can:baobab.system.backups.create')
+            ->name('settings');
+        Route::get('/{token}/download', [BackupsController::class, 'download'])
+            ->middleware('can:baobab.system.backups.download')
+            ->name('download');
+        Route::delete('/{token}', [BackupsController::class, 'delete'])
+            ->middleware('can:baobab.system.backups.create')
             ->name('delete');
     });
 

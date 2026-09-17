@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Baobab\Scheduler;
 
+use Baobab\Backups\Models\BackupSetting;
 use Baobab\Console\Commands\AuditPurgeCommand;
+use Baobab\Console\Commands\BackupRunCommand;
 use Baobab\Console\Commands\ContentPublishDueCommand;
 use Baobab\Console\Commands\ContentPurgeTrashCommand;
 use Baobab\Console\Commands\ContentUnpublishDueCommand;
@@ -43,7 +45,18 @@ final class SchedulerRegistrar
     public function register(Schedule $schedule): void
     {
         foreach ($this->coreTaskDefinitions() as $definition) {
-            $this->record($schedule->command($definition['command'])->cron($definition['cron']), $definition['key']);
+            $event = $schedule->command($definition['command'])->cron($definition['cron']);
+
+            // Seule tâche Core « désactivable » de la spec (§4.2, décision de
+            // séance du 17 septembre 2026) — un artisan baobab:backup ou un
+            // « Exécuter maintenant » explicites restent toujours actifs,
+            // BackupRunCommand ne consulte jamais ce réglage lui-même ; seul
+            // le vrai déclenchement planifié le respecte.
+            if ($definition['key'] === 'baobab.backups.create') {
+                $event->when(static fn (): bool => BackupSetting::current()->scheduled_enabled);
+            }
+
+            $this->record($event, $definition['key']);
         }
 
         $this->registerModuleTasks($schedule);
@@ -184,6 +197,12 @@ final class SchedulerRegistrar
                 'command' => AuditPurgeCommand::class,
                 'cron' => '0 0 * * *',
                 'description' => "Purge le journal d'audit au-delà de la rétention.",
+            ],
+            [
+                'key' => 'baobab.backups.create',
+                'command' => BackupRunCommand::class,
+                'cron' => '0 3 * * *',
+                'description' => 'Crée une sauvegarde complète (base + fichiers) — désactivable depuis admin/system/backups.',
             ],
         ];
     }
