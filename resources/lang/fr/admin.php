@@ -93,6 +93,7 @@ return [
         'scheduler' => 'Planificateur',
         'queues' => 'Queues',
         'backups' => 'Sauvegardes',
+        'health' => 'Santé',
         'toggle_collapse' => 'Réduire/étendre la barre latérale',
         'nav_label' => 'Navigation admin',
     ],
@@ -688,6 +689,18 @@ return [
         'create_failed' => 'Échec de la sauvegarde — voir le journal technique.',
         'deleted' => 'Sauvegarde supprimée.',
         'settings_updated' => 'Réglages de sauvegarde mis à jour.',
+    ],
+
+    'health' => [
+        'title' => 'Santé',
+        'refresh' => 'Actualiser',
+        'refreshed_ok' => 'Tous les contrôles sont au vert.',
+        'refreshed_failing' => 'Au moins un contrôle est en échec — voir le détail ci-dessous.',
+        'last_checked_at' => 'Dernière vérification :',
+        'never_checked' => 'Aucun contrôle exécuté pour le moment.',
+        'status_ok' => 'OK',
+        'status_warning' => 'Avertissement',
+        'status_failed' => 'Échec',
     ],
 
     'seo' => [

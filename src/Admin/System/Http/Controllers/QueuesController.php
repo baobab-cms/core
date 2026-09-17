@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Admin\System\Http\Controllers;
 
+use Baobab\Queue\Actions\DetectStaleQueueWorker;
 use Baobab\Queue\Models\FailedJob;
 use Baobab\System\Actions\DeleteFailedJobs;
 use Baobab\System\Actions\RetryFailedJobs;
@@ -20,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class QueuesController
 {
-    public function index(): View
+    public function index(DetectStaleQueueWorker $staleWorker): View
     {
         $failedJobs = FailedJob::query()->orderByDesc('failed_at')->paginate(20)->withQueryString();
 
@@ -28,7 +29,7 @@ final class QueuesController
             'failedJobs' => $failedJobs,
             'columns' => $this->columns(),
             'queueStats' => $this->queueStats(),
-            'staleWorker' => $this->staleWorkerMinutes(),
+            'staleWorker' => $staleWorker(),
         ]);
     }
 
@@ -95,25 +96,6 @@ final class QueuesController
                 'oldest_available_at' => $row->oldest_available_at !== null ? (int) $row->oldest_available_at : null,
             ])
             ->all());
-    }
-
-    /**
-     * Minutes écoulées depuis la mise en attente du plus ancien job toutes
-     * queues confondues, si elles dépassent le seuil configuré — `null` sinon
-     * (aucune file en attente, ou worker actif). Détection autonome,
-     * indépendante du futur tableau de bord santé (spec §7, Pass E).
-     */
-    private function staleWorkerMinutes(): ?int
-    {
-        $oldestAvailableAt = DB::table('jobs')->min('available_at');
-
-        if ($oldestAvailableAt === null) {
-            return null;
-        }
-
-        $minutes = (int) floor((now()->getTimestamp() - (int) $oldestAvailableAt) / 60);
-
-        return $minutes >= (int) config('baobab.queues.stale_worker_minutes', 5) ? $minutes : null;
     }
 
     /**

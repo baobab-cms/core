@@ -33,6 +33,7 @@ use Baobab\Admin\Seo\Http\Controllers\RedirectsController;
 use Baobab\Admin\Seo\Http\Controllers\SeoSettingsController;
 use Baobab\Admin\Studio\Http\Controllers\StudioController;
 use Baobab\Admin\System\Http\Controllers\BackupsController;
+use Baobab\Admin\System\Http\Controllers\HealthController;
 use Baobab\Admin\System\Http\Controllers\MaintenanceController;
 use Baobab\Admin\System\Http\Controllers\QueuesController;
 use Baobab\Admin\System\Http\Controllers\SchedulerController;
@@ -193,6 +194,14 @@ Route::middleware('can:baobab.system.backups.view')
         Route::delete('/{token}', [BackupsController::class, 'delete'])
             ->middleware('can:baobab.system.backups.create')
             ->name('delete');
+    });
+
+Route::middleware('can:baobab.system.health.view')
+    ->prefix('system/health')
+    ->name('system.health.')
+    ->group(function (): void {
+        Route::get('/', [HealthController::class, 'index'])->name('index');
+        Route::post('/refresh', [HealthController::class, 'refresh'])->name('refresh');
     });
 
 Route::middleware('can:baobab.system.api.manage')

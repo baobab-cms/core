@@ -428,6 +428,12 @@ return [
                 'configurable' => false,
             ],
             [
+                'key' => 'core.health.failing',
+                'description' => 'Un contrôle de santé est passé en échec (spec 12 §7.3).',
+                'channels' => ['database'],
+                'configurable' => false,
+            ],
+            [
                 'key' => 'core.form.submission_received',
                 'description' => 'Une soumission a été reçue sur un formulaire (spec 14 §8.4, M8 point 6, Pass E).',
                 'channels' => ['database', 'mail'],
@@ -605,6 +611,32 @@ return [
         ],
         'destinations' => array_values(array_filter(explode(',', (string) env('BAOBAB_BACKUPS_DESTINATIONS', 'local')))),
         'name' => env('BAOBAB_BACKUPS_NAME', env('APP_NAME', 'baobab')),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Santé (spec 12 §7, M9 chantier 0.a Pass E)
+    |--------------------------------------------------------------------------
+    |
+    | Seuils des 9 contrôles v1 (§7.2) qui en ont besoin — les autres
+    | (Stockage, PHP, Scheduler) réutilisent des seuils déjà définis
+    | ailleurs (CheckRequirements, baobab.queues.stale_worker_minutes) ou
+    | sont figés par la spec (Scheduler : 2/5 min).
+    |
+    */
+    'health' => [
+        'database' => [
+            'latency_warning_ms' => (int) env('BAOBAB_HEALTH_DB_LATENCY_WARNING_MS', 200),
+            'mysql_min_version' => env('BAOBAB_HEALTH_MYSQL_MIN_VERSION', '8.0.0'),
+            'mariadb_min_version' => env('BAOBAB_HEALTH_MARIADB_MIN_VERSION', '10.6.0'),
+        ],
+        'disk_space' => [
+            'warning_percent' => (int) env('BAOBAB_HEALTH_DISK_WARNING_PERCENT', 80),
+            'failing_percent' => (int) env('BAOBAB_HEALTH_DISK_FAILING_PERCENT', 90),
+        ],
+        'backups' => [
+            'expected_within_hours' => (int) env('BAOBAB_HEALTH_BACKUPS_EXPECTED_HOURS', 48),
+        ],
     ],
 
 ];

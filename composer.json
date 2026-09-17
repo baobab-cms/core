@@ -32,7 +32,8 @@
         "davidhsianturi/blade-bootstrap-icons": "^2.2",
         "owenvoke/blade-fontawesome": "^3.3",
         "spatie/laravel-backup": "^10.3",
-        "league/flysystem-aws-s3-v3": "^3.35"
+        "league/flysystem-aws-s3-v3": "^3.35",
+        "spatie/laravel-health": "^1.40"
     },
     "autoload": {
         "psr-4": {

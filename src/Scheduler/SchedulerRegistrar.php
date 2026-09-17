@@ -11,6 +11,7 @@ use Baobab\Console\Commands\ContentPublishDueCommand;
 use Baobab\Console\Commands\ContentPurgeTrashCommand;
 use Baobab\Console\Commands\ContentUnpublishDueCommand;
 use Baobab\Console\Commands\FormSubmissionsPurgeCommand;
+use Baobab\Console\Commands\HealthCheckCommand;
 use Baobab\Console\Commands\MailLogPurgeCommand;
 use Baobab\Console\Commands\MediaPurgeTrashCommand;
 use Baobab\Console\Commands\NotFoundPurgeCommand;
@@ -203,6 +204,12 @@ final class SchedulerRegistrar
                 'command' => BackupRunCommand::class,
                 'cron' => '0 3 * * *',
                 'description' => 'Crée une sauvegarde complète (base + fichiers) — désactivable depuis admin/system/backups.',
+            ],
+            [
+                'key' => 'baobab.health.check',
+                'command' => HealthCheckCommand::class,
+                'cron' => '*/5 * * * *',
+                'description' => 'Rafraîchit les 9 contrôles de santé (admin/system/health).',
             ],
         ];
     }

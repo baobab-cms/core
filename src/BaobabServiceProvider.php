@@ -36,6 +36,7 @@ use Baobab\Console\Commands\FormExportCommand;
 use Baobab\Console\Commands\FormImportCommand;
 use Baobab\Console\Commands\FormSubmissionsPurgeCommand;
 use Baobab\Console\Commands\GraphqlCompileCommand;
+use Baobab\Console\Commands\HealthCheckCommand;
 use Baobab\Console\Commands\HookListCommand;
 use Baobab\Console\Commands\MailLogPurgeCommand;
 use Baobab\Console\Commands\MailTemplatesCommand;
@@ -142,6 +143,15 @@ use Baobab\Studio\Wizard\RoutesStepHandler;
 use Baobab\Studio\Wizard\StudioWizardSteps;
 use Baobab\Studio\Wizard\WidgetsStepHandler;
 use Baobab\Support\Logger as SupportLogger;
+use Baobab\System\HealthChecks\BackupsFreshnessCheck;
+use Baobab\System\HealthChecks\DatabaseConnectionCheck;
+use Baobab\System\HealthChecks\DatabaseVersionCheck;
+use Baobab\System\HealthChecks\DiskSpaceCheck;
+use Baobab\System\HealthChecks\HttpsDebugCheck;
+use Baobab\System\HealthChecks\PhpRequirementsCheck;
+use Baobab\System\HealthChecks\QueueWorkerCheck;
+use Baobab\System\HealthChecks\SchedulerCheck;
+use Baobab\System\HealthChecks\StorageCheck;
 use Baobab\System\Http\Middleware\PreventAdminAccessDuringMaintenance;
 use Baobab\Users\Models\User;
 use Baobab\Webhooks\Actions\DispatchWebhookEvent;
@@ -202,6 +212,10 @@ use Nuwave\Lighthouse\Validation\ValidationServiceProvider as LighthouseValidati
 use OwenVoke\BladeFontAwesome\BladeFontAwesomeServiceProvider;
 use PragmaRX\Google2FA\Google2FA;
 use Spatie\Backup\BackupServiceProvider;
+use Spatie\Health\Checks\Check;
+use Spatie\Health\Facades\Health;
+use Spatie\Health\HealthServiceProvider;
+use Spatie\Health\ResultStores\JsonFileHealthResultStore;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionServiceProvider;
@@ -222,6 +236,7 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->register(PurifierServiceProvider::class);
         $this->app->register(SitemapServiceProvider::class);
         $this->app->register(BackupServiceProvider::class);
+        $this->app->register(HealthServiceProvider::class);
         $this->app->register(SanctumServiceProvider::class);
         $this->registerLighthouseProviders();
         $this->configureGraphqlRoute();
@@ -498,8 +513,11 @@ class BaobabServiceProvider extends ServiceProvider
                 SchedulerPurgeRunsCommand::class,
                 AuditPurgeCommand::class,
                 BackupRunCommand::class,
+                HealthCheckCommand::class,
             ]);
         }
+
+        $this->registerHealthChecks();
 
         $this->registerSchedulerTasks();
     }
@@ -515,6 +533,44 @@ class BaobabServiceProvider extends ServiceProvider
      * l'historique. Rattachées au registrar (M9 chantier 0.a Pass B) pour que
      * l'écran `admin/system/scheduler` les liste comme les autres.
      */
+    /**
+     * Enregistre les 9 contrôles v1 (spec 12 §7.2) — jamais le canal de
+     * notification natif du package (Baobab a le sien, `core.health.
+     * failing`, spec §7.3), jamais un résultat en base : un fichier JSON
+     * sur le disque `local` suffit à « le dernier relevé », pas besoin
+     * d'historique requêtable comme le journal d'audit. Extensible par les
+     * modules via le filtre `baobab.health.checks` (spec §7.1), jamais un
+     * appel direct à `Health::checks()` depuis un module — le package
+     * reste invisible en dehors du Core.
+     */
+    private function registerHealthChecks(): void
+    {
+        $this->app->make('config')->set('health.result_stores', [
+            JsonFileHealthResultStore::class => [
+                'disk' => 'local',
+                'path' => 'health.json',
+            ],
+        ]);
+        $this->app->make('config')->set('health.notifications.enabled', false);
+
+        $checks = [
+            DatabaseConnectionCheck::new()->label('Base de données'),
+            DatabaseVersionCheck::new()->label('Version MySQL'),
+            SchedulerCheck::new()->label('Scheduler'),
+            QueueWorkerCheck::new()->label('Queues'),
+            StorageCheck::new()->label('Stockage'),
+            DiskSpaceCheck::new()->label('Espace disque'),
+            PhpRequirementsCheck::new()->label('PHP'),
+            BackupsFreshnessCheck::new()->label('Sauvegardes'),
+            HttpsDebugCheck::new()->label('HTTPS / debug'),
+        ];
+
+        /** @var list<Check> $checks */
+        $checks = Hook::filter('baobab.health.checks', $checks);
+
+        Health::checks($checks);
+    }
+
     private function registerSchedulerTasks(): void
     {
         $this->app->booted(function (): void {
@@ -1991,6 +2047,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: 'bi-archive',
                     url: route('admin.system.backups.index'),
                     order: -2,
+                );
+            }
+
+            if ($user->can('baobab.system.health.view')) {
+                $coreItems[] = new SidebarItem(
+                    id: -26,
+                    label: __('baobab::admin.sidebar.health'),
+                    icon: 'bi-heart-pulse',
+                    url: route('admin.system.health.index'),
+                    order: -1,
                 );
             }
 

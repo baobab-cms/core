@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Baobab\Admin\System\Http\Controllers;
 
 use Baobab\Audit\AuditLogger;
+use Baobab\Backups\Actions\ListBackups;
 use Baobab\Backups\Models\BackupSetting;
 use Baobab\System\Actions\CreateBackup;
 use Baobab\System\Actions\DeleteBackup;
@@ -28,10 +29,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class BackupsController
 {
-    public function index(): View
+    public function index(ListBackups $listBackups): View
     {
         return view('baobab::admin.system.backups.index', [
-            'backups' => $this->listBackups(),
+            'backups' => $this->backupsWithTokens($listBackups),
             'columns' => $this->columns(),
             'setting' => BackupSetting::current(),
             'destinations' => config('baobab.backups.destinations'),
@@ -97,32 +98,12 @@ final class BackupsController
     /**
      * @return list<array{disk: string, filename: string, size: int, date: Carbon, token: string}>
      */
-    private function listBackups(): array
+    private function backupsWithTokens(ListBackups $listBackups): array
     {
-        $name = config('baobab.backups.name');
-        $backups = [];
-
-        foreach (config('baobab.backups.destinations') as $disk) {
-            foreach (Storage::disk($disk)->files($name) as $path) {
-                if (! str_ends_with($path, '.zip')) {
-                    continue;
-                }
-
-                $filename = basename($path);
-
-                $backups[] = [
-                    'disk' => $disk,
-                    'filename' => $filename,
-                    'size' => Storage::disk($disk)->size($path),
-                    'date' => Carbon::createFromTimestamp(Storage::disk($disk)->lastModified($path)),
-                    'token' => $this->encodeToken($disk, $filename),
-                ];
-            }
-        }
-
-        usort($backups, fn (array $a, array $b): int => $b['date'] <=> $a['date']);
-
-        return $backups;
+        return array_map(
+            fn (array $backup): array => [...$backup, 'token' => $this->encodeToken($backup['disk'], $backup['filename'])],
+            $listBackups(),
+        );
     }
 
     /**
