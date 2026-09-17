@@ -23,6 +23,7 @@ use Baobab\Auth\TwoFactorManager;
 use Baobab\Branding\Actions\CompileDesignTokens;
 use Baobab\Branding\Actions\SyncThemeFonts;
 use Baobab\Branding\Models\BrandingSetting;
+use Baobab\Console\Commands\AuditPurgeCommand;
 use Baobab\Console\Commands\ContentPublishDueCommand;
 use Baobab\Console\Commands\ContentPurgeTrashCommand;
 use Baobab\Console\Commands\ContentTypeBuildCommand;
@@ -492,6 +493,7 @@ class BaobabServiceProvider extends ServiceProvider
                 MaintenanceDownCommand::class,
                 MaintenanceUpCommand::class,
                 SchedulerPurgeRunsCommand::class,
+                AuditPurgeCommand::class,
             ]);
         }
 
@@ -1965,6 +1967,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: 'bi-clock-history',
                     url: route('admin.system.scheduler.index'),
                     order: -4,
+                );
+            }
+
+            if ($user->can('baobab.system.queues.view')) {
+                $coreItems[] = new SidebarItem(
+                    id: -24,
+                    label: __('baobab::admin.sidebar.queues'),
+                    icon: 'bi-list-task',
+                    url: route('admin.system.queues.index'),
+                    order: -3,
                 );
             }
 

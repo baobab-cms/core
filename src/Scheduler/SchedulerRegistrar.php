@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Scheduler;
 
+use Baobab\Console\Commands\AuditPurgeCommand;
 use Baobab\Console\Commands\ContentPublishDueCommand;
 use Baobab\Console\Commands\ContentPurgeTrashCommand;
 use Baobab\Console\Commands\ContentUnpublishDueCommand;
@@ -177,6 +178,12 @@ final class SchedulerRegistrar
                 'command' => SchedulerPurgeRunsCommand::class,
                 'cron' => '0 0 * * *',
                 'description' => "Purge l'historique d'exécution du scheduler au-delà de la rétention.",
+            ],
+            [
+                'key' => 'baobab.audit.purge',
+                'command' => AuditPurgeCommand::class,
+                'cron' => '0 0 * * *',
+                'description' => "Purge le journal d'audit au-delà de la rétention.",
             ],
         ];
     }

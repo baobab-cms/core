@@ -33,6 +33,7 @@ use Baobab\Admin\Seo\Http\Controllers\RedirectsController;
 use Baobab\Admin\Seo\Http\Controllers\SeoSettingsController;
 use Baobab\Admin\Studio\Http\Controllers\StudioController;
 use Baobab\Admin\System\Http\Controllers\MaintenanceController;
+use Baobab\Admin\System\Http\Controllers\QueuesController;
 use Baobab\Admin\System\Http\Controllers\SchedulerController;
 use Baobab\Admin\Themes\Http\Controllers\ThemeBlueprintController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
@@ -81,11 +82,11 @@ Route::prefix('notifications')
         Route::post('/read-all', [NotificationController::class, 'markAllRead'])->name('read-all');
     });
 
-Route::middleware('can:baobab.audit.view')
-    ->prefix('audit')
+Route::prefix('audit')
     ->name('audit.')
     ->group(function (): void {
-        Route::get('/', [AuditLogController::class, 'index'])->name('index');
+        Route::get('/', [AuditLogController::class, 'index'])->middleware('can:baobab.audit.view')->name('index');
+        Route::get('/export', [AuditLogController::class, 'export'])->middleware('can:baobab.audit.export')->name('export');
     });
 
 Route::middleware('can:baobab.access.manage')
@@ -151,6 +152,26 @@ Route::middleware('can:baobab.system.scheduler.view')
         Route::post('/{taskKey}/resume', [SchedulerController::class, 'resume'])
             ->middleware('can:baobab.system.scheduler.run')
             ->name('resume');
+    });
+
+Route::middleware('can:baobab.system.queues.view')
+    ->prefix('system/queues')
+    ->name('system.queues.')
+    ->group(function (): void {
+        Route::get('/', [QueuesController::class, 'index'])->name('index');
+
+        Route::post('/bulk-retry', [QueuesController::class, 'bulkRetry'])
+            ->middleware('can:baobab.system.queues.manage')
+            ->name('bulk-retry');
+        Route::post('/bulk-delete', [QueuesController::class, 'bulkDelete'])
+            ->middleware('can:baobab.system.queues.manage')
+            ->name('bulk-delete');
+        Route::post('/{failedJob:uuid}/retry', [QueuesController::class, 'retry'])
+            ->middleware('can:baobab.system.queues.manage')
+            ->name('retry');
+        Route::post('/{failedJob:uuid}/delete', [QueuesController::class, 'delete'])
+            ->middleware('can:baobab.system.queues.manage')
+            ->name('delete');
     });
 
 Route::middleware('can:baobab.system.api.manage')

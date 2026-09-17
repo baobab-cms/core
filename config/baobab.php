@@ -546,4 +546,32 @@ return [
         'run_retention_days' => (int) env('BAOBAB_SCHEDULER_RUN_RETENTION_DAYS', 30),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Queues (spec 12 §3, M9 chantier 0.a Pass C)
+    |--------------------------------------------------------------------------
+    |
+    | stale_worker_minutes : au-delà de ce délai sans qu'un job en attente
+    | n'ait été consommé, admin/system/queues affiche un bandeau d'alerte
+    | (détection autonome, indépendante du futur tableau de bord santé).
+    |
+    */
+    'queues' => [
+        'stale_worker_minutes' => (int) env('BAOBAB_QUEUES_STALE_WORKER_MINUTES', 5),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Journal d'audit (spec 12 §8, M9 chantier 0.a Pass C)
+    |--------------------------------------------------------------------------
+    |
+    | retention_days : purge automatique du journal (audit_log,
+    | baobab:audit:purge) au-delà de ce délai, patron
+    | redirects.not_found_retention_days.
+    |
+    */
+    'audit' => [
+        'retention_days' => (int) env('BAOBAB_AUDIT_RETENTION_DAYS', 365),
+    ],
+
 ];

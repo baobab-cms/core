@@ -66,5 +66,13 @@ abstract class TestCase extends Orchestra
             'retry_after' => 90,
             'after_commit' => false,
         ]);
+
+        // `queue.failed.database` (config/queue.php) nomme une connexion en
+        // dur (`env('DB_CONNECTION', 'sqlite')`) plutôt que de suivre
+        // `database.default` comme les connexions de queue elles-mêmes —
+        // sans cette ligne, `queue:retry`/`queue:forget` (M9 chantier 0.a
+        // Pass C) tentent de joindre le fichier `database.sqlite` du
+        // squelette Testbench, qui n'existe pas.
+        $app['config']->set('queue.failed.database', 'testing');
     }
 }
