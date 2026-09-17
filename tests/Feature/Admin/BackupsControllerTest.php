@@ -138,6 +138,46 @@ it('creates a backup on demand and always audits the outcome, whatever the local
     expect(AuditEntry::whereIn('action', ['backup.completed', 'backup.failed'])->exists())->toBeTrue();
 });
 
+it('scopes the backup source to media, form uploads, themes and modules, never the whole base_path()', function () {
+    // Trouvé en recette navigateur (17 septembre 2026, restauration testée sur
+    // Linux) : les modules actifs manquaient du périmètre — sans eux, un dump
+    // restauré sur une installation neuve laisse des tables ct_* sans code
+    // porteur (spec 12 §4.1 amendée, décision 7). Les pièces jointes de
+    // formulaires (disque distinct des médias, spec 14 §5) manquaient aussi
+    // — mêmes conséquences pour la table form_submissions.
+    app(CreateBackup::class)();
+
+    $include = config('backup.backup.source.files.include');
+
+    expect($include)->toContain(storage_path('app/public'))
+        ->toContain(storage_path('app/private'))
+        ->toContain(base_path('themes'))
+        ->toContain(base_path('modules'))
+        ->not->toContain(base_path());
+});
+
+it('never lists a non-local media or forms disk as a source path', function () {
+    // Un disque S3 n'a pas de chemin de fichiers local à crawler — sa
+    // couverture passe par sa propre destination de sauvegarde, pas par
+    // source.files.include (qui casserait sur un chemin S3 inexistant).
+    config(['filesystems.disks.public.driver' => 's3']);
+
+    app(CreateBackup::class)();
+
+    expect(config('backup.backup.source.files.include'))->not->toContain(storage_path('app/public'));
+});
+
+it('makes archived paths relative to base_path(), never the source machine\'s absolute path', function () {
+    // Soulevé par l'utilisateur (17 septembre 2026) en envisageant une
+    // restauration à la main (dézip direct sur un nouvel hébergement) :
+    // sans relative_path, le zip embarque le chemin absolu de CETTE
+    // machine, inexploitable tel quel ailleurs — même un dump MySQL
+    // restauré avec succès ne suffirait pas à retrouver les fichiers.
+    app(CreateBackup::class)();
+
+    expect(config('backup.backup.source.files.relative_path'))->toBe(base_path());
+});
+
 it('notifies backup managers when a backup fails', function () {
     // Échec forcé par une destination invalide plutôt que par l'absence de
     // mysqldump/sqlite3 sur la machine locale — un CI qui dispose de ces

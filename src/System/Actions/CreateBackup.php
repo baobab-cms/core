@@ -15,15 +15,27 @@ use Illuminate\Support\Facades\Artisan;
 /**
  * Crée une sauvegarde (spec 12 §4.1, §4.2) — wrappe `backup:run` puis
  * `backup:clean` de spatie/laravel-backup, jamais réimplémenté : dump
- * MySQL + fichiers (médias, thèmes actifs) en une seule archive .zip par
- * destination, patron `RetryFailedJobs` (Artisan::call, jamais un appel
- * direct au package depuis l'appelant). `backup:run` renvoie son propre
- * code de sortie (0/1, `Spatie\Backup\Commands\BackupCommand::handle()`),
- * relu tel quel plutôt qu'un test fragile sur la sortie texte.
+ * MySQL + fichiers (médias, pièces jointes de formulaires, thèmes actifs,
+ * modules actifs) en une seule archive .zip par destination, patron
+ * `RetryFailedJobs` (Artisan::call, jamais un appel direct au package
+ * depuis l'appelant). `backup:run` renvoie son propre code de sortie (0/1,
+ * `Spatie\Backup\Commands\BackupCommand::handle()`), relu tel quel plutôt
+ * qu'un test fragile sur la sortie texte.
  *
  * Source figée au périmètre spec §4.1 — jamais `base_path()` entier (le
  * défaut du package), qui embarquerait `vendor/`/`.git/` en plus
  * d'exclure `.env` par construction plutôt que par exclusion explicite.
+ * Les disques médias et formulaires sont résolus depuis leur config
+ * (`baobab.media.disk`/`baobab.forms.disk`, tous deux redéfinissables) —
+ * jamais `storage_path('app/public')` codé en dur, qui casserait
+ * silencieusement dès que l'un des deux est reconfiguré ; seul un disque
+ * `local` fournit un chemin de fichiers réel, un disque S3 n'a rien à
+ * faire dans `source.files.include` (déjà couvert par sa propre
+ * destination de sauvegarde si c'est aussi une destination configurée).
+ * `source.files.relative_path` fixé à `base_path()` — sans lui, le
+ * package embarque le chemin absolu de la machine source dans l'archive
+ * (défaut du package, `null`), inutilisable tel quel sur un autre serveur
+ * même après restauration réussie du dump.
  *
  * Un échec (spec §4.3) journalise en trois endroits distincts, jamais
  * substituables l'un à l'autre : l'audit (donnée métier requêtable,
@@ -82,15 +94,43 @@ final class CreateBackup
         return mb_strimwidth($clean !== false ? $clean : '', 0, 2000, '…');
     }
 
+    /**
+     * @return list<string>
+     */
+    private function sourcePaths(): array
+    {
+        $paths = [base_path('themes'), base_path('modules')];
+
+        foreach ([config('baobab.media.disk'), config('baobab.forms.disk')] as $disk) {
+            $root = $this->localDiskRoot($disk);
+
+            if ($root !== null) {
+                $paths[] = $root;
+            }
+        }
+
+        return array_values(array_unique($paths));
+    }
+
+    private function localDiskRoot(string $disk): ?string
+    {
+        if (config("filesystems.disks.{$disk}.driver") !== 'local') {
+            return null;
+        }
+
+        /** @var string|null $root */
+        $root = config("filesystems.disks.{$disk}.root");
+
+        return $root;
+    }
+
     private function configureBackupPackage(BackupSetting $setting): void
     {
         config([
             'backup.backup.name' => config('baobab.backups.name'),
-            'backup.backup.source.files.include' => [
-                storage_path('app/public'),
-                base_path('themes'),
-            ],
+            'backup.backup.source.files.include' => $this->sourcePaths(),
             'backup.backup.source.files.exclude' => [],
+            'backup.backup.source.files.relative_path' => base_path(),
             'backup.backup.source.databases' => [config('database.default')],
             'backup.backup.destination.disks' => config('baobab.backups.destinations'),
             'backup.cleanup.default_strategy.keep_all_backups_for_days' => 0,
