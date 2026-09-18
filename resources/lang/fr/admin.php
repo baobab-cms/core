@@ -94,6 +94,7 @@ return [
         'queues' => 'Queues',
         'backups' => 'Sauvegardes',
         'health' => 'Santé',
+        'export' => 'Export',
         'toggle_collapse' => 'Réduire/étendre la barre latérale',
         'nav_label' => 'Navigation admin',
     ],
@@ -701,6 +702,24 @@ return [
         'status_ok' => 'OK',
         'status_warning' => 'Avertissement',
         'status_failed' => 'Échec',
+    ],
+
+    'export' => [
+        'title' => 'Export',
+        'content_types_label' => 'Content types à exporter',
+        'submit' => 'Exporter',
+        'empty_selection' => 'Sélectionnez au moins un content type.',
+        'requested' => 'Export demandé — il apparaîtra ci-dessous une fois terminé.',
+        'history_title' => 'Exports récents',
+        'empty' => 'Aucun export pour le moment.',
+        'column_content_types' => 'Content types',
+        'column_status' => 'Statut',
+        'column_date' => 'Date',
+        'status_pending' => 'En attente',
+        'status_running' => 'En cours',
+        'status_completed' => 'Terminé',
+        'status_failed' => 'Échec',
+        'download' => 'Télécharger',
     ],
 
     'seo' => [

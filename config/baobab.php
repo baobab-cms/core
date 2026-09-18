@@ -639,4 +639,22 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Export / Import (spec 12 §5, M9 chantier 0.a Pass F1)
+    |--------------------------------------------------------------------------
+    |
+    | disk : toujours local en v1 (F1 ne propose pas de destination
+    | S3-compatible, contrairement aux sauvegardes — pas demandé par le
+    | cadrage, à rouvrir si le besoin se présente). format_version : suit
+    | spec §5.1 (« 0.x tant que la spec d'internationalisation de contenu
+    | n'est pas rédigée »).
+    |
+    */
+    'exports' => [
+        'disk' => env('BAOBAB_EXPORTS_DISK', 'local'),
+        'path' => env('BAOBAB_EXPORTS_PATH', 'exports'),
+        'format_version' => '0.1',
+    ],
+
 ];

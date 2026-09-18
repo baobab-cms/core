@@ -33,6 +33,7 @@ use Baobab\Admin\Seo\Http\Controllers\RedirectsController;
 use Baobab\Admin\Seo\Http\Controllers\SeoSettingsController;
 use Baobab\Admin\Studio\Http\Controllers\StudioController;
 use Baobab\Admin\System\Http\Controllers\BackupsController;
+use Baobab\Admin\System\Http\Controllers\ExportController;
 use Baobab\Admin\System\Http\Controllers\HealthController;
 use Baobab\Admin\System\Http\Controllers\MaintenanceController;
 use Baobab\Admin\System\Http\Controllers\QueuesController;
@@ -202,6 +203,19 @@ Route::middleware('can:baobab.system.health.view')
     ->group(function (): void {
         Route::get('/', [HealthController::class, 'index'])->name('index');
         Route::post('/refresh', [HealthController::class, 'refresh'])->name('refresh');
+    });
+
+Route::middleware('can:baobab.system.export.view')
+    ->prefix('system/export')
+    ->name('system.export.')
+    ->group(function (): void {
+        Route::get('/', [ExportController::class, 'index'])->name('index');
+
+        Route::post('/', [ExportController::class, 'create'])
+            ->middleware('can:baobab.system.export.create')
+            ->name('create');
+        Route::get('/{exportJob:uuid}/download', [ExportController::class, 'download'])
+            ->name('download');
     });
 
 Route::middleware('can:baobab.system.api.manage')

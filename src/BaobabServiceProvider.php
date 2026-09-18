@@ -31,6 +31,7 @@ use Baobab\Console\Commands\ContentTypeBuildCommand;
 use Baobab\Console\Commands\ContentTypeMakeCommand;
 use Baobab\Console\Commands\ContentUnpublishDueCommand;
 use Baobab\Console\Commands\DesignTokensCompileCommand;
+use Baobab\Console\Commands\ExportRunCommand;
 use Baobab\Console\Commands\FontsListCommand;
 use Baobab\Console\Commands\FormExportCommand;
 use Baobab\Console\Commands\FormImportCommand;
@@ -514,6 +515,7 @@ class BaobabServiceProvider extends ServiceProvider
                 AuditPurgeCommand::class,
                 BackupRunCommand::class,
                 HealthCheckCommand::class,
+                ExportRunCommand::class,
             ]);
         }
 
@@ -2057,6 +2059,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: 'bi-heart-pulse',
                     url: route('admin.system.health.index'),
                     order: -1,
+                );
+            }
+
+            if ($user->can('baobab.system.export.view')) {
+                $coreItems[] = new SidebarItem(
+                    id: -27,
+                    label: __('baobab::admin.sidebar.export'),
+                    icon: 'bi-box-arrow-up',
+                    url: route('admin.system.export.index'),
+                    order: 0,
                 );
             }
 
