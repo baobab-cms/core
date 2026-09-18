@@ -96,6 +96,7 @@ return [
         'health' => 'Santé',
         'export' => 'Export',
         'import' => 'Import',
+        'privacy_register' => 'Registre RGPD',
         'toggle_collapse' => 'Réduire/étendre la barre latérale',
         'nav_label' => 'Navigation admin',
     ],
@@ -703,6 +704,25 @@ return [
         'status_ok' => 'OK',
         'status_warning' => 'Avertissement',
         'status_failed' => 'Échec',
+    ],
+
+    'privacy_register' => [
+        'title' => 'Registre des traitements',
+        'intro' => 'Généré depuis les déclarations des fournisseurs de données personnelles (Core et modules). C\'est la matière première de votre registre des traitements, pas le registre légal lui-même : le contexte, le responsable de traitement et le DPO restent de votre ressort.',
+        'export' => 'Exporter en document',
+        'nature' => 'Nature des données',
+        'purpose' => 'Finalité',
+        'legal_basis' => 'Base légale',
+        'retention' => 'Rétention',
+        'external_services' => 'Services externes',
+        'none' => 'Aucun',
+        'recipients_title' => 'Destinataires externes',
+        'no_recipients' => 'Aucune donnée personnelle ne quitte ce serveur.',
+        'undeclared_title' => 'Modules actifs sans déclaration :',
+        'undeclared_help' => 'Ces modules créent des tables mais n\'ont enregistré aucun fournisseur de données personnelles. Vérifiez auprès de leur auteur s\'ils stockent des données personnelles.',
+        'document_title' => 'Registre des traitements de données personnelles',
+        'document_generated' => 'Généré le :date.',
+        'document_disclaimer' => 'Document d\'appui : il ne constitue pas le registre légal de l\'exploitant (contexte, responsable de traitement et DPO à compléter).',
     ],
 
     'export' => [

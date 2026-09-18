@@ -25,6 +25,7 @@ use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
 use Baobab\Admin\Menus\Http\Controllers\MenusController;
 use Baobab\Admin\Modules\Http\Controllers\ModulesController;
 use Baobab\Admin\Notifications\Http\Controllers\NotificationController;
+use Baobab\Admin\Privacy\Http\Controllers\RegisterController;
 use Baobab\Admin\Rendering\Http\Controllers\ReadingSettingsController;
 use Baobab\Admin\Search\Http\Controllers\OmniboxController;
 use Baobab\Admin\Search\Http\Controllers\SearchSettingsController;
@@ -204,6 +205,14 @@ Route::middleware('can:baobab.system.health.view')
     ->group(function (): void {
         Route::get('/', [HealthController::class, 'index'])->name('index');
         Route::post('/refresh', [HealthController::class, 'refresh'])->name('refresh');
+    });
+
+Route::middleware('can:baobab.privacy.register.view')
+    ->prefix('privacy/register')
+    ->name('privacy.register.')
+    ->group(function (): void {
+        Route::get('/', [RegisterController::class, 'index'])->name('index');
+        Route::get('/export', [RegisterController::class, 'export'])->name('export');
     });
 
 Route::middleware('can:baobab.system.export.view')

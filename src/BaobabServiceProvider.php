@@ -59,6 +59,7 @@ use Baobab\Console\Commands\NotFoundPurgeCommand;
 use Baobab\Console\Commands\NotificationsPurgeCommand;
 use Baobab\Console\Commands\NotifyTestCommand;
 use Baobab\Console\Commands\OpenApiCompileCommand;
+use Baobab\Console\Commands\PrivacyRegisterCommand;
 use Baobab\Console\Commands\SchedulerPurgeRunsCommand;
 use Baobab\Console\Commands\SearchReindexCommand;
 use Baobab\Console\Commands\SearchStatusCommand;
@@ -114,6 +115,13 @@ use Baobab\Modules\Models\Module;
 use Baobab\Modules\ModuleAutoloader;
 use Baobab\Modules\ModuleDiscovery;
 use Baobab\Notify\Notifier;
+use Baobab\Privacy\PrivacyRegistry;
+use Baobab\Privacy\Providers\AuditLogProvider;
+use Baobab\Privacy\Providers\ContentAuthorshipProvider;
+use Baobab\Privacy\Providers\FormSubmissionsProvider;
+use Baobab\Privacy\Providers\MailLogProvider;
+use Baobab\Privacy\Providers\MediaProvider;
+use Baobab\Privacy\Providers\UsersProvider;
 use Baobab\Rendering\Actions\RenderAdminError;
 use Baobab\Rendering\Actions\RenderServerError;
 use Baobab\Rendering\PublicRouteRegistrar;
@@ -274,6 +282,8 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->singleton(PresetRegistry::class);
 
         $this->app->singleton(SearchRegistry::class);
+
+        $this->app->singleton(PrivacyRegistry::class);
 
         $this->app->singleton(SeoContext::class);
 
@@ -459,6 +469,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerCoreWidgets();
 
+        $this->registerCorePrivacyProviders();
+
         $this->registerCorePresets();
 
         $this->registerCoreSearchSources();
@@ -518,6 +530,7 @@ class BaobabServiceProvider extends ServiceProvider
                 HealthCheckCommand::class,
                 ExportRunCommand::class,
                 ImportRunCommand::class,
+                PrivacyRegisterCommand::class,
             ]);
         }
 
@@ -2074,6 +2087,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            if ($user->can('baobab.privacy.register.view')) {
+                $coreItems[] = new SidebarItem(
+                    id: -29,
+                    label: __('baobab::admin.sidebar.privacy_register'),
+                    icon: 'bi-shield-check',
+                    url: route('admin.privacy.register.index'),
+                    order: 2,
+                );
+            }
+
             if ($user->can('baobab.system.import.view')) {
                 $coreItems[] = new SidebarItem(
                     id: -28,
@@ -2145,6 +2168,27 @@ class BaobabServiceProvider extends ServiceProvider
             RecapStepHandler::class,
         ] as $handler) {
             $steps->register($handler);
+        }
+    }
+
+    /**
+     * Fournisseurs Core de données personnelles (spec 16 §2.1). Un module
+     * enregistre les siens par `Privacy::register()` dans son provider.
+     */
+    private function registerCorePrivacyProviders(): void
+    {
+        /** @var PrivacyRegistry $registry */
+        $registry = $this->app->make(PrivacyRegistry::class);
+
+        foreach ([
+            new UsersProvider,
+            new ContentAuthorshipProvider,
+            new MediaProvider,
+            new MailLogProvider,
+            new AuditLogProvider,
+            new FormSubmissionsProvider,
+        ] as $provider) {
+            $registry->register($provider);
         }
     }
 
