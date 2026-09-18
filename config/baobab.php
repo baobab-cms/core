@@ -657,4 +657,23 @@ return [
         'format_version' => '0.1',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Import (spec 12 §5.3, M9 chantier 0.a Pass F2)
+    |--------------------------------------------------------------------------
+    |
+    | disk/path : où l'archive téléversée par l'admin est déposée le temps du
+    | dry-run puis de l'exécution réelle (toujours local — `ZipArchive` exige
+    | un chemin de fichier réel, `Baobab\Imports\Support\ImportArchiveReader`
+    | n'accepte donc jamais un disque S3). max_size : borne indépendante de
+    | `baobab.modules.upload.max_size` — une archive de contenu peut légitimement
+    | dépasser un module (médias inclus).
+    |
+    */
+    'imports' => [
+        'disk' => env('BAOBAB_IMPORTS_DISK', 'local'),
+        'path' => env('BAOBAB_IMPORTS_PATH', 'imports'),
+        'max_size' => (int) env('BAOBAB_IMPORTS_MAX_SIZE', 268_435_456),
+    ],
+
 ];

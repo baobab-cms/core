@@ -1,7 +1,10 @@
 <?php
 
+use Baobab\Actions\Modules\DeactivateModule;
 use Baobab\Actions\Modules\InstallModule;
 use Baobab\Actions\Modules\UninstallModule;
+use Baobab\ContentTypes\Actions\BuildContentType;
+use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Modules\Models\Module;
 use Baobab\Themes\Actions\PublishThemeAssets;
 use Illuminate\Support\Facades\File;
@@ -24,8 +27,30 @@ beforeEach(function () {
 
 afterEach(function () {
     File::deleteDirectory(cleanupRoot());
+    File::deleteDirectory(generatedModulesPath());
     removeThemeLink('acme-theme');
 });
+
+/**
+ * Un vrai content type, construit par le pipeline réel (`BuildContentType`) —
+ * ce que teste ce bloc est justement le lien entre sa ligne `content_types`
+ * et son module, une fausse ligne posée à la main ne le porterait pas.
+ */
+function cleanupContentType(string $key): ContentType
+{
+    config(['baobab.content_types.modules_path' => generatedModulesPath()]);
+    config(['baobab.modules.paths' => ['local' => [generatedModulesPath().'/*']]]);
+
+    $contentType = app(BuildContentType::class)(contentTypeBlueprintJson($key, [
+        'fields' => [['key' => 'name', 'type' => 'text']],
+    ]));
+
+    // BuildContentType active le module — UninstallModule refuse tout module
+    // actif, comme pour n'importe quel autre.
+    app(DeactivateModule::class)(Module::findOrFail($contentType->module_id)->name);
+
+    return $contentType->fresh() ?? $contentType;
+}
 
 /**
  * Un module minimal posé sur disque, plus sa ligne `modules`. On n'installe
@@ -149,4 +174,33 @@ it('does nothing for a module that is not a theme, and does not fail', function 
     app(UninstallModule::class)('acme/cleanup');
 
     expect(Module::where('name', 'acme/cleanup')->exists())->toBeFalse();
+});
+
+// --- Ligne content_types (suivi n° 329, gap trouvé en vérifiant la Pass F2) -
+
+it('also removes the content_types row when both purge and deleteFiles are asked', function () {
+    $contentType = cleanupContentType('UninstallCleanupPurgeAndFiles');
+    $moduleName = Module::findOrFail($contentType->module_id)->name;
+
+    app(UninstallModule::class)($moduleName, purge: true, deleteFiles: true);
+
+    expect(ContentType::where('key', 'UninstallCleanupPurgeAndFiles')->exists())->toBeFalse();
+});
+
+it('keeps the content_types row when only purge is asked, files kept for a possible reinstall', function () {
+    $contentType = cleanupContentType('UninstallCleanupPurgeOnly');
+    $moduleName = Module::findOrFail($contentType->module_id)->name;
+
+    app(UninstallModule::class)($moduleName, purge: true, deleteFiles: false);
+
+    expect(ContentType::where('key', 'UninstallCleanupPurgeOnly')->exists())->toBeTrue();
+});
+
+it('keeps the content_types row when only deleteFiles is asked, without purge', function () {
+    $contentType = cleanupContentType('UninstallCleanupFilesOnly');
+    $moduleName = Module::findOrFail($contentType->module_id)->name;
+
+    app(UninstallModule::class)($moduleName, purge: false, deleteFiles: true);
+
+    expect(ContentType::where('key', 'UninstallCleanupFilesOnly')->exists())->toBeTrue();
 });

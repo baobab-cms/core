@@ -35,6 +35,7 @@ use Baobab\Admin\Studio\Http\Controllers\StudioController;
 use Baobab\Admin\System\Http\Controllers\BackupsController;
 use Baobab\Admin\System\Http\Controllers\ExportController;
 use Baobab\Admin\System\Http\Controllers\HealthController;
+use Baobab\Admin\System\Http\Controllers\ImportController;
 use Baobab\Admin\System\Http\Controllers\MaintenanceController;
 use Baobab\Admin\System\Http\Controllers\QueuesController;
 use Baobab\Admin\System\Http\Controllers\SchedulerController;
@@ -216,6 +217,20 @@ Route::middleware('can:baobab.system.export.view')
             ->name('create');
         Route::get('/{exportJob:uuid}/download', [ExportController::class, 'download'])
             ->name('download');
+    });
+
+Route::middleware('can:baobab.system.import.view')
+    ->prefix('system/import')
+    ->name('system.import.')
+    ->group(function (): void {
+        Route::get('/', [ImportController::class, 'index'])->name('index');
+
+        Route::post('/preview', [ImportController::class, 'preview'])
+            ->middleware('can:baobab.system.import.run')
+            ->name('preview');
+        Route::post('/', [ImportController::class, 'create'])
+            ->middleware('can:baobab.system.import.run')
+            ->name('create');
     });
 
 Route::middleware('can:baobab.system.api.manage')

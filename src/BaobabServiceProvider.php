@@ -39,6 +39,7 @@ use Baobab\Console\Commands\FormSubmissionsPurgeCommand;
 use Baobab\Console\Commands\GraphqlCompileCommand;
 use Baobab\Console\Commands\HealthCheckCommand;
 use Baobab\Console\Commands\HookListCommand;
+use Baobab\Console\Commands\ImportRunCommand;
 use Baobab\Console\Commands\MailLogPurgeCommand;
 use Baobab\Console\Commands\MailTemplatesCommand;
 use Baobab\Console\Commands\MailTestCommand;
@@ -516,6 +517,7 @@ class BaobabServiceProvider extends ServiceProvider
                 BackupRunCommand::class,
                 HealthCheckCommand::class,
                 ExportRunCommand::class,
+                ImportRunCommand::class,
             ]);
         }
 
@@ -2069,6 +2071,16 @@ class BaobabServiceProvider extends ServiceProvider
                     icon: 'bi-box-arrow-up',
                     url: route('admin.system.export.index'),
                     order: 0,
+                );
+            }
+
+            if ($user->can('baobab.system.import.view')) {
+                $coreItems[] = new SidebarItem(
+                    id: -28,
+                    label: __('baobab::admin.sidebar.import'),
+                    icon: 'bi-box-arrow-in-down',
+                    url: route('admin.system.import.index'),
+                    order: 1,
                 );
             }
 
