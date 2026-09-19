@@ -6,8 +6,11 @@ namespace Baobab\Privacy\Providers;
 
 use Baobab\Mail\Models\MailLogEntry;
 use Baobab\Privacy\DataDeclaration;
+use Baobab\Privacy\EraseOutcome;
+use Baobab\Privacy\EraseReport;
 use Baobab\Privacy\PersonalDataExport;
 use Baobab\Privacy\Subject;
+use Baobab\Privacy\Support\Pseudonym;
 
 /** `core.mail_log` (spec 16 §2.1, spec 13 §4.3) : le journal des e-mails envoyés. */
 final class MailLogProvider extends CoreProvider
@@ -38,6 +41,22 @@ final class MailLogProvider extends CoreProvider
 
         return $email !== null
             && MailLogEntry::query()->whereRaw('LOWER(recipient) = ?', [$email])->exists();
+    }
+
+    /**
+     * Le destinataire est haché (spec 13 §4.3), le corps et l'erreur vidés ;
+     * l'objet du message reste, faute d'en connaître la part personnelle, et
+     * le rapport le dit. La chronologie d'envoi (gabarit, statut, date) demeure.
+     */
+    public function erase(Subject $subject): EraseReport
+    {
+        $email = (string) $this->emailOf($subject);
+
+        $count = MailLogEntry::query()
+            ->whereRaw('LOWER(recipient) = ?', [$email])
+            ->update(['recipient' => Pseudonym::address($email), 'body' => null, 'error' => null]);
+
+        return new EraseReport(EraseOutcome::Anonymized, $count, __('baobab::privacy.erasure.mail_log_note'));
     }
 
     /** Le corps n'est plus là une fois purgé (rétention courte) : `null` alors. */

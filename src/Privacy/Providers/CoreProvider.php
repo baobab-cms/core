@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Privacy\Providers;
 
+use Baobab\Privacy\Contracts\ErasesPersonalData;
 use Baobab\Privacy\Contracts\ExportsPersonalData;
 use Baobab\Privacy\Subject;
 use Baobab\Users\Models\User;
@@ -14,7 +15,7 @@ use Baobab\Users\Models\User;
  * « e-mail » peut avoir un compte, un sujet « compte » a toujours une
  * adresse).
  */
-abstract class CoreProvider implements ExportsPersonalData
+abstract class CoreProvider implements ErasesPersonalData, ExportsPersonalData
 {
     protected function userIdOf(Subject $subject): ?int
     {

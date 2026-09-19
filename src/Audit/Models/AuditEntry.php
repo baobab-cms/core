@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
+use LogicException;
 
 /**
  * @property int $id
@@ -29,6 +30,22 @@ final class AuditEntry extends Model
     public const UPDATED_AT = null;
 
     protected $table = 'audit_log';
+
+    /**
+     * Append-only (spec 12 §8.2, spec 16 §5) : aucune écriture individuelle sur
+     * une entrée existante. La pseudonymisation RGPD (`AuditLogProvider`) et la
+     * purge de rétention (`baobab:audit:purge`) passent par le builder, qui ne
+     * déclenche aucun événement de modèle — ce sont les deux seules exceptions.
+     */
+    protected static function booted(): void
+    {
+        $refuse = static function (): never {
+            throw new LogicException(__('baobab::privacy.erasure.audit_append_only'));
+        };
+
+        self::updating($refuse);
+        self::deleting($refuse);
+    }
 
     /**
      * @var list<string>

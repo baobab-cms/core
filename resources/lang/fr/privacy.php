@@ -60,6 +60,22 @@ return [
         'retention' => 'Durée définie par formulaire (365 jours par défaut).',
     ],
 
+    'erasure' => [
+        'ghost_name' => 'Utilisateur supprimé #:hash',
+        'last_super_admin' => 'Impossible d\'effacer le dernier super-administrateur : le site n\'aurait plus aucun accès d\'administration.',
+        'audit_append_only' => 'Le journal d\'audit est en ajout seul : une entrée existante ne se modifie ni ne se supprime.',
+        'users_note' => 'Compte anonymisé en place : nom et e-mail neutralisés, mot de passe, 2FA, sessions, jetons, rôles, permissions et préférences retirés.',
+        'content_authorship_note' => 'Conservé : le contenu appartient au site ; son auteur est désormais le compte anonymisé. Sa suppression éventuelle est une décision éditoriale séparée.',
+        'media_note' => 'Conservé : les fichiers appartiennent au site ; leur auteur est désormais le compte anonymisé.',
+        'mail_log_note' => 'Destinataire haché, corps et erreur vidés ; l\'objet du message, le gabarit, le statut et la date d\'envoi sont conservés.',
+        'audit_log_note' => 'Pseudonymisé, non supprimé (intérêt légitime : sécurité et preuve) : IP et user-agent effacés, données personnelles retirées ; la chronologie des actions demeure.',
+        'form_submissions_note' => 'Supprimé : soumissions et fichiers joints.',
+        'confirm' => 'Effacer définitivement les données personnelles de ce sujet ? Cette action est irréversible.',
+        'aborted' => 'Effacement annulé.',
+        'done' => 'Effacement terminé. Référence : :reference',
+        'unsupported' => 'Non effacé automatiquement (le traitement n\'offre pas d\'effacement) : :providers',
+    ],
+
     'export' => [
         'title' => 'Export de vos données personnelles',
         'generated' => 'Généré le :date.',

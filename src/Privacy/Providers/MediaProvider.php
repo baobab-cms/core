@@ -6,6 +6,8 @@ namespace Baobab\Privacy\Providers;
 
 use Baobab\Media\Models\Media;
 use Baobab\Privacy\DataDeclaration;
+use Baobab\Privacy\EraseOutcome;
+use Baobab\Privacy\EraseReport;
 use Baobab\Privacy\PersonalDataExport;
 use Baobab\Privacy\Subject;
 
@@ -33,6 +35,16 @@ final class MediaProvider extends CoreProvider
         $userId = $this->userIdOf($subject);
 
         return $userId !== null && Media::withTrashed()->where('author_id', $userId)->exists();
+    }
+
+    /** Les fichiers appartiennent au site ; leur auteur est déjà le compte anonymisé. */
+    public function erase(Subject $subject): EraseReport
+    {
+        return new EraseReport(
+            EraseOutcome::Retained,
+            Media::withTrashed()->where('author_id', $this->userIdOf($subject))->count(),
+            __('baobab::privacy.erasure.media_note'),
+        );
     }
 
     /**

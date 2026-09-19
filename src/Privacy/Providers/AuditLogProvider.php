@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Baobab\Privacy\Providers;
 
 use Baobab\Audit\Models\AuditEntry;
+use Baobab\Facades\Hook;
 use Baobab\Privacy\DataDeclaration;
+use Baobab\Privacy\EraseOutcome;
+use Baobab\Privacy\EraseReport;
 use Baobab\Privacy\PersonalDataExport;
 use Baobab\Privacy\Subject;
 use Baobab\Users\Models\User;
@@ -43,6 +46,64 @@ final class AuditLogProvider extends CoreProvider
         }
 
         return $this->entriesOf($userId)->exists();
+    }
+
+    /**
+     * Pseudonymise, ne supprime pas (spec 16 §5) : la chronologie des actions
+     * demeure (intérêt légitime, sécurité et preuve). `actor_id` désigne déjà
+     * le compte anonymisé ; on efface l'IP et le user-agent des entrées dont le
+     * sujet est l'auteur (acteur ou usurpateur — ceux d'une entrée où il n'est
+     * que l'objet sont ceux d'un autre), et on retire de `data`, partout où
+     * le sujet figure, les clés du filtre `baobab.privacy.audit_personal_keys`.
+     *
+     * Écrit par le builder : le modèle `AuditEntry` refuse toute écriture
+     * individuelle (append-only), celle-ci en est l'unique exception.
+     */
+    public function erase(Subject $subject): EraseReport
+    {
+        $userId = (int) $this->userIdOf($subject);
+
+        /** @var list<string> $keys */
+        $keys = Hook::filter('baobab.privacy.audit_personal_keys', ['email', 'name', 'ip', 'ip_address', 'user_agent']);
+        $count = 0;
+
+        foreach ($this->entriesOf($userId)->lazyById(200) as $entry) {
+            $changes = [];
+
+            if ($entry->actor_id === $userId || $entry->impersonator_id === $userId) {
+                $changes['ip_address'] = null;
+                $changes['user_agent'] = null;
+            }
+
+            if ($entry->data !== null) {
+                $changes['data'] = json_encode($this->scrub($entry->data, $keys), JSON_THROW_ON_ERROR);
+            }
+
+            AuditEntry::query()->whereKey($entry->getKey())->update($changes);
+            $count++;
+        }
+
+        return new EraseReport(EraseOutcome::Anonymized, $count, __('baobab::privacy.erasure.audit_log_note'));
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $data
+     * @param  list<string>  $keys
+     * @return array<array-key, mixed>
+     */
+    private function scrub(array $data, array $keys): array
+    {
+        $clean = [];
+
+        foreach ($data as $key => $value) {
+            if (in_array($key, $keys, true)) {
+                continue;
+            }
+
+            $clean[$key] = is_array($value) ? $this->scrub($value, $keys) : $value;
+        }
+
+        return $clean;
     }
 
     /** Chaque entrée porte le rôle du sujet : acteur, usurpateur ou objet. */

@@ -6,6 +6,8 @@ namespace Baobab\Privacy\Providers;
 
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Privacy\DataDeclaration;
+use Baobab\Privacy\EraseOutcome;
+use Baobab\Privacy\EraseReport;
 use Baobab\Privacy\PersonalDataExport;
 use Baobab\Privacy\Subject;
 use Illuminate\Database\Eloquent\Model;
@@ -33,6 +35,30 @@ final class ContentAuthorshipProvider extends CoreProvider
             legalBasis: __('baobab::privacy.content_authorship.legal_basis'),
             retention: __('baobab::privacy.content_authorship.retention'),
         );
+    }
+
+    /**
+     * Le contenu éditorial appartient au site (spec 16 §4.3) : rien n'est
+     * supprimé, sa suppression éventuelle est une décision éditoriale séparée.
+     * L'auteur est déjà le fantôme, puisque le compte est anonymisé en place.
+     */
+    public function erase(Subject $subject): EraseReport
+    {
+        $userId = $this->userIdOf($subject);
+        $count = 0;
+
+        foreach (ContentType::query()->get() as $contentType) {
+            $class = $contentType->modelClass();
+
+            if (! class_exists($class) || ! is_subclass_of($class, Model::class)) {
+                continue;
+            }
+
+            $count += $class::query()->withoutGlobalScope(SoftDeletingScope::class)
+                ->where('author_id', $userId)->count();
+        }
+
+        return new EraseReport(EraseOutcome::Retained, $count, __('baobab::privacy.erasure.content_authorship_note'));
     }
 
     /**

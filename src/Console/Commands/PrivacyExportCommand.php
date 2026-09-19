@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Baobab\Console\Commands;
 
+use Baobab\Console\Commands\Concerns\ResolvesPrivacySubject;
 use Baobab\Privacy\Actions\ExportPersonalData;
 use Baobab\Privacy\Exceptions\NoPersonalDataException;
-use Baobab\Privacy\Subject;
-use Baobab\Users\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
@@ -19,6 +18,8 @@ use Illuminate\Support\Facades\File;
  */
 final class PrivacyExportCommand extends Command
 {
+    use ResolvesPrivacySubject;
+
     protected $signature = 'baobab:privacy:export
         {subject : Identifiant de compte ou adresse e-mail}
         {--output= : Dossier de destination (défaut : storage/app/privacy-exports)}';
@@ -59,16 +60,5 @@ final class PrivacyExportCommand extends Command
         $this->line(__('baobab::privacy.export.password_once'));
 
         return self::SUCCESS;
-    }
-
-    private function resolveSubject(string $raw): ?Subject
-    {
-        if (str_contains($raw, '@')) {
-            return Subject::forEmail($raw);
-        }
-
-        $user = ctype_digit($raw) ? User::query()->find((int) $raw) : null;
-
-        return $user === null ? null : Subject::forUser($user);
     }
 }

@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Baobab\Privacy\Providers;
 
 use Baobab\Forms\Models\FormSubmission;
+use Baobab\Forms\Support\FormFileStorage;
 use Baobab\Privacy\DataDeclaration;
+use Baobab\Privacy\EraseOutcome;
+use Baobab\Privacy\EraseReport;
 use Baobab\Privacy\PersonalDataExport;
 use Baobab\Privacy\Subject;
 
@@ -51,6 +54,26 @@ final class FormSubmissionsProvider extends CoreProvider
         }
 
         return false;
+    }
+
+    /** Rien ne s'oppose à la suppression : les soumissions et leurs fichiers partent. */
+    public function erase(Subject $subject): EraseReport
+    {
+        $email = (string) $this->emailOf($subject);
+        $files = new FormFileStorage;
+        $count = 0;
+
+        foreach (FormSubmission::query()->lazyById(200) as $submission) {
+            if (! $this->belongsTo($submission, $email)) {
+                continue;
+            }
+
+            $files->deleteForSubmission($submission);
+            $submission->delete();
+            $count++;
+        }
+
+        return new EraseReport(EraseOutcome::Deleted, $count, __('baobab::privacy.erasure.form_submissions_note'));
     }
 
     /**
