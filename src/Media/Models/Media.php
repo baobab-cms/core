@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -39,6 +40,7 @@ use Illuminate\Support\Str;
  * @property string|null $edited_path
  * @property int|null $edited_width
  * @property int|null $edited_height
+ * @property Carbon|null $created_at
  */
 class Media extends Model
 {

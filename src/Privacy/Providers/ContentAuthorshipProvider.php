@@ -6,6 +6,7 @@ namespace Baobab\Privacy\Providers;
 
 use Baobab\ContentTypes\Models\ContentType;
 use Baobab\Privacy\DataDeclaration;
+use Baobab\Privacy\PersonalDataExport;
 use Baobab\Privacy\Subject;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -32,6 +33,34 @@ final class ContentAuthorshipProvider extends CoreProvider
             legalBasis: __('baobab::privacy.content_authorship.legal_basis'),
             retention: __('baobab::privacy.content_authorship.retention'),
         );
+    }
+
+    /**
+     * Les entrées signées par le sujet, par content type. Le contenu appartient
+     * au site (spec 16 §2.1, `retention`) : l'export le rend au titre de
+     * l'accès, sans que l'effacement ait à le supprimer.
+     */
+    public function export(Subject $subject): PersonalDataExport
+    {
+        $userId = $this->userIdOf($subject);
+        $byType = [];
+
+        foreach (ContentType::query()->get() as $contentType) {
+            $class = $contentType->modelClass();
+
+            if (! class_exists($class) || ! is_subclass_of($class, Model::class)) {
+                continue;
+            }
+
+            $rows = $class::query()->withoutGlobalScope(SoftDeletingScope::class)
+                ->where('author_id', $userId)->get();
+
+            if ($rows->isNotEmpty()) {
+                $byType[$contentType->key] = $rows->map(static fn (Model $row): array => $row->toArray())->all();
+            }
+        }
+
+        return new PersonalDataExport(['content' => $byType]);
     }
 
     public function locate(Subject $subject): bool

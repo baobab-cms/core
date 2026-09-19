@@ -6,6 +6,7 @@ namespace Baobab\Privacy\Providers;
 
 use Baobab\Forms\Models\FormSubmission;
 use Baobab\Privacy\DataDeclaration;
+use Baobab\Privacy\PersonalDataExport;
 use Baobab\Privacy\Subject;
 
 /**
@@ -44,16 +45,69 @@ final class FormSubmissionsProvider extends CoreProvider
         }
 
         foreach (FormSubmission::query()->select(['id', 'payload', 'blueprint_snapshot'])->lazyById(200) as $submission) {
-            foreach ($submission->blueprint_snapshot ?? [] as $field) {
-                if (($field['type'] ?? null) !== 'email') {
+            if ($this->belongsTo($submission, $email)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Les réponses du sujet, telles que saisies, et ses pièces jointes. Une
+     * pièce jointe est remplacée dans `payload` par son nom dans l'archive :
+     * le chemin de stockage interne n'a aucun sens hors de ce serveur.
+     */
+    public function export(Subject $subject): PersonalDataExport
+    {
+        $email = (string) $this->emailOf($subject);
+        $submissions = [];
+        $files = [];
+
+        foreach (FormSubmission::query()->with('form')->lazyById(200) as $submission) {
+            if (! $this->belongsTo($submission, $email)) {
+                continue;
+            }
+
+            $payload = $submission->payload;
+
+            foreach ((array) $submission->blueprint_snapshot as $field) {
+                $key = (string) ($field['key'] ?? '');
+                $value = $payload[$key] ?? null;
+
+                if (($field['type'] ?? null) !== 'file' || ! is_array($value)) {
                     continue;
                 }
 
-                $value = $submission->payload[$field['key'] ?? ''] ?? null;
+                $archiveName = "submission-{$submission->id}-".basename((string) ($value['original_name'] ?? $key));
+                $files[$archiveName] = ['disk' => (string) config('baobab.forms.disk', 'local'), 'path' => (string) ($value['stored_path'] ?? '')];
+                $payload[$key] = ['file' => $archiveName, 'original_name' => $value['original_name'] ?? null, 'mime_type' => $value['mime_type'] ?? null, 'size' => $value['size'] ?? null];
+            }
 
-                if (is_string($value) && mb_strtolower(trim($value)) === $email) {
-                    return true;
-                }
+            $submissions[] = [
+                'form' => $submission->form->title ?? null,
+                'submitted_at' => $submission->created_at->toIso8601String(),
+                'payload' => $payload,
+                'consent_at' => $submission->consent_at?->toIso8601String(),
+                'ip' => $submission->ip,
+                'status' => $submission->status->value,
+            ];
+        }
+
+        return new PersonalDataExport(['submissions' => $submissions], $files);
+    }
+
+    private function belongsTo(FormSubmission $submission, string $email): bool
+    {
+        foreach ($submission->blueprint_snapshot ?? [] as $field) {
+            if (($field['type'] ?? null) !== 'email') {
+                continue;
+            }
+
+            $value = $submission->payload[$field['key'] ?? ''] ?? null;
+
+            if (is_string($value) && mb_strtolower(trim($value)) === $email) {
+                return true;
             }
         }
 

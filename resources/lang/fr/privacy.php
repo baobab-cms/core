@@ -59,4 +59,18 @@ return [
         'legal_basis' => 'Consentement (champ dédié) ou mesures précontractuelles, selon le formulaire.',
         'retention' => 'Durée définie par formulaire (365 jours par défaut).',
     ],
+
+    'export' => [
+        'title' => 'Export de vos données personnelles',
+        'generated' => 'Généré le :date.',
+        'files' => 'Fichiers joints :',
+        'unknown_subject' => 'Sujet introuvable : indiquez un identifiant de compte existant ou une adresse e-mail.',
+        'written' => 'Archive écrite : :path',
+        'providers' => 'Traitements inclus : :providers',
+        'password' => 'Mot de passe de l\'archive : :password',
+        'password_once' => 'Ce mot de passe n\'est affiché qu\'une fois et n\'est conservé nulle part ; transmettez-le séparément de l\'archive.',
+        'none_found' => 'Aucune donnée personnelle trouvée pour ce sujet.',
+        'unsupported_title' => 'Données non couvertes par cet export',
+        'unsupported_hint' => 'Ces traitements détiennent des données vous concernant mais ne savent pas les exporter automatiquement ; contactez l\'exploitant du site.',
+    ],
 ];

@@ -59,6 +59,7 @@ use Baobab\Console\Commands\NotFoundPurgeCommand;
 use Baobab\Console\Commands\NotificationsPurgeCommand;
 use Baobab\Console\Commands\NotifyTestCommand;
 use Baobab\Console\Commands\OpenApiCompileCommand;
+use Baobab\Console\Commands\PrivacyExportCommand;
 use Baobab\Console\Commands\PrivacyRegisterCommand;
 use Baobab\Console\Commands\SchedulerPurgeRunsCommand;
 use Baobab\Console\Commands\SearchReindexCommand;
@@ -531,6 +532,7 @@ class BaobabServiceProvider extends ServiceProvider
                 ExportRunCommand::class,
                 ImportRunCommand::class,
                 PrivacyRegisterCommand::class,
+                PrivacyExportCommand::class,
             ]);
         }
 
