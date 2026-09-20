@@ -26,6 +26,7 @@ use Baobab\Admin\Menus\Http\Controllers\MenusController;
 use Baobab\Admin\Modules\Http\Controllers\ModulesController;
 use Baobab\Admin\Notifications\Http\Controllers\NotificationController;
 use Baobab\Admin\Privacy\Http\Controllers\RegisterController;
+use Baobab\Admin\Privacy\Http\Controllers\RequestsController;
 use Baobab\Admin\Rendering\Http\Controllers\ReadingSettingsController;
 use Baobab\Admin\Search\Http\Controllers\OmniboxController;
 use Baobab\Admin\Search\Http\Controllers\SearchSettingsController;
@@ -213,6 +214,16 @@ Route::middleware('can:baobab.privacy.register.view')
     ->group(function (): void {
         Route::get('/', [RegisterController::class, 'index'])->name('index');
         Route::get('/export', [RegisterController::class, 'export'])->name('export');
+    });
+
+Route::middleware('can:baobab.privacy.requests.manage')
+    ->prefix('privacy/requests')
+    ->name('privacy.requests.')
+    ->group(function (): void {
+        Route::get('/', [RequestsController::class, 'index'])->name('index');
+        Route::post('/', [RequestsController::class, 'store'])->name('store');
+        Route::get('/{privacyRequest:uuid}', [RequestsController::class, 'show'])->name('show');
+        Route::post('/{privacyRequest:uuid}/reveal-password', [RequestsController::class, 'revealPassword'])->name('reveal-password');
     });
 
 Route::middleware('can:baobab.system.export.view')

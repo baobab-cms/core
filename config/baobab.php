@@ -355,6 +355,18 @@ return [
                 'defaults' => __DIR__.'/../resources/mails/core/security-impersonation-started.json',
             ],
             [
+                'key' => 'core.privacy_export_ready',
+                'description' => 'Envoyé à la personne concernée quand l\'archive de ses données personnelles est prête (spec 16 §4.1, M9 0.b Pass D1) : lien signé seulement, jamais le mot de passe.',
+                'variables' => [
+                    'download_url' => [
+                        'label' => 'Lien de téléchargement signé',
+                        'required' => true,
+                    ],
+                    'expires_at' => 'Date/heure de destruction de l\'archive',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/privacy-export-ready.json',
+            ],
+            [
                 'key' => 'core.form_submission',
                 'description' => 'Envoyé aux destinataires configurés d\'un formulaire à chaque soumission (spec 14 §8.2, M8 point 6, Pass E).',
                 'variables' => [
@@ -655,6 +667,21 @@ return [
         'disk' => env('BAOBAB_EXPORTS_DISK', 'local'),
         'path' => env('BAOBAB_EXPORTS_PATH', 'exports'),
         'format_version' => '0.1',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | RGPD (spec 16 §4, M9 chantier 0.b Pass D1)
+    |--------------------------------------------------------------------------
+    |
+    | export_retention_days : durée pendant laquelle une archive d'export de
+    | données personnelles reste téléchargeable avant d'être détruite (avec
+    | son mot de passe, s'il n'a pas été lu). Le disque est celui des exports
+    | (`baobab.exports.disk`).
+    |
+    */
+    'privacy' => [
+        'export_retention_days' => (int) env('BAOBAB_PRIVACY_EXPORT_RETENTION_DAYS', 7),
     ],
 
     /*

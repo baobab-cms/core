@@ -31,7 +31,7 @@ function privacyRegistryProbe(string $key): PersonalDataProvider
     };
 }
 
-it('registers the six core providers at boot (spec 16 §2.1)', function () {
+it('registers the seven core providers at boot (spec 16 §2.1)', function () {
     expect(array_keys(Privacy::all()))->toEqualCanonicalizing([
         'core.users',
         'core.content_authorship',
@@ -39,6 +39,7 @@ it('registers the six core providers at boot (spec 16 §2.1)', function () {
         'core.mail_log',
         'core.audit_log',
         'forms.submissions',
+        'core.privacy_requests',
     ]);
 });
 

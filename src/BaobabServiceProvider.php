@@ -61,6 +61,7 @@ use Baobab\Console\Commands\NotifyTestCommand;
 use Baobab\Console\Commands\OpenApiCompileCommand;
 use Baobab\Console\Commands\PrivacyEraseCommand;
 use Baobab\Console\Commands\PrivacyExportCommand;
+use Baobab\Console\Commands\PrivacyPurgeExportsCommand;
 use Baobab\Console\Commands\PrivacyRegisterCommand;
 use Baobab\Console\Commands\SchedulerPurgeRunsCommand;
 use Baobab\Console\Commands\SearchReindexCommand;
@@ -123,6 +124,7 @@ use Baobab\Privacy\Providers\ContentAuthorshipProvider;
 use Baobab\Privacy\Providers\FormSubmissionsProvider;
 use Baobab\Privacy\Providers\MailLogProvider;
 use Baobab\Privacy\Providers\MediaProvider;
+use Baobab\Privacy\Providers\PrivacyRequestsProvider;
 use Baobab\Privacy\Providers\UsersProvider;
 use Baobab\Rendering\Actions\RenderAdminError;
 use Baobab\Rendering\Actions\RenderServerError;
@@ -535,6 +537,7 @@ class BaobabServiceProvider extends ServiceProvider
                 PrivacyRegisterCommand::class,
                 PrivacyEraseCommand::class,
                 PrivacyExportCommand::class,
+                PrivacyPurgeExportsCommand::class,
             ]);
         }
 
@@ -1062,6 +1065,11 @@ class BaobabServiceProvider extends ServiceProvider
         $this->registerFormRateLimiter();
 
         Route::middleware('web')->group(__DIR__.'/../routes/forms.php');
+
+        // Téléchargement public d'une archive d'export RGPD (spec 16 §4.1) :
+        // même famille (route publique, groupe `web`, limiteur nommé par IP).
+        RateLimiter::for('baobab-privacy-download', fn (Request $request): Limit => Limit::perMinute(10)->by((string) $request->ip()));
+        Route::middleware('web')->group(__DIR__.'/../routes/privacy.php');
     }
 
     /**
@@ -2101,6 +2109,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            if ($user->can('baobab.privacy.requests.manage')) {
+                $coreItems[] = new SidebarItem(
+                    id: -30,
+                    label: __('baobab::admin.sidebar.privacy_requests'),
+                    icon: 'bi-person-lock',
+                    url: route('admin.privacy.requests.index'),
+                    order: 3,
+                );
+            }
+
             if ($user->can('baobab.system.import.view')) {
                 $coreItems[] = new SidebarItem(
                     id: -28,
@@ -2191,6 +2209,7 @@ class BaobabServiceProvider extends ServiceProvider
             new MailLogProvider,
             new AuditLogProvider,
             new FormSubmissionsProvider,
+            new PrivacyRequestsProvider,
         ] as $provider) {
             $registry->register($provider);
         }

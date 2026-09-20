@@ -36,6 +36,10 @@ final class ImpersonationGuard
         // permis (résultats bornés par les policies de l'acteur impersoné),
         // administrer l'index ne l'est pas.
         'admin.search.',
+        // Registre et demandes RGPD (spec 16 §7, M9 0.b Pass D1) : on
+        // n'exerce pas les droits d'autrui sous une identité empruntée. Le
+        // registre de la Pass A n'était pas bloqué jusque-là (suivi n° 337).
+        'admin.privacy.',
     ];
 
     public function handle(Request $request, Closure $next): Response

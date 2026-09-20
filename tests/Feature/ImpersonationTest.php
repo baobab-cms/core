@@ -118,6 +118,21 @@ it('blocks the account security screen while impersonating', function () {
     $this->post('/admin/account/security/disable', ['current_password' => 'secret'])->assertForbidden();
 });
 
+it('blocks the privacy register and requests while impersonating (spec 16 §7)', function () {
+    $actor = impersonationActor('admin');
+    $target = impersonationTarget('editor');
+    app(GrantPermission::class)($target, 'baobab.admin.access');
+    app(GrantPermission::class)($target, 'baobab.privacy.register.view');
+    app(GrantPermission::class)($target, 'baobab.privacy.requests.manage');
+
+    $this->actingAs($actor, 'baobab')
+        ->post("/admin/users/{$target->id}/impersonate");
+
+    $this->get(route('admin.privacy.register.index'))->assertForbidden();
+    $this->get(route('admin.privacy.requests.index'))->assertForbidden();
+    $this->post(route('admin.privacy.requests.store'), ['subject' => 'someone@example.com'])->assertForbidden();
+});
+
 /**
  * Audit sécurité du 7 septembre 2026 (constat n° 3) : sans ce blocage,
  * l'identité impersonée pouvait créer un token API Sanctum, arrêter

@@ -16,6 +16,7 @@ use Baobab\Console\Commands\MailLogPurgeCommand;
 use Baobab\Console\Commands\MediaPurgeTrashCommand;
 use Baobab\Console\Commands\NotFoundPurgeCommand;
 use Baobab\Console\Commands\NotificationsPurgeCommand;
+use Baobab\Console\Commands\PrivacyPurgeExportsCommand;
 use Baobab\Console\Commands\SchedulerPurgeRunsCommand;
 use Baobab\Facades\Hook;
 use Baobab\Modules\Models\Module;
@@ -186,6 +187,12 @@ final class SchedulerRegistrar
                 'command' => FormSubmissionsPurgeCommand::class,
                 'cron' => '0 0 * * *',
                 'description' => 'Purge les soumissions de formulaires au-delà de leur rétention.',
+            ],
+            [
+                'key' => 'baobab.privacy.purge-exports',
+                'command' => PrivacyPurgeExportsCommand::class,
+                'cron' => '0 0 * * *',
+                'description' => "Détruit les archives d'export de données personnelles échues, et leur mot de passe non lu.",
             ],
             [
                 'key' => 'baobab.scheduler.purge-runs',

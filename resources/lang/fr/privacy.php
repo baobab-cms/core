@@ -60,7 +60,16 @@ return [
         'retention' => 'Durée définie par formulaire (365 jours par défaut).',
     ],
 
+    'privacy_requests' => [
+        'title' => 'Demandes d\'exercice des droits',
+        'nature' => 'Adresse e-mail (ou compte) de la personne, type et statut de la demande, dates ; l\'archive d\'export et son mot de passe le temps de leur conservation.',
+        'purpose' => 'Traiter les demandes d\'accès et d\'effacement, et en garder la preuve.',
+        'legal_basis' => 'Obligation légale (exercice des droits, RGPD chap. III).',
+        'retention' => 'Archive et mot de passe détruits après :days jours ; la demande elle-même est conservée comme preuve.',
+    ],
+
     'erasure' => [
+        'privacy_requests_note' => 'Adresse pseudonymisée, archive et mot de passe supprimés ; la demande reste comme preuve, réduite à sa référence, son type, son statut et ses dates.',
         'ghost_name' => 'Utilisateur supprimé #:hash',
         'last_super_admin' => 'Impossible d\'effacer le dernier super-administrateur : le site n\'aurait plus aucun accès d\'administration.',
         'audit_append_only' => 'Le journal d\'audit est en ajout seul : une entrée existante ne se modifie ni ne se supprime.',
@@ -85,6 +94,8 @@ return [
         'providers' => 'Traitements inclus : :providers',
         'password' => 'Mot de passe de l\'archive : :password',
         'password_once' => 'Ce mot de passe n\'est affiché qu\'une fois et n\'est conservé nulle part ; transmettez-le séparément de l\'archive.',
+        'failed' => 'L\'export a échoué ; consultez le journal de l\'application.',
+        'purged' => ':count archive(s) d\'export échue(s) détruite(s).',
         'none_found' => 'Aucune donnée personnelle trouvée pour ce sujet.',
         'unsupported_title' => 'Données non couvertes par cet export',
         'unsupported_hint' => 'Ces traitements détiennent des données vous concernant mais ne savent pas les exporter automatiquement ; contactez l\'exploitant du site.',

@@ -1,0 +1,4 @@
+{
+  "subject": "Vos données personnelles sont prêtes",
+  "body": "L'archive des données personnelles que nous détenons à votre sujet est prête. <a href=\"{{ download_url }}\">Télécharger l'archive</a>.<br><br>Elle est chiffrée et sera détruite le {{ expires_at }}. Son mot de passe vous est communiqué séparément : il ne figure jamais dans ce message."
+}
