@@ -16,8 +16,10 @@ use Illuminate\Http\Response;
  * repli du Core s'applique (patron `RenderSearchPage`).
  *
  * Un seul template, plusieurs **états** (`state`) : `form`, `sent`, `confirm`
- * (`confirmUrl`), `confirmed`, `invalid`, `used`, `delivery` (`downloadUrl`,
- * `revealUrl`, `password`, `hasPassword`, `expiresAt`) et `gone`, plus
+ * (`confirmUrl`, `requestType`), `confirmed` (`requestType`), `refused`
+ * (`reason`), `invalid`, `used`, `delivery` (`downloadUrl`, `revealUrl`,
+ * `password`, `hasPassword`, `expiresAt`), `gone`, `cancel` (`cancelUrl`,
+ * `scheduledFor`), `cancelled` et `not_cancellable`, plus
  * `renderToken` (piège temporel du formulaire de saisie). Un thème qui
  * surcharge le template les traite tous. Jamais indexée ni mise en cache :
  * ces pages portent des liens à usage unique.

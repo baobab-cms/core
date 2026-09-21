@@ -171,7 +171,7 @@ it('creates the export request only on confirmation, once', function () {
     Queue::fake();
     $url = portalVerifyUrl('confirmed-portal@example.com');
 
-    $this->post($url)->assertOk()->assertSee(__('baobab::privacy.portal.confirmed'));
+    $this->post($url)->assertOk()->assertSee(__('baobab::privacy.portal.confirmed_export'));
 
     $request = PrivacyRequest::query()->firstOrFail();
 

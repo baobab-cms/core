@@ -39,6 +39,7 @@ final class RequestPortalVerification
         $this->mailer->send('core.privacy_verification', $email, [
             'verify_url' => URL::temporarySignedRoute('baobab.privacy.portal.verify', now()->addMinutes($minutes), ['token' => $token]),
             'expires_in' => $minutes,
+            'request_kind' => __('baobab::privacy.portal.kind_'.$type->value),
         ]);
 
         $this->audit->record('privacy.portal.requested', null, [

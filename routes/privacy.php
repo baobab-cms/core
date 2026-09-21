@@ -14,7 +14,7 @@ Route::get('/baobab/privacy/exports/{privacyRequest:uuid}', DownloadExportContro
     ->name('baobab.privacy.export.download');
 
 /**
- * Portail public en libre-service (spec 16 §4, M9 0.b Pass E1). La saisie est
+ * Portail public en libre-service (spec 16 §4, M9 0.b Passes E1-E2). La saisie est
  * limitée par IP et par adresse ; les pages à lien signé partagent la limite
  * du téléchargement. Les signatures sont vérifiées par le contrôleur, qui
  * répond par un état lisible plutôt que par la page 403 brute. Le GET et le
@@ -32,4 +32,7 @@ Route::middleware('throttle:baobab-privacy-download')->group(function (): void {
 
     Route::get('/baobab/privacy/delivery/{privacyRequest:uuid}', [PortalController::class, 'delivery'])->name('baobab.privacy.portal.delivery');
     Route::post('/baobab/privacy/delivery/{privacyRequest:uuid}', [PortalController::class, 'reveal'])->name('baobab.privacy.portal.reveal');
+
+    Route::get('/baobab/privacy/cancel/{privacyRequest:uuid}', [PortalController::class, 'cancelForm'])->name('baobab.privacy.portal.cancel');
+    Route::post('/baobab/privacy/cancel/{privacyRequest:uuid}', [PortalController::class, 'cancel'])->name('baobab.privacy.portal.cancel.confirm');
 });

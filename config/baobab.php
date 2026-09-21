@@ -363,8 +363,48 @@ return [
                         'required' => true,
                     ],
                     'expires_in' => 'Durée de validité du lien, en minutes',
+                    'request_kind' => 'Ce que la personne demande (accès ou effacement de ses données)',
                 ],
                 'defaults' => __DIR__.'/../resources/mails/core/privacy-verification.json',
+            ],
+            [
+                'key' => 'core.privacy_erasure_scheduled',
+                'description' => 'Envoyé à la personne dont l\'effacement vient d\'être planifié par le portail (spec 16 §4.3, décision 17, M9 0.b Pass E2) : la date d\'exécution et un lien signé d\'annulation.',
+                'variables' => [
+                    'scheduled_for' => 'Date/heure d\'exécution de l\'effacement',
+                    'cancel_url' => [
+                        'label' => 'Lien d\'annulation signé',
+                        'required' => true,
+                    ],
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/privacy-erasure-scheduled.json',
+            ],
+            [
+                'key' => 'core.privacy_erasure_refused',
+                'description' => 'Envoyé à la personne dont la demande d\'effacement du portail a été refusée (spec 16 §4, décision 18) : le motif, dit à celle qui a prouvé posséder la boîte.',
+                'variables' => [
+                    'reason' => [
+                        'label' => 'Motif du refus',
+                        'required' => true,
+                    ],
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/privacy-erasure-refused.json',
+            ],
+            [
+                'key' => 'core.privacy_export_empty',
+                'description' => 'Envoyé à la personne dont l\'export du portail ne trouve aucune donnée (spec 16 §4, décision 18) : aucun lien d\'archive, aucun mot de passe.',
+                'variables' => [
+                    'portal_url' => 'Adresse du portail',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/privacy-export-empty.json',
+            ],
+            [
+                'key' => 'core.privacy_export_failed',
+                'description' => 'Envoyé à la personne dont l\'export du portail a échoué techniquement (spec 16 §4, décision 18) : un message générique, jamais la cause.',
+                'variables' => [
+                    'portal_url' => 'Adresse du portail',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/privacy-export-failed.json',
             ],
             [
                 'key' => 'core.privacy_export_ready',

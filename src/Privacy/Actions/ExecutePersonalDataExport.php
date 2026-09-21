@@ -47,11 +47,13 @@ final class ExecutePersonalDataExport
             $archive = ($this->export)($request->subject());
         } catch (NoPersonalDataException $e) {
             $this->fail($request, $e->getMessage());
+            $this->tell($request, 'core.privacy_export_empty');
 
             return false;
         } catch (Throwable $e) {
             $this->logger->error("Échec de l'export de données personnelles.", ['request' => $request->uuid, 'exception' => $e]);
             $this->fail($request, __('baobab::privacy.export.failed'));
+            $this->tell($request, 'core.privacy_export_failed');
 
             return false;
         }
@@ -83,6 +85,7 @@ final class ExecutePersonalDataExport
         } catch (Throwable $e) {
             $this->logger->error("Échec du dépôt de l'archive d'export.", ['request' => $request->uuid, 'exception' => $e]);
             $this->fail($request, __('baobab::privacy.export.failed'));
+            $this->tell($request, 'core.privacy_export_failed');
 
             return false;
         } finally {
@@ -94,10 +97,33 @@ final class ExecutePersonalDataExport
         return true;
     }
 
+    /**
+     * Prévient la personne d'une demande **du portail** qui n'aboutit pas (spec 16
+     * §4, décision 18) : elle n'a sinon aucun moyen de le savoir, l'export étant
+     * asynchrone. Message générique — jamais la cause, qui reste au journal
+     * technique et peut citer des données personnelles. À l'écran d'administration
+     * l'opérateur lit le motif sur la demande : rien n'est envoyé.
+     */
+    private function tell(PrivacyRequest $request, string $template): void
+    {
+        $to = $this->recipient($request);
+
+        if ($request->origin !== 'portal' || $to === '') {
+            return;
+        }
+
+        $this->mailer->send($template, $to, ['portal_url' => route('baobab.privacy.portal')]);
+    }
+
+    private function recipient(PrivacyRequest $request): string
+    {
+        return $request->subject_email
+            ?? (string) User::query()->whereKey($request->subject_user_id)->value('email');
+    }
+
     private function notify(PrivacyRequest $request): void
     {
-        $to = $request->subject_email
-            ?? (string) User::query()->whereKey($request->subject_user_id)->value('email');
+        $to = $this->recipient($request);
 
         if ($to === '') {
             return;

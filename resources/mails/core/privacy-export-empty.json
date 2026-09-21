@@ -1,0 +1,4 @@
+{
+    "subject": "Aucune donnée personnelle à vous remettre",
+    "body": "Nous ne détenons aucune donnée personnelle vous concernant pour cette adresse : aucune archive n'a été produite.<br><br>Si vous pensez qu'il s'agit d'une erreur, vous pouvez refaire votre demande avec une autre adresse : <a href=\"{{ portal_url }}\">{{ portal_url }}</a>."
+}

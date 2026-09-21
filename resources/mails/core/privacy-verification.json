@@ -1,4 +1,4 @@
 {
     "subject": "Confirmez votre demande concernant vos données personnelles",
-    "body": "Une demande d'accès à vos données personnelles a été faite avec cette adresse. Pour la confirmer, ouvrez ce lien : <a href=\"{{ verify_url }}\">Confirmer ma demande</a>.<br><br>Ce lien est valable {{ expires_in }} minutes et ne peut servir qu'une fois. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : rien ne sera fait."
+    "body": "Une demande {{ request_kind }} a été faite avec cette adresse. Pour la confirmer, ouvrez ce lien : <a href=\"{{ verify_url }}\">Confirmer ma demande</a>.<br><br>Ce lien est valable {{ expires_in }} minutes et ne peut servir qu'une fois. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : rien ne sera fait."
 }

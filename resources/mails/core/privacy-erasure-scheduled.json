@@ -1,0 +1,4 @@
+{
+    "subject": "Votre demande d'effacement est enregistrée",
+    "body": "Vos données personnelles seront effacées le {{ scheduled_for }}.<br><br>Jusqu'à cette date vous pouvez encore changer d'avis : <a href=\"{{ cancel_url }}\">Annuler l'effacement</a>. Passé ce délai, l'effacement est définitif.<br><br>Si vous n'êtes pas à l'origine de cette demande, utilisez ce lien sans attendre."
+}

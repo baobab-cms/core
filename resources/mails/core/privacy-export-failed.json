@@ -1,0 +1,4 @@
+{
+    "subject": "Votre archive n'a pas pu être préparée",
+    "body": "Une erreur technique a empêché la préparation de l'archive de vos données personnelles. Aucune donnée n'a été perdue ni transmise.<br><br>Vous pouvez refaire votre demande : <a href=\"{{ portal_url }}\">{{ portal_url }}</a>. Si l'erreur persiste, contactez l'exploitant du site."
+}

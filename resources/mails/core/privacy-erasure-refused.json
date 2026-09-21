@@ -1,0 +1,4 @@
+{
+    "subject": "Votre demande d'effacement n'a pas pu être enregistrée",
+    "body": "{{ reason }}"
+}
