@@ -103,8 +103,11 @@ final class ExecutePersonalDataExport
             return;
         }
 
+        // Une demande du portail public passe par sa page de remise, qui révèle aussi le mot de passe (spec 16 §4.1).
+        $route = $request->origin === 'portal' ? 'baobab.privacy.portal.delivery' : 'baobab.privacy.export.download';
+
         $this->mailer->send('core.privacy_export_ready', $to, [
-            'download_url' => URL::signedRoute('baobab.privacy.export.download', ['privacyRequest' => $request->uuid]),
+            'download_url' => URL::signedRoute($route, ['privacyRequest' => $request->uuid]),
             'expires_at' => $request->expires_at?->format('d/m/Y H:i') ?? '',
         ]);
     }

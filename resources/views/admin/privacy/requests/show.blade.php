@@ -24,7 +24,10 @@
                 <dd class="text-foreground">{{ $privacyRequest->created_at->format('Y-m-d H:i') }}</dd>
 
                 <dt class="text-muted">{{ __('baobab::admin.privacy_requests.requested_by') }}</dt>
-                <dd class="text-foreground">{{ $privacyRequest->requester?->name ?? '—' }} ({{ $privacyRequest->origin }})</dd>
+                <dd class="text-foreground">{{ $privacyRequest->requester?->name ?? '—' }}</dd>
+
+                <dt class="text-muted">{{ __('baobab::admin.privacy_requests.column_origin') }}</dt>
+                <dd class="text-foreground">{{ $privacyRequest->originLabel() }}</dd>
 
                 <dt class="text-muted">{{ __('baobab::admin.privacy_requests.column_type') }}</dt>
                 <dd class="text-foreground">{{ __('baobab::admin.privacy_requests.type_'.$privacyRequest->type->value) }}</dd>

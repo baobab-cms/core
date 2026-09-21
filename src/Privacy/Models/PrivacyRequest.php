@@ -92,6 +92,14 @@ class PrivacyRequest extends Model
         return new Subject($this->subject_user_id, $this->subject_email);
     }
 
+    /** D'où vient la demande : libellé lisible, l'origine brute pour une valeur inconnue (module). */
+    public function originLabel(): string
+    {
+        $key = 'baobab::admin.privacy_requests.origin_'.$this->origin;
+
+        return __($key) === $key ? $this->origin : __($key);
+    }
+
     /** Ce qu'on affiche du sujet : son e-mail, à défaut le compte. */
     public function subjectLabel(): string
     {

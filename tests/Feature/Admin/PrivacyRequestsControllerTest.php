@@ -223,3 +223,24 @@ it('refuses to cancel an export request', function () {
 
     expect($export->refresh()->status)->toBe(PrivacyRequestStatus::Pending);
 });
+
+it('shows where each request comes from, in the list and on the detail', function () {
+    Queue::fake();
+    $actor = privacyRequestsActor(['baobab.privacy.requests.manage']);
+    $portal = app(CreatePrivacyRequest::class)(Subject::forEmail('from-portal@example.com'), null, 'portal');
+    app(CreatePrivacyRequest::class)(Subject::forEmail('from-cli@example.com'), null, 'cli');
+    app(CreatePrivacyRequest::class)(Subject::forEmail('from-admin@example.com'), $actor, 'admin');
+
+    $this->actingAs($actor, 'baobab')
+        ->get(route('admin.privacy.requests.index'))
+        ->assertOk()
+        ->assertSee(__('baobab::admin.privacy_requests.column_origin'))
+        ->assertSee('Portail public')
+        ->assertSee('Console')
+        ->assertSee('Administration');
+
+    $this->actingAs($actor, 'baobab')
+        ->get(route('admin.privacy.requests.show', $portal))
+        ->assertOk()
+        ->assertSee('Portail public');
+});

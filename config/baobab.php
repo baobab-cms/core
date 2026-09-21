@@ -355,6 +355,18 @@ return [
                 'defaults' => __DIR__.'/../resources/mails/core/security-impersonation-started.json',
             ],
             [
+                'key' => 'core.privacy_verification',
+                'description' => 'Envoyé à l\'adresse saisie sur le portail RGPD public, pour confirmer une demande (spec 16 §4, M9 0.b Pass E1) : un lien signé à durée courte, rien de personnel.',
+                'variables' => [
+                    'verify_url' => [
+                        'label' => 'Lien de confirmation signé',
+                        'required' => true,
+                    ],
+                    'expires_in' => 'Durée de validité du lien, en minutes',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/privacy-verification.json',
+            ],
+            [
                 'key' => 'core.privacy_export_ready',
                 'description' => 'Envoyé à la personne concernée quand l\'archive de ses données personnelles est prête (spec 16 §4.1, M9 0.b Pass D1) : lien signé seulement, jamais le mot de passe.',
                 'variables' => [
@@ -683,10 +695,14 @@ return [
     | exécution (§4.3) ; annulable pendant toute sa durée. 0 = exécutée au
     | prochain passage de la tâche planifiée.
     |
+    | portal_link_minutes : durée de vie du lien de vérification envoyé par le
+    | portail public (§4, Pass E1).
+    |
     */
     'privacy' => [
         'export_retention_days' => (int) env('BAOBAB_PRIVACY_EXPORT_RETENTION_DAYS', 7),
         'erasure_grace_days' => (int) env('BAOBAB_PRIVACY_ERASURE_GRACE_DAYS', 15),
+        'portal_link_minutes' => (int) env('BAOBAB_PRIVACY_PORTAL_LINK_MINUTES', 30),
     ],
 
     /*

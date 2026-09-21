@@ -1071,6 +1071,11 @@ class BaobabServiceProvider extends ServiceProvider
         // Téléchargement public d'une archive d'export RGPD (spec 16 §4.1) :
         // même famille (route publique, groupe `web`, limiteur nommé par IP).
         RateLimiter::for('baobab-privacy-download', fn (Request $request): Limit => Limit::perMinute(10)->by((string) $request->ip()));
+        // Saisie du portail public : par IP ET par adresse, pour qu'un tiers ne puisse ni inonder une boîte ni balayer des adresses (spec 16 §4).
+        RateLimiter::for('baobab-privacy-portal', fn (Request $request): array => [
+            Limit::perMinute(5)->by('ip:'.$request->ip()),
+            Limit::perHour(3)->by('mail:'.hash('sha256', mb_strtolower(trim((string) $request->input('email'))))),
+        ]);
         Route::middleware('web')->group(__DIR__.'/../routes/privacy.php');
     }
 

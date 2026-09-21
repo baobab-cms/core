@@ -130,6 +130,11 @@ final class RequestsController
                 'render' => fn (PrivacyRequest $request): string => __('baobab::admin.privacy_requests.type_'.$request->type->value),
             ],
             [
+                'key' => 'origin',
+                'label' => __('baobab::admin.privacy_requests.column_origin'),
+                'render' => fn (PrivacyRequest $request): string => $request->originLabel(),
+            ],
+            [
                 'key' => 'status',
                 'label' => __('baobab::admin.privacy_requests.column_status'),
                 'raw' => true,
