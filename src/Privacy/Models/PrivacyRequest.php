@@ -30,6 +30,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $file_size
  * @property string|null $password
  * @property Carbon|null $expires_at
+ * @property Carbon|null $scheduled_for
  * @property string|null $error_message
  * @property int|null $requested_by
  * @property Carbon|null $started_at
@@ -54,6 +55,7 @@ class PrivacyRequest extends Model
         'file_size',
         'password',
         'expires_at',
+        'scheduled_for',
         'error_message',
         'requested_by',
         'started_at',
@@ -71,6 +73,7 @@ class PrivacyRequest extends Model
             'password' => 'encrypted',
             'file_size' => 'integer',
             'expires_at' => 'datetime',
+            'scheduled_for' => 'datetime',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
         ];
@@ -101,6 +104,13 @@ class PrivacyRequest extends Model
             && $this->status === PrivacyRequestStatus::Completed
             && $this->file_path !== null
             && ($this->expires_at === null || $this->expires_at->isFuture());
+    }
+
+    /** Une demande d'effacement n'est annulable que pendant son délai de grâce (§4.3). */
+    public function isCancellable(): bool
+    {
+        return $this->type === PrivacyRequestType::Erasure
+            && $this->status === PrivacyRequestStatus::Scheduled;
     }
 
     public function hasPendingPassword(): bool

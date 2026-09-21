@@ -17,6 +17,7 @@ use Baobab\Console\Commands\MediaPurgeTrashCommand;
 use Baobab\Console\Commands\NotFoundPurgeCommand;
 use Baobab\Console\Commands\NotificationsPurgeCommand;
 use Baobab\Console\Commands\PrivacyPurgeExportsCommand;
+use Baobab\Console\Commands\PrivacyRunDueErasuresCommand;
 use Baobab\Console\Commands\SchedulerPurgeRunsCommand;
 use Baobab\Facades\Hook;
 use Baobab\Modules\Models\Module;
@@ -193,6 +194,12 @@ final class SchedulerRegistrar
                 'command' => PrivacyPurgeExportsCommand::class,
                 'cron' => '0 0 * * *',
                 'description' => "Détruit les archives d'export de données personnelles échues, et leur mot de passe non lu.",
+            ],
+            [
+                'key' => 'baobab.privacy.run-due-erasures',
+                'command' => PrivacyRunDueErasuresCommand::class,
+                'cron' => '0 * * * *',
+                'description' => 'Met en file les effacements de données personnelles arrivés à échéance.',
             ],
             [
                 'key' => 'baobab.scheduler.purge-runs',

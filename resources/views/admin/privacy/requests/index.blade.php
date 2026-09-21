@@ -16,9 +16,14 @@
                     :placeholder="__('baobab::admin.privacy_requests.subject_placeholder')"
                 />
 
-                <x-baobab::button type="submit" variant="primary">
-                    {{ __('baobab::admin.privacy_requests.submit_export') }}
-                </x-baobab::button>
+                <div class="flex flex-wrap gap-2">
+                    <x-baobab::button type="submit" name="type" value="export" variant="primary">
+                        {{ __('baobab::admin.privacy_requests.submit_export') }}
+                    </x-baobab::button>
+                    <x-baobab::button type="submit" name="type" value="erasure" variant="danger">
+                        {{ __('baobab::admin.privacy_requests.submit_erasure', ['days' => $graceDays]) }}
+                    </x-baobab::button>
+                </div>
             </x-baobab::form>
         </x-baobab::card>
 

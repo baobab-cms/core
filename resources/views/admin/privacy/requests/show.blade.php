@@ -26,6 +26,14 @@
                 <dt class="text-muted">{{ __('baobab::admin.privacy_requests.requested_by') }}</dt>
                 <dd class="text-foreground">{{ $privacyRequest->requester?->name ?? '—' }} ({{ $privacyRequest->origin }})</dd>
 
+                <dt class="text-muted">{{ __('baobab::admin.privacy_requests.column_type') }}</dt>
+                <dd class="text-foreground">{{ __('baobab::admin.privacy_requests.type_'.$privacyRequest->type->value) }}</dd>
+
+                @if ($privacyRequest->scheduled_for)
+                    <dt class="text-muted">{{ __('baobab::admin.privacy_requests.column_scheduled') }}</dt>
+                    <dd class="text-foreground">{{ $privacyRequest->scheduled_for->format('Y-m-d H:i') }}</dd>
+                @endif
+
                 <dt class="text-muted">{{ __('baobab::admin.privacy_requests.column_expires') }}</dt>
                 <dd class="text-foreground">{{ $privacyRequest->expires_at?->format('Y-m-d H:i') ?? '—' }}</dd>
 
@@ -35,6 +43,18 @@
                 @endif
             </dl>
         </x-baobab::card>
+
+        @if ($privacyRequest->isCancellable())
+            <x-baobab::card class="mb-6">
+                <h2 class="mb-2 text-sm font-medium text-foreground">{{ __('baobab::admin.privacy_requests.cancel_title') }}</h2>
+                <p class="mb-3 text-sm text-muted">{{ __('baobab::admin.privacy_requests.cancel_help', ['date' => $privacyRequest->scheduled_for?->format('Y-m-d H:i')]) }}</p>
+                <x-baobab::form method="POST" action="{{ route('admin.privacy.requests.cancel', ['privacyRequest' => $privacyRequest->uuid]) }}">
+                    <x-baobab::button type="submit" variant="secondary">
+                        {{ __('baobab::admin.privacy_requests.cancel') }}
+                    </x-baobab::button>
+                </x-baobab::form>
+            </x-baobab::card>
+        @endif
 
         @if ($downloadUrl)
             <x-baobab::card class="mb-6">

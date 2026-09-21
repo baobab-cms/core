@@ -671,7 +671,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | RGPD (spec 16 §4, M9 chantier 0.b Pass D1)
+    | RGPD (spec 16 §4, M9 chantier 0.b Passes D1-D2)
     |--------------------------------------------------------------------------
     |
     | export_retention_days : durée pendant laquelle une archive d'export de
@@ -679,9 +679,14 @@ return [
     | son mot de passe, s'il n'a pas été lu). Le disque est celui des exports
     | (`baobab.exports.disk`).
     |
+    | erasure_grace_days : délai de grâce d'une demande d'effacement avant son
+    | exécution (§4.3) ; annulable pendant toute sa durée. 0 = exécutée au
+    | prochain passage de la tâche planifiée.
+    |
     */
     'privacy' => [
         'export_retention_days' => (int) env('BAOBAB_PRIVACY_EXPORT_RETENTION_DAYS', 7),
+        'erasure_grace_days' => (int) env('BAOBAB_PRIVACY_ERASURE_GRACE_DAYS', 15),
     ],
 
     /*

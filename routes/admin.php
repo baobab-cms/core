@@ -224,6 +224,7 @@ Route::middleware('can:baobab.privacy.requests.manage')
         Route::post('/', [RequestsController::class, 'store'])->name('store');
         Route::get('/{privacyRequest:uuid}', [RequestsController::class, 'show'])->name('show');
         Route::post('/{privacyRequest:uuid}/reveal-password', [RequestsController::class, 'revealPassword'])->name('reveal-password');
+        Route::post('/{privacyRequest:uuid}/cancel', [RequestsController::class, 'cancel'])->name('cancel');
     });
 
 Route::middleware('can:baobab.system.export.view')

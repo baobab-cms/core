@@ -11,6 +11,7 @@ use Baobab\Privacy\ErasureResult;
 use Baobab\Privacy\Exceptions\NoPersonalDataException;
 use Baobab\Privacy\PrivacyRegistry;
 use Baobab\Privacy\Subject;
+use Baobab\Privacy\Support\ErasureGuard;
 use Baobab\Privacy\Support\Pseudonym;
 use Baobab\Users\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -22,13 +23,16 @@ use Illuminate\Support\Facades\DB;
  * référencé par le pseudonyme du sujet, jamais par son e-mail.
  *
  * S'exécute immédiatement : le délai de grâce et son annulation sont portés
- * par la table des demandes de la Pass D (décision 9, suivi n° 336).
+ * par les demandes d'effacement planifiées (`CreatePrivacyRequest`,
+ * `ExecutePersonalDataErasure`, décision 12) ; cette action est le moteur
+ * qu'elles appellent à l'échéance, et la voie `--now` de la CLI.
  */
 final class ErasePersonalData
 {
     public function __construct(
         private readonly PrivacyRegistry $registry,
         private readonly AuditLogger $audit,
+        private readonly ErasureGuard $guard,
     ) {}
 
     /**
@@ -40,9 +44,7 @@ final class ErasePersonalData
         $subject = $this->resolve($subject);
         $user = $subject->userId === null ? null : User::query()->find($subject->userId);
 
-        if ($user !== null && $this->isLastSuperAdmin($user)) {
-            throw new AdminLockoutException(__('baobab::privacy.erasure.last_super_admin'));
-        }
+        $this->guard->assertErasable($subject);
 
         $reports = [];
         $unsupported = [];
@@ -96,11 +98,5 @@ final class ErasePersonalData
         }
 
         return new Subject((int) $user->getKey(), $user->email);
-    }
-
-    private function isLastSuperAdmin(User $user): bool
-    {
-        return $user->hasRole('super-admin', 'baobab')
-            && User::role('super-admin', 'baobab')->count() <= 1;
     }
 }

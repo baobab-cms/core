@@ -63,6 +63,7 @@ use Baobab\Console\Commands\PrivacyEraseCommand;
 use Baobab\Console\Commands\PrivacyExportCommand;
 use Baobab\Console\Commands\PrivacyPurgeExportsCommand;
 use Baobab\Console\Commands\PrivacyRegisterCommand;
+use Baobab\Console\Commands\PrivacyRunDueErasuresCommand;
 use Baobab\Console\Commands\SchedulerPurgeRunsCommand;
 use Baobab\Console\Commands\SearchReindexCommand;
 use Baobab\Console\Commands\SearchStatusCommand;
@@ -538,6 +539,7 @@ class BaobabServiceProvider extends ServiceProvider
                 PrivacyEraseCommand::class,
                 PrivacyExportCommand::class,
                 PrivacyPurgeExportsCommand::class,
+                PrivacyRunDueErasuresCommand::class,
             ]);
         }
 
