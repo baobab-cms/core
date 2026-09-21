@@ -161,6 +161,8 @@ final class Mailer
         // de liste ou une ligne de tableau suit le précédent, un paragraphe
         // s'en détache. Tout mettre à la ligne vide ferait d'une liste de
         // trois items un texte de trois paragraphes.
+        $body = $this->keepLinkTargets($body);
+
         $spaced = preg_replace(
             ['#<br\s*/?>#i', '#</(?:li|tr)\s*>#i', '#</(?:p|div|h[1-6]|blockquote|section|article|ul|ol|table)\s*>#i'],
             ["\n", "\n", "\n\n"],
@@ -176,6 +178,46 @@ final class Mailer
 
         // Une ligne vide sépare deux paragraphes ; trois en trouent un.
         return trim((string) preg_replace("/\n{3,}/", "\n\n", $text));
+    }
+
+    /**
+     * `strip_tags()` retire `<a href="…">libellé</a>` tout entier avec sa
+     * cible : la partie texte gardait « Annuler l'effacement » sans aucune
+     * adresse, si bien que le lien d'un e-mail (confirmer, annuler, récupérer
+     * une archive, réinitialiser un mot de passe) n'existait plus pour qui lit
+     * le texte — client texte seul, ou journal. Défaut du M5 trouvé le
+     * 21 septembre 2026 en vérifiant l'annulation d'un effacement du portail
+     * RGPD ; même famille que les deux corrections précédentes de cette
+     * fonction, et le troisième défaut n'avait pas été vu parce qu'on
+     * regardait le texte, pas les liens.
+     *
+     * La cible est reprise **encore encodée** : l'unique décodage d'entités
+     * qui suit la rétablit, alors qu'un premier décodage ici ferait lire
+     * `&copy=2` d'une adresse comme une entité au second.
+     */
+    private function keepLinkTargets(string $body): string
+    {
+        $replaced = preg_replace_callback(
+            '#<a\s[^>]*?href\s*=\s*(["\'])(.*?)\1[^>]*>(.*?)</a>#is',
+            function (array $match): string {
+                $target = trim($match[2]);
+                $label = trim(strip_tags($match[3]));
+
+                if ($target === '' || str_starts_with($target, '#')) {
+                    return $match[3];
+                }
+
+                // Un lien dont le libellé est déjà son adresse ne se répète pas.
+                if ($label === '' || html_entity_decode($label, ENT_QUOTES | ENT_HTML5, 'UTF-8') === html_entity_decode($target, ENT_QUOTES | ENT_HTML5, 'UTF-8')) {
+                    return $target;
+                }
+
+                return "{$label} ({$target})";
+            },
+            $body,
+        );
+
+        return $replaced ?? $body;
     }
 
     private function wrap(string $subject, string $body): string

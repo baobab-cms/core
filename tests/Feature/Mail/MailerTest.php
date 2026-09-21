@@ -106,3 +106,28 @@ it('renders and dispatches an ad-hoc subject/body outside the template registry'
             && str_contains($job->html, 'Reçu le 14/07/2026 10:00.');
     });
 });
+
+/**
+ * `strip_tags()` retirait le lien avec sa cible : la partie texte gardait
+ * « Annuler l'effacement » sans adresse. Défaut du M5 trouvé le 21 septembre
+ * 2026 en vérifiant le mail d'annulation d'un effacement du portail RGPD.
+ */
+it('keeps the target of a link in the plain-text alternative', function () {
+    Queue::fake();
+
+    app(SaveMailTemplate::class)('core.test', [
+        'subject' => 'Test',
+        'body' => '<p>Changez d\'avis : <a href="https://exemple.test/annuler?a=1&amp;copy=2&amp;signature=abc">Annuler l\'effacement</a>.</p><p><a href="https://exemple.test/nu">https://exemple.test/nu</a></p><p><a href="#haut">Retour</a></p>',
+    ]);
+
+    app(Mailer::class)->send('core.test', 'dest@example.com', ['sent_at' => 'ce matin']);
+
+    Queue::assertPushed(SendQueuedMail::class, function (SendQueuedMail $job) {
+        return str_contains($job->text, "Annuler l'effacement (https://exemple.test/annuler?a=1&copy=2&signature=abc)")
+            && substr_count($job->text, 'https://exemple.test/nu') === 1
+            && str_contains($job->text, 'Retour')
+            && ! str_contains($job->text, '#haut')
+            && ! str_contains($job->text, '<')
+            && str_contains($job->html, 'href="https://exemple.test/annuler');
+    });
+});
