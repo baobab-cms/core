@@ -170,7 +170,9 @@ use Baobab\System\HealthChecks\QueueWorkerCheck;
 use Baobab\System\HealthChecks\SchedulerCheck;
 use Baobab\System\HealthChecks\StorageCheck;
 use Baobab\System\Http\Middleware\PreventAdminAccessDuringMaintenance;
+use Baobab\Users\Actions\SendUserInvitation;
 use Baobab\Users\Models\User;
+use Baobab\Users\UserDirectory;
 use Baobab\Webhooks\Actions\DispatchWebhookEvent;
 use Baobab\Widgets\Core\CustomHtmlWidget;
 use Baobab\Widgets\Core\MenuWidget;
@@ -428,6 +430,12 @@ class BaobabServiceProvider extends ServiceProvider
         Gate::before(function (User $user, string $ability): ?bool {
             return $user->hasRole('super-admin', 'baobab') ? true : null;
         });
+
+        // Liste et fiche des utilisateurs (spec 05 §5) : ouvertes à qui gère
+        // les comptes comme à qui peut les usurper. Nom sans point : le
+        // filtre des abilities de token (`User::can()`) le laisse passer et
+        // s'applique aux deux permissions testées ici.
+        Gate::define(UserDirectory::ABILITY, fn (User $user): bool => UserDirectory::allows($user));
 
         // Alias facade.
         $this->app->alias(AccessManager::class, Access::class);
@@ -1542,6 +1550,24 @@ class BaobabServiceProvider extends ServiceProvider
             $audit()->record('user.password.reset', $user);
         });
 
+        $registry->listen('baobab.user.invited', function (User $user, ?User $inviter) use ($audit): void {
+            $audit()->record('user.invited', $user, ['email' => $user->email, 'inviter' => $inviter?->name]);
+        });
+
+        $registry->listen('baobab.user.invitation.sent', function (User $user, ?User $actor) use ($audit): void {
+            $audit()->record('user.invitation.sent', $user, ['email' => $user->email]);
+        });
+
+        $registry->listen('baobab.user.invitation.accepted', function (User $user) use ($audit): void {
+            $audit()->record('user.invitation.accepted', $user);
+        });
+
+        // Le compte n'existe plus : l'entrée garde son adresse et son
+        // identifiant plutôt qu'un sujet qui ne se résoudrait pas.
+        $registry->listen('baobab.user.invitation.cancelled', function (string $email, int $id, ?User $actor) use ($audit): void {
+            $audit()->record('user.invitation.cancelled', null, ['email' => $email, 'user_id' => $id]);
+        });
+
         $registry->listen('baobab.user.password.changed', function (User $user) use ($audit): void {
             $audit()->record('user.password.changed', $user);
         });
@@ -1881,7 +1907,7 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
-            if ($user->can('baobab.users.impersonate')) {
+            if (UserDirectory::allows($user)) {
                 $coreItems[] = new SidebarItem(
                     id: -3,
                     label: __('baobab::admin.sidebar.users'),
@@ -2366,6 +2392,16 @@ class BaobabServiceProvider extends ServiceProvider
             'table' => 'password_reset_tokens',
             'expire' => SendPasswordResetLink::LINK_LIFETIME_MINUTES,
             'throttle' => 60,
+        ]);
+
+        // Broker d'invitation (spec 05 §5, décision 5) : même table, lien
+        // valable 24 heures. Un nouveau lien remplace l'ancien (un jeton par
+        // adresse, patron natif du broker).
+        $this->app->make('config')->set('auth.passwords.baobab_invitations', [
+            'provider' => 'baobab_users',
+            'table' => 'password_reset_tokens',
+            'expire' => SendUserInvitation::LINK_LIFETIME_HOURS * 60,
+            'throttle' => 0,
         ]);
 
         /**

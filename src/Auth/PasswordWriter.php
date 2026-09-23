@@ -11,7 +11,8 @@ use Illuminate\Support\Str;
 /**
  * Ce que tout changement de mot de passe entraîne (spec 04 §9, décision 7),
  * partagé par `ResetPassword` et `ChangePassword` : le nouveau mot de passe
- * (haché par le cast `hashed` du modèle), un nouveau `remember_token` — qui
+ * (haché par le cast `hashed` du modèle), la fin d'une éventuelle
+ * invitation en attente, un nouveau `remember_token` — qui
  * invalide les cookies « se souvenir de moi » de tous les appareils — et la
  * fermeture des sessions ouvertes, sauf `$keepSessionId`.
  *
@@ -22,9 +23,12 @@ final class PasswordWriter
 {
     public function write(User $user, string $password, ?string $keepSessionId = null): void
     {
+        // Choisir son mot de passe, c'est accepter son invitation — par le
+        // lien d'invitation comme par « mot de passe oublié » (spec 05 §5).
         $user->forceFill([
             'password' => $password,
             'remember_token' => Str::random(60),
+            'invited_at' => null,
         ])->save();
 
         DB::table('sessions')

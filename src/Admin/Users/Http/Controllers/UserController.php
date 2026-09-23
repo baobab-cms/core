@@ -6,6 +6,7 @@ namespace Baobab\Admin\Users\Http\Controllers;
 
 use Baobab\Access\Models\DirectPermissionGrant;
 use Baobab\Admin\Access\PermissionMatrixBuilder;
+use Baobab\Admin\Users\UserRoleOptions;
 use Baobab\Audit\Models\AuditEntry;
 use Baobab\Auth\Actions\ListActiveSessions;
 use Baobab\Users\Models\User;
@@ -21,22 +22,42 @@ final class UserController
 
     public function index(): View
     {
+        /** @var User $actor */
+        $actor = Auth::guard('baobab')->user();
+
         $users = User::query()->with('roles')->orderBy('name')->get();
 
         return view('baobab::admin.users.index', [
             'users' => $users,
             'columns' => $this->columns(),
+            'canInvite' => $actor->can('baobab.users.manage'),
         ]);
     }
 
-    public function show(User $user): View
+    public function show(User $user, UserRoleOptions $roleOptions): View
     {
         /** @var User $actor */
         $actor = Auth::guard('baobab')->user();
 
+        $user->load(['roles' => fn ($query) => $query->orderBy('name')]);
+
+        // Spec 05 §4.1 : jamais ses propres rôles, jamais un utilisateur de
+        // niveau supérieur ou égal — les Actions le revérifient.
+        $canManageRoles = $actor->can('baobab.users.manage')
+            && ! $user->is($actor)
+            && $user->level() < $actor->level();
+
         return view('baobab::admin.users.show', [
-            'user' => $user->load(['roles' => fn ($query) => $query->orderBy('name')]),
-            'canImpersonate' => ! $user->is($actor) && $user->level() < $actor->level(),
+            'user' => $user,
+            'canImpersonate' => $actor->can('baobab.users.impersonate') && ! $user->is($actor) && $user->level() < $actor->level(),
+            'canManageRoles' => $canManageRoles,
+            'canResendInvitation' => $canManageRoles && $user->hasPendingInvitation(),
+            'grantableRoles' => $canManageRoles
+                ? $roleOptions->assignableBy($actor)->reject(fn ($role): bool => $user->roles->contains('id', $role->id))->values()
+                : collect(),
+            'revocableRoleIds' => $canManageRoles
+                ? $user->roles->filter(fn ($role): bool => (int) $role->getAttribute('level') < $actor->level())->pluck('id')->all()
+                : [],
             'canManageAccess' => $actor->can('baobab.access.manage'),
             'activity' => $this->activity($user),
             'activityColumns' => $this->activityColumns(),
@@ -112,7 +133,13 @@ final class UserController
                 'raw' => true,
                 'render' => fn (User $user) => '<a href="'.route('admin.users.show', ['user' => $user]).'" class="hover:underline">'.e($user->name).'</a>',
             ],
-            ['key' => 'email', 'label' => __('baobab::admin.users.column_email')],
+            [
+                'key' => 'email',
+                'label' => __('baobab::admin.users.column_email'),
+                'render' => fn (User $user) => $user->hasPendingInvitation()
+                    ? $user->email.' — '.__('baobab::admin.users.invite.pending_badge')
+                    : $user->email,
+            ],
             [
                 'key' => 'roles',
                 'label' => __('baobab::admin.users.column_roles'),

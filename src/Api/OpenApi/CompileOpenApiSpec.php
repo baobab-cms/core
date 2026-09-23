@@ -48,7 +48,9 @@ final class CompileOpenApiSpec
                 $paths = array_merge($paths, $this->pathsFor($contentType));
             });
 
-        $document['paths'] = $paths;
+        // Les chemins fixes du Core (`/users`, `/roles` — spec 05 §7) vivent
+        // dans le document de base ; ceux des Content Types s'y ajoutent.
+        $document['paths'] = array_merge((array) ($document['paths'] ?? []), $paths);
         $document['components']['schemas'] = array_merge($document['components']['schemas'], $schemas);
 
         return $document;

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use Baobab\Api\Http\Controllers\ContentController;
 use Baobab\Api\Http\Controllers\OpenApiSpecController;
+use Baobab\Api\Http\Controllers\RolesController;
 use Baobab\Api\Http\Controllers\SearchController;
+use Baobab\Api\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('openapi.json', [OpenApiSpecController::class, 'show'])->name('openapi');
@@ -18,6 +20,16 @@ Route::delete('content/{type}/{entry}', [ContentController::class, 'destroy'])->
 Route::post('content/{type}/{entry}/publish', [ContentController::class, 'publish'])->name('content.publish');
 Route::post('content/{type}/{entry}/restore', [ContentController::class, 'restore'])->name('content.restore');
 Route::get('content/{type}/{entry}/revisions', [ContentController::class, 'revisions'])->name('content.revisions');
+
+// Spec 05 §7, décision 5.
+Route::get('users', [UsersController::class, 'index'])->name('users.index');
+Route::post('users', [UsersController::class, 'store'])->name('users.store');
+Route::get('users/{user}', [UsersController::class, 'show'])->name('users.show');
+Route::post('users/{user}/invitation', [UsersController::class, 'resendInvitation'])->name('users.invitation.resend');
+Route::delete('users/{user}/invitation', [UsersController::class, 'cancelInvitation'])->name('users.invitation.cancel');
+Route::post('users/{user}/roles', [UsersController::class, 'grantRole'])->name('users.roles.store');
+Route::delete('users/{user}/roles/{role}', [UsersController::class, 'revokeRole'])->name('users.roles.destroy');
+Route::get('roles', [RolesController::class, 'index'])->name('roles.index');
 
 /**
  * Sans cette route, une requête `OPTIONS` ne correspond à aucune route

@@ -23,6 +23,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $two_factor_confirmed_at
+ * @property Carbon|null $invited_at
  */
 class User extends Authenticatable
 {
@@ -59,6 +60,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
+            'invited_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_secret' => 'encrypted',
             'two_factor_recovery_codes' => 'encrypted:array',
@@ -68,6 +70,16 @@ class User extends Authenticatable
     public function hasTwoFactorEnabled(): bool
     {
         return $this->two_factor_confirmed_at !== null;
+    }
+
+    /**
+     * Invité depuis l'admin ou l'API sans avoir encore choisi son mot de
+     * passe (spec 05 §5, décision 5) : le compte existe, mais ne peut pas
+     * se connecter.
+     */
+    public function hasPendingInvitation(): bool
+    {
+        return $this->invited_at !== null;
     }
 
     /**

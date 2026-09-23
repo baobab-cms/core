@@ -1,0 +1,4 @@
+{
+    "subject": "Votre invitation à l'administration",
+    "body": "Bonjour {{ user_name }},<br><br>{{ inviter_name }} vous invite à rejoindre l'administration du site. Pour activer votre compte, choisissez votre mot de passe : <a href=\"{{ accept_url }}\">Activer mon compte</a>.<br><br>Ce lien est valable {{ expires_in }} heures et ne peut servir qu'une fois. Si vous ne vous attendiez pas à cette invitation, ignorez ce message."
+}

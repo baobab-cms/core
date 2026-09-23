@@ -46,6 +46,11 @@ return [
         'reset_link_invalid' => 'Ce lien de réinitialisation est invalide ou a expiré. Demandez-en un nouveau.',
         'password_reset_done' => 'Votre mot de passe a été réinitialisé. Vous pouvez vous connecter.',
         'back_to_login' => 'Retour à la connexion',
+        'invitation_title' => 'Bienvenue',
+        'invitation_intro' => 'Vous avez été invité à rejoindre l\'administration. Choisissez votre mot de passe pour activer votre compte.',
+        'invitation_submit' => 'Activer mon compte',
+        'invitation_accepted' => 'Votre compte est activé. Vous pouvez vous connecter.',
+        'invitation_link_invalid' => 'Ce lien d\'invitation est invalide ou a expiré. Demandez à un administrateur de vous en renvoyer un.',
     ],
 
     'errors' => [
@@ -146,6 +151,38 @@ return [
         'column_roles' => 'Rôles',
         'column_level' => 'Niveau',
         'impersonate_action' => 'Se connecter en tant que',
+
+        'invite' => [
+            'action' => 'Inviter un utilisateur',
+            'title' => 'Inviter un utilisateur',
+            'intro' => 'L\'invité reçoit un e-mail avec un lien, valable 24 heures, pour choisir son mot de passe. Vous ne le connaîtrez jamais.',
+            'name_label' => 'Nom',
+            'email_label' => 'E-mail',
+            'role_label' => 'Rôle',
+            'submit' => 'Envoyer l\'invitation',
+            'sent' => 'Invitation envoyée à :email.',
+            'resent' => 'Nouvelle invitation envoyée à :email. L\'ancien lien ne fonctionne plus.',
+            'not_pending' => 'Cette invitation a déjà été acceptée.',
+            'role_unknown' => 'Ce rôle n\'existe pas.',
+            'role_forbidden' => 'Vous ne pouvez attribuer qu\'un rôle de niveau inférieur au vôtre.',
+            'pending_badge' => 'invitation en attente',
+            'pending_since' => 'Invitation en attente depuis le :date.',
+            'resend_action' => 'Renvoyer l\'invitation',
+            'cancel_action' => 'Annuler l\'invitation',
+            'cancel_confirm_title' => 'Annuler cette invitation ?',
+            'cancel_confirm_description' => 'Le compte :email sera supprimé et son lien d\'invitation cessera de fonctionner. Il n\'a jamais été utilisé : rien d\'autre n\'est touché.',
+            'cancelled' => 'Invitation de :email annulée, compte supprimé.',
+        ],
+
+        'roles' => [
+            'grant_label' => 'Ajouter un rôle',
+            'grant_action' => 'Ajouter',
+            'revoke_action' => 'Retirer',
+            'granted' => 'Rôle « :role » ajouté.',
+            'revoked' => 'Rôle « :role » retiré.',
+            'forbidden' => 'Vous ne pouvez modifier que les rôles d\'un utilisateur de niveau inférieur au vôtre, et jamais les vôtres.',
+            'lockout' => 'Ce retrait est refusé : il supprimerait le dernier Super Admin ou le dernier accès à l\'administration.',
+        ],
 
         'show' => [
             'identity_title' => 'Identité',

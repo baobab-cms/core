@@ -372,6 +372,20 @@ return [
                 'defaults' => __DIR__.'/../resources/mails/core/password-reset.json',
             ],
             [
+                'key' => 'core.user_invited',
+                'description' => 'Envoyé à une personne invitée depuis l\'admin ou l\'API (spec 05 §5, décision 5) : un lien pour choisir son mot de passe.',
+                'variables' => [
+                    'accept_url' => [
+                        'label' => 'Lien pour choisir son mot de passe',
+                        'required' => true,
+                    ],
+                    'expires_in' => 'Durée de validité du lien, en heures',
+                    'inviter_name' => 'Nom de la personne qui invite',
+                    'user_name' => 'Nom de l\'invité',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/user-invited.json',
+            ],
+            [
                 'key' => 'core.security.password_changed',
                 'description' => 'Envoyé à un utilisateur dont le mot de passe vient d\'être changé ou réinitialisé (spec 11 §6, notification de sécurité non désactivable).',
                 'variables' => [

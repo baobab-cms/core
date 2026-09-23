@@ -47,10 +47,13 @@ use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Admin\Users\Http\Controllers\SessionController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
+use Baobab\Admin\Users\Http\Controllers\UserInvitationController;
+use Baobab\Admin\Users\Http\Controllers\UserRoleController;
 use Baobab\Admin\Webhooks\Http\Controllers\WebhookDeliveriesController;
 use Baobab\Admin\Webhooks\Http\Controllers\WebhookSubscriptionsController;
 use Baobab\Admin\Widgets\Http\Controllers\WidgetsController;
 use Baobab\Audit\Http\Controllers\AuditLogController;
+use Baobab\Users\UserDirectory;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('baobab::admin.dashboard'))->name('dashboard');
@@ -452,12 +455,32 @@ Route::middleware('can:baobab.system.demo_content.manage')
         Route::delete('/', [DemoContentController::class, 'destroy'])->name('destroy');
     });
 
-Route::middleware('can:baobab.users.impersonate')
+// Spec 05 §5, décision 5 : gestion des comptes. Enregistré avant la fiche,
+// pour que `/users/create` ne soit pas pris pour `/users/{user}`.
+Route::middleware('can:baobab.users.manage')
+    ->prefix('users')
+    ->name('users.')
+    ->group(function (): void {
+        Route::get('/create', [UserInvitationController::class, 'create'])->name('create');
+        Route::post('/', [UserInvitationController::class, 'store'])->name('store');
+        Route::post('/{user}/invitation', [UserInvitationController::class, 'resend'])->name('invitation.resend');
+        Route::delete('/{user}/invitation', [UserInvitationController::class, 'cancel'])->name('invitation.cancel');
+        Route::post('/{user}/roles', [UserRoleController::class, 'store'])->name('roles.store');
+        Route::delete('/{user}/roles/{role}', [UserRoleController::class, 'destroy'])->name('roles.destroy');
+    });
+
+Route::middleware('can:'.UserDirectory::ABILITY)
     ->prefix('users')
     ->name('users.')
     ->group(function (): void {
         Route::get('/', [UserController::class, 'index'])->name('index');
         Route::get('/{user}', [UserController::class, 'show'])->name('show');
+    });
+
+Route::middleware('can:baobab.users.impersonate')
+    ->prefix('users')
+    ->name('users.')
+    ->group(function (): void {
         Route::post('/{user}/impersonate', [ImpersonationController::class, 'store'])->name('impersonate');
         Route::delete('/{user}/sessions/{sessionId}', [SessionController::class, 'destroy'])->name('sessions.destroy');
     });

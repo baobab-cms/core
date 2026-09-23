@@ -19,18 +19,79 @@
                 <p class="mt-1 text-sm text-muted">
                     {{ __('baobab::admin.users.column_level') }}: {{ $user->level() }}
                 </p>
+
+                @if ($user->hasPendingInvitation())
+                    <p class="mt-3 text-sm font-medium text-warning">
+                        {{ __('baobab::admin.users.invite.pending_since', ['date' => $user->invited_at?->format('Y-m-d H:i')]) }}
+                    </p>
+
+                    @if ($canResendInvitation)
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <x-baobab::form method="POST" action="{{ route('admin.users.invitation.resend', ['user' => $user]) }}">
+                                <x-baobab::button type="submit" variant="secondary">
+                                    {{ __('baobab::admin.users.invite.resend_action') }}
+                                </x-baobab::button>
+                            </x-baobab::form>
+
+                            <x-baobab::button type="button" variant="danger" x-on:click="$dispatch('open-modal', 'cancel-invitation')">
+                                {{ __('baobab::admin.users.invite.cancel_action') }}
+                            </x-baobab::button>
+                        </div>
+
+                        <x-baobab::confirm name="cancel-invitation" :title="__('baobab::admin.users.invite.cancel_confirm_title')">
+                            <x-slot:description>
+                                {{ __('baobab::admin.users.invite.cancel_confirm_description', ['email' => $user->email]) }}
+                            </x-slot:description>
+
+                            <x-baobab::form method="DELETE" action="{{ route('admin.users.invitation.cancel', ['user' => $user]) }}">
+                                <x-baobab::button type="submit" variant="danger">
+                                    {{ __('baobab::admin.users.invite.cancel_action') }}
+                                </x-baobab::button>
+                            </x-baobab::form>
+                        </x-baobab::confirm>
+                    @endif
+                @endif
             </x-baobab::card>
 
             <x-baobab::card :header="__('baobab::admin.users.show.roles_title')">
                 @forelse ($user->roles as $role)
-                    <p class="border-b border-border py-2 text-sm text-foreground last:border-0">
-                        <a href="{{ route('admin.access.roles.show', ['role' => $role]) }}" class="hover:underline">
+                    <div class="flex items-center justify-between gap-4 border-b border-border py-2 last:border-0">
+                        <a href="{{ route('admin.access.roles.show', ['role' => $role]) }}" class="text-sm text-foreground hover:underline">
                             {{ $role->name }}
                         </a>
-                    </p>
+
+                        @if (in_array($role->id, $revocableRoleIds, true))
+                            <form method="POST" action="{{ route('admin.users.roles.destroy', ['user' => $user, 'role' => $role]) }}">
+                                @csrf
+                                @method('DELETE')
+                                <x-baobab::button type="submit" variant="danger">
+                                    {{ __('baobab::admin.users.roles.revoke_action') }}
+                                </x-baobab::button>
+                            </form>
+                        @endif
+                    </div>
                 @empty
                     <p class="text-sm text-muted">{{ __('baobab::admin.users.show.roles_empty') }}</p>
                 @endforelse
+
+                @if ($canManageRoles && $grantableRoles->isNotEmpty())
+                    <x-baobab::form method="POST" action="{{ route('admin.users.roles.store', ['user' => $user]) }}" class="mt-4 flex items-end gap-2 border-t border-border pt-4">
+                        <div class="flex-1">
+                            <label for="grant-role" class="mb-1 block text-sm font-medium text-foreground">
+                                {{ __('baobab::admin.users.roles.grant_label') }}
+                            </label>
+                            <select id="grant-role" name="role" class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm">
+                                @foreach ($grantableRoles as $grantable)
+                                    <option value="{{ $grantable->id }}">{{ $grantable->name }} ({{ $grantable->level }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <x-baobab::button type="submit" variant="primary">
+                            {{ __('baobab::admin.users.roles.grant_action') }}
+                        </x-baobab::button>
+                    </x-baobab::form>
+                @endif
             </x-baobab::card>
         </div>
 

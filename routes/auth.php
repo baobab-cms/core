@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Auth\Http\Controllers\ForgotPasswordController;
+use Baobab\Auth\Http\Controllers\InvitationController;
 use Baobab\Auth\Http\Controllers\LoginController;
 use Baobab\Auth\Http\Controllers\ResetPasswordController;
 use Baobab\Auth\Http\Controllers\TwoFactorChallengeController;
@@ -32,6 +33,10 @@ Route::middleware([RedirectToInstaller::class, 'web', 'guest:baobab'])->group(fu
     Route::post('/forgot-password', [ForgotPasswordController::class, 'store'])->middleware('throttle:5,1')->name('password.email');
     Route::get('/reset-password/{token}', [ResetPasswordController::class, 'create'])->name('password.reset');
     Route::post('/reset-password', [ResetPasswordController::class, 'store'])->middleware('throttle:5,1')->name('password.update');
+
+    // Spec 05 §5, décision 5 : l'invité choisit son mot de passe.
+    Route::get('/invitation/{token}', [InvitationController::class, 'create'])->name('invitation.accept');
+    Route::post('/invitation', [InvitationController::class, 'store'])->middleware('throttle:5,1')->name('invitation.store');
 });
 
 Route::post('/logout', [LoginController::class, 'destroy'])
