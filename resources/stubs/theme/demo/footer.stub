@@ -12,6 +12,8 @@
         <div class="mt-10 flex flex-wrap items-center justify-between gap-4 pt-8 text-sm text-muted">
             <p>&copy; {{ now()->year }} {{ config('app.name', '{{ site_name }}') }}</p>
 
+            <a href="#" class="hover:text-foreground" data-baobab-consent-open hidden>Gérer les cookies</a>
+
 {{ other_menus }}
         </div>
     </div>

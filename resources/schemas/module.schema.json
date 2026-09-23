@@ -408,6 +408,57 @@
                 }
             }
         },
+        "privacy": {
+            "type": "object",
+            "description": "Privacy declarations (spec 16). 'cookies' lists the cookies and trackers this package sets, feeding the consent banner (spec 16 §3.2).",
+            "additionalProperties": false,
+            "properties": {
+                "cookies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "name",
+                            "category",
+                            "purpose",
+                            "duration"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                            },
+                            "category": {
+                                "type": "string",
+                                "enum": [
+                                    "necessary",
+                                    "functional",
+                                    "analytics",
+                                    "marketing"
+                                ]
+                            },
+                            "purpose": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 300
+                            },
+                            "duration": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 50
+                            },
+                            "provider": {
+                                "type": "string",
+                                "description": "Third party setting the cookie, when it is not the site itself.",
+                                "maxLength": 100
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "theme": {
             "type": "object",
             "description": "Theme-specific section, required when type = theme (spec 03 §2.1).",

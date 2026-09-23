@@ -104,12 +104,18 @@
 
     <x-baobab::admin-bar />
 
+    {{-- Ne rend rien sans traceur déclaré (spec 16 §3.2, décision 21). --}}
+    <x-baobab::consent-banner />
+
     <main id="bb-main" class="bb-shell">
         @yield('content')
     </main>
 
     <footer class="bb-shell bb-footer bb-muted">
         {{ config('app.name') }}
+
+        {{-- Masqué tant que le script de consentement ne l'a pas révélé : sans traceur déclaré, il n'existe pas pour le visiteur. --}}
+        <a href="#" data-baobab-consent-open hidden>{{ __('baobab::privacy.cookies.banner.manage') }}</a>
     </footer>
 </body>
 </html>

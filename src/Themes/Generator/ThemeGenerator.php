@@ -82,12 +82,12 @@ final class ThemeGenerator
     }
 
     /**
-     * Surcharges système opt-in (spec 17 §5). Seul `search` a du code Core à
-     * surcharger à ce jour (spec 11, `RenderSearchPage`) — `forms`,
-     * `cookie-banner` et `maintenance` sont déclarés au schéma mais pas
-     * encore consommés (leurs mécanismes Core respectifs ne sont pas encore
-     * construits, spec 14/16/12), `dark-mode` est différé après la v1
-     * (spec 17 §9 décision 4).
+     * Surcharges système opt-in (spec 17 §5). `search` (spec 11,
+     * `RenderSearchPage`) et `cookie-banner` (spec 16 §3.2,
+     * `<x-baobab::consent-banner />`, M9 0.b Pass F1) ont du code Core à
+     * surcharger — `forms` et `maintenance` sont déclarés au schéma mais pas
+     * encore consommés par le générateur, `dark-mode` est différé après la
+     * v1 (spec 17 §9 décision 4).
      *
      * @param  array<string, mixed>  $blueprint
      */
@@ -99,6 +99,13 @@ final class ThemeGenerator
         if (in_array('search', $supports, true)) {
             $this->checksums->write($themeDir, 'resources/views/templates/search.blade.php', $this->renderer->render(
                 self::stubPath('template-search'),
+                [],
+            ));
+        }
+
+        if (in_array('cookie-banner', $supports, true)) {
+            $this->checksums->write($themeDir, 'resources/views/partials/cookie-banner.blade.php', $this->renderer->render(
+                self::stubPath('partial-cookie-banner'),
                 [],
             ));
         }

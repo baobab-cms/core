@@ -120,11 +120,20 @@ final class ThemeValidator
     }
 
     /**
+     * Fichier de surcharge exigé par chaque support consommé par le Core
+     * (spec 17 §5-6.1). `forms` et `maintenance` n'y figurent pas encore :
+     * rien à vérifier tant que leur surcharge n'est pas consommée.
+     */
+    private const array SUPPORT_FILES = [
+        'search' => 'resources/views/templates/search.blade.php',
+        'cookie-banner' => 'resources/views/partials/cookie-banner.blade.php',
+    ];
+
+    /**
      * Cohérence blueprint ↔ fichiers (spec 17 §6.1), volet `supports` : un
-     * support consommé par le générateur (seul `search` à ce jour —
-     * `forms`/`cookie-banner`/`maintenance` ne sont pas encore consommés,
-     * rien à vérifier pour eux) doit avoir son template, avec le même repli
-     * parent que les autres fichiers requis. **Narrowing assumé** : la
+     * support consommé par le Core (`search`, et `cookie-banner` depuis la
+     * Pass F1 du M9 0.b) doit avoir son fichier de surcharge, avec le même
+     * repli parent que les autres fichiers requis. **Narrowing assumé** : la
      * cohérence menus/widget_zones déclarés ↔ réellement rendus (également
      * couverte par la lettre de spec 17 §6.1) n'est pas vérifiée ici — les
      * fixtures de test existantes (`acme-theme` et consorts, M6) déclarent
@@ -138,25 +147,30 @@ final class ThemeValidator
     {
         /** @var list<string> $supports */
         $supports = $manifest->theme()['supports'] ?? [];
+        $violations = [];
+        $parentPath = null;
 
-        if (! in_array('search', $supports, true)) {
-            return [];
+        foreach (self::SUPPORT_FILES as $support => $relative) {
+            if (! in_array($support, $supports, true)) {
+                continue;
+            }
+
+            $parentPath ??= $this->parentPath($manifest) ?? '';
+            $inherited = $parentPath !== '' && is_file("{$parentPath}/{$relative}");
+
+            if (is_file("{$path}/{$relative}") || $inherited) {
+                continue;
+            }
+
+            $violations[] = new ThemeViolation(
+                $relative,
+                null,
+                sprintf('Support "%s" déclaré mais %s absent (spec 17 §5-6.1).', $support, substr($relative, strlen('resources/views/'))),
+                blocking: true,
+            );
         }
 
-        $relative = 'resources/views/templates/search.blade.php';
-        $parentPath = $this->parentPath($manifest);
-        $inherited = $parentPath !== null && is_file("{$parentPath}/{$relative}");
-
-        if (is_file("{$path}/{$relative}") || $inherited) {
-            return [];
-        }
-
-        return [new ThemeViolation(
-            $relative,
-            null,
-            'Support "search" déclaré mais templates/search.blade.php absent (spec 17 §5-6.1).',
-            blocking: true,
-        )];
+        return $violations;
     }
 
     private function parentPath(ModuleManifest $manifest): ?string

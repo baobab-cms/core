@@ -16,6 +16,8 @@
 
     <x-baobab::admin-bar />
 
+    <x-baobab::consent-banner />
+
     @include('theme::partials.header')
 
     <main id="content" class="flex-1">

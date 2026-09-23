@@ -206,6 +206,19 @@ final readonly class ModuleManifest
     }
 
     /**
+     * Cookies et traceurs déposés par ce module (spec 16 §3.2, section
+     * `privacy.cookies`), agrégés par `BuildCookieRegister` tant que le
+     * module est actif. Accesseur brut, patron `mails()` — la catégorie est
+     * fermée par le schéma JSON.
+     *
+     * @return list<array{name: string, category: string, purpose: string, duration: string, provider?: string}>
+     */
+    public function privacyCookies(): array
+    {
+        return $this->data['privacy']['cookies'] ?? [];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

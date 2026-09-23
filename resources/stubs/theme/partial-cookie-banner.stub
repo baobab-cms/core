@@ -1,0 +1,48 @@
+{{--
+    Surcharge de la bannière de consentement du Core (support `cookie-banner`,
+    spec 17 §5, spec 16 §3.2). Présentation pure : le comportement est porté
+    par le script du Core, qui ne lit que les attributs `data-baobab-consent-*`
+    — les conserver tels quels. Variables : $categories (clé, libellé,
+    description de chaque catégorie proposée), $necessary (libellé,
+    description). Rendue avec `hidden` : le script l'affiche.
+--}}
+<div
+    class="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-2xl rounded-lg border border-border bg-background p-6 text-sm text-foreground"
+    data-baobab-consent-banner
+    hidden
+    role="dialog"
+    aria-modal="false"
+    aria-labelledby="consent-title"
+    aria-describedby="consent-intro"
+>
+    <h2 id="consent-title" class="font-display text-base font-semibold">Cookies</h2>
+    <p id="consent-intro" class="mt-2 text-muted">
+        Ce site utilise des cookies nécessaires à son fonctionnement et, avec votre accord, d'autres cookies pour les usages ci-dessous. Vous pouvez changer d'avis à tout moment.
+    </p>
+
+    <fieldset id="consent-panel" class="mt-4" data-baobab-consent-panel hidden>
+        <legend class="sr-only">Personnaliser</legend>
+
+        <div class="grid grid-cols-[auto_1fr] gap-x-2 border-t border-border py-2">
+            <input type="checkbox" id="consent-necessary" checked disabled>
+            <label for="consent-necessary" class="font-medium">{{ $necessary['label'] }} — toujours actifs</label>
+            <p class="col-start-2 text-muted">{{ $necessary['description'] }}</p>
+        </div>
+
+        @foreach ($categories as $category)
+            <div class="grid grid-cols-[auto_1fr] gap-x-2 border-t border-border py-2">
+                <input type="checkbox" id="consent-{{ $category['key'] }}" data-baobab-consent-category="{{ $category['key'] }}">
+                <label for="consent-{{ $category['key'] }}" class="font-medium">{{ $category['label'] }}</label>
+                <p class="col-start-2 text-muted">{{ $category['description'] }}</p>
+            </div>
+        @endforeach
+
+        <button type="button" class="mt-2 rounded-md border border-foreground px-4 py-2" data-baobab-consent-action="save">Enregistrer mes choix</button>
+    </fieldset>
+
+    <div class="mt-4 flex flex-wrap gap-2">
+        <button type="button" class="rounded-md border border-foreground px-4 py-2" data-baobab-consent-action="reject-all">Tout refuser</button>
+        <button type="button" class="rounded-md border border-foreground px-4 py-2" data-baobab-consent-action="accept-all">Tout accepter</button>
+        <button type="button" class="rounded-md border border-border px-4 py-2" data-baobab-consent-action="customize" aria-expanded="false" aria-controls="consent-panel">Personnaliser</button>
+    </div>
+</div>

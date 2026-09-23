@@ -144,4 +144,52 @@ return [
         'unsupported_title' => 'Données non couvertes par cet export',
         'unsupported_hint' => 'Ces traitements détiennent des données vous concernant mais ne savent pas les exporter automatiquement ; contactez l\'exploitant du site.',
     ],
+
+    /*
+     * Consentement aux cookies (spec 16 §3.2, Pass F1) : catégories,
+     * déclarations du Core et textes de la bannière par défaut.
+     */
+    'cookies' => [
+        'categories' => [
+            'necessary' => [
+                'label' => 'Nécessaires',
+                'description' => 'Indispensables au fonctionnement du site (session, sécurité des formulaires, mémorisation de votre choix). Toujours actifs.',
+            ],
+            'functional' => [
+                'label' => 'Fonctionnels',
+                'description' => 'Mémorisent des préférences ou activent des services intégrés (vidéos, cartes, conversation).',
+            ],
+            'analytics' => [
+                'label' => 'Mesure d\'audience',
+                'description' => 'Mesurent la fréquentation du site pour en améliorer le contenu.',
+            ],
+            'marketing' => [
+                'label' => 'Marketing',
+                'description' => 'Permettent de vous proposer des publicités ou des contenus personnalisés.',
+            ],
+        ],
+        'core' => [
+            'session' => 'Maintient votre session de navigation (connexion, envoi de formulaires).',
+            'xsrf' => 'Protège les formulaires contre la falsification de requêtes.',
+            'remember' => 'Garde votre connexion ouverte si vous avez coché « Se souvenir de moi ».',
+            'consent' => 'Mémorise vos choix de consentement aux cookies.',
+            'captcha' => 'Protège les formulaires contre les envois automatisés (captcha tiers, chargé seulement sur les pages d\'un formulaire protégé).',
+        ],
+        'durations' => [
+            'browser_session' => 'Jusqu\'à la fermeture du navigateur',
+            'minutes' => '{1} :count minute|[2,*] :count minutes',
+            'days' => '{1} :count jour|[2,*] :count jours',
+            'provider_defined' => 'Définie par le fournisseur',
+        ],
+        'banner' => [
+            'title' => 'Cookies',
+            'intro' => 'Ce site utilise des cookies nécessaires à son fonctionnement et, avec votre accord, d\'autres cookies pour les usages ci-dessous. Vous pouvez changer d\'avis à tout moment.',
+            'accept_all' => 'Tout accepter',
+            'reject_all' => 'Tout refuser',
+            'customize' => 'Personnaliser',
+            'save' => 'Enregistrer mes choix',
+            'always_active' => 'Toujours actifs',
+            'manage' => 'Gérer les cookies',
+        ],
+    ],
 ];

@@ -738,11 +738,16 @@ return [
     | portal_link_minutes : durée de vie du lien de vérification envoyé par le
     | portail public (§4, Pass E1).
     |
+    | consent_lifetime_days : durée de validité du choix de consentement aux
+    | cookies d'un visiteur (§3.2, Pass F1) — au-delà, la bannière le
+    | sollicite de nouveau. Défaut 6 mois.
+    |
     */
     'privacy' => [
         'export_retention_days' => (int) env('BAOBAB_PRIVACY_EXPORT_RETENTION_DAYS', 7),
         'erasure_grace_days' => (int) env('BAOBAB_PRIVACY_ERASURE_GRACE_DAYS', 15),
         'portal_link_minutes' => (int) env('BAOBAB_PRIVACY_PORTAL_LINK_MINUTES', 30),
+        'consent_lifetime_days' => (int) env('BAOBAB_PRIVACY_CONSENT_LIFETIME_DAYS', 180),
     ],
 
     /*

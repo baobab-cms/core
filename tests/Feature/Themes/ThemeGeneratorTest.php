@@ -435,3 +435,28 @@ it('is idempotent across repeated --starter=demo runs, without duplicating conte
     expect($second)->toContain('Le contenu de démonstration est déjà en place.')
         ->and($second)->toContain('Le formulaire de démonstration est déjà en place.');
 });
+
+it('generates the cookie banner partial when "cookie-banner" is declared (spec 17 §5)', function () {
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), [
+        'name' => 'Sample Theme',
+        'slug' => 'sample-theme',
+        'supports' => ['cookie-banner'],
+    ]);
+
+    $partial = generatedThemePath().'/resources/views/partials/cookie-banner.blade.php';
+
+    expect(File::isFile($partial))->toBeTrue()
+        ->and(File::get($partial))->toContain('data-baobab-consent-banner')
+        ->and(File::get($partial))->toContain('data-baobab-consent-action="reject-all"');
+});
+
+it('includes the consent banner and its manage link in every generated theme, and no partial without the support', function () {
+    app(ThemeGenerator::class)('acme/sample-theme', generatedThemePath(), [
+        'name' => 'Sample Theme',
+        'slug' => 'sample-theme',
+    ]);
+
+    expect(File::get(generatedThemePath().'/resources/views/layouts/app.blade.php'))->toContain('<x-baobab::consent-banner />')
+        ->and(File::get(generatedThemePath().'/resources/views/partials/footer.blade.php'))->toContain('data-baobab-consent-open')
+        ->and(File::isFile(generatedThemePath().'/resources/views/partials/cookie-banner.blade.php'))->toBeFalse();
+});

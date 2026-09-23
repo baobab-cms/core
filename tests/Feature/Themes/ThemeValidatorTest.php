@@ -320,3 +320,20 @@ it('does not flag "search" declared in supports when its template exists', funct
 
     expect(hasViolation($violations, 'templates/search.blade.php absent'))->toBeFalse();
 });
+it('flags "cookie-banner" declared in supports without its partial as blocking (spec 17 §6.1)', function () {
+    writeValidThemeSkeleton(themeFixturePath());
+
+    $violations = validateThemeFixture(['theme' => ['supports' => ['cookie-banner']]]);
+
+    expect(hasViolation($violations, 'Support "cookie-banner" déclaré mais partials/cookie-banner.blade.php absent'))->toBeTrue();
+});
+
+it('does not flag "cookie-banner" declared in supports when its partial exists', function () {
+    writeValidThemeSkeleton(themeFixturePath());
+    File::ensureDirectoryExists(themeFixturePath().'/resources/views/partials');
+    File::put(themeFixturePath().'/resources/views/partials/cookie-banner.blade.php', '<div data-baobab-consent-banner hidden></div>');
+
+    $violations = validateThemeFixture(['theme' => ['supports' => ['cookie-banner']]]);
+
+    expect(hasViolation($violations, 'partials/cookie-banner.blade.php absent'))->toBeFalse();
+});

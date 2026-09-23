@@ -5,6 +5,8 @@
         <div class="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6 text-sm text-muted">
             <p>&copy; {{ now()->year }} {{ config('app.name', '{{ site_name }}') }}</p>
 
+            <a href="#" class="hover:text-foreground" data-baobab-consent-open hidden>Gérer les cookies</a>
+
 {{ other_menus }}
         </div>
     </div>
