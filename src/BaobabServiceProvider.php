@@ -18,6 +18,7 @@ use Baobab\Api\Http\Middleware\HandleApiCors;
 use Baobab\Api\Models\ApiSetting;
 use Baobab\Api\Support\ProblemDetailsRenderer;
 use Baobab\Audit\AuditLogger;
+use Baobab\Auth\Actions\SendPasswordResetLink;
 use Baobab\Auth\Models\PersonalAccessToken;
 use Baobab\Auth\RememberDuration;
 use Baobab\Auth\TwoFactorManager;
@@ -205,6 +206,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Intervention\Image\ImageManager;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
@@ -366,6 +368,8 @@ class BaobabServiceProvider extends ServiceProvider
         // toute l'application (« Call to a member function connection() on
         // null »), constaté en recette le 7 septembre 2026.
         $this->app->make(MailTransportConfigurator::class)->apply();
+
+        $this->registerPasswordDefaults();
 
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/auth.php');
@@ -1308,9 +1312,10 @@ class BaobabServiceProvider extends ServiceProvider
 
     /**
      * Notification de sécurité `core.security.*` (spec 11 §6, `configurable:
-     * false`) — seule « impersonation subie » est câblée ici (suivi n° 47) :
-     * « nouvel appareil » et « changement de mot de passe » n'ont pas
-     * d'infra/flow dédié dans le code actuel, câblage laissé différé.
+     * false`) — « impersonation subie » et, depuis le 23 septembre 2026,
+     * « changement de mot de passe » (réinitialisation ou changement depuis
+     * le compte, suivi n° 47, n° 353). « Nouvel appareil » reste différé :
+     * aucune infra d'empreinte d'appareil.
      */
     private function registerSecurityNotificationListeners(): void
     {
@@ -1324,6 +1329,17 @@ class BaobabServiceProvider extends ServiceProvider
                 ['actor_name' => $actor->name, 'occurred_at' => now()->toIso8601String()],
             );
         });
+
+        $notifyPasswordChanged = function (User $user): void {
+            $this->app->make(Notifier::class)->send(
+                'core.security.password_changed',
+                [$user],
+                ['occurred_at' => now()->toIso8601String()],
+            );
+        };
+
+        $registry->listen('baobab.user.password.reset', $notifyPasswordChanged);
+        $registry->listen('baobab.user.password.changed', $notifyPasswordChanged);
     }
 
     /**
@@ -1520,6 +1536,14 @@ class BaobabServiceProvider extends ServiceProvider
 
         $registry->listen('baobab.user.impersonation.ended', function (User $actor, ?User $target, string $reason) use ($audit): void {
             $audit()->record('user.impersonation.ended', $target, ['reason' => $reason]);
+        });
+
+        $registry->listen('baobab.user.password.reset', function (User $user) use ($audit): void {
+            $audit()->record('user.password.reset', $user);
+        });
+
+        $registry->listen('baobab.user.password.changed', function (User $user) use ($audit): void {
+            $audit()->record('user.password.changed', $user);
         });
     }
 
@@ -2334,6 +2358,16 @@ class BaobabServiceProvider extends ServiceProvider
             'model' => $userModel,
         ]);
 
+        // Broker de réinitialisation (spec 04 §9, décision 7) : table native
+        // `password_reset_tokens` du squelette, lien valable 60 minutes, un
+        // nouveau lien au plus toutes les 60 secondes par adresse.
+        $this->app->make('config')->set('auth.passwords.baobab_users', [
+            'provider' => 'baobab_users',
+            'table' => 'password_reset_tokens',
+            'expire' => SendPasswordResetLink::LINK_LIFETIME_MINUTES,
+            'throttle' => 60,
+        ]);
+
         /**
          * Le guard `web` par défaut du squelette Laravel n'authentifie jamais
          * personne ici (tout l'admin passe par `Auth::guard('baobab')`
@@ -2345,6 +2379,17 @@ class BaobabServiceProvider extends ServiceProvider
          * régression côté Baobab à basculer le défaut.
          */
         $this->app->make('config')->set('auth.defaults.guard', 'baobab');
+    }
+
+    /**
+     * Politique de robustesse unique (spec 04 §9, décision 7) : 12 caractères,
+     * sans règle de composition. Posée au `boot()` du package, donc avant
+     * celui des providers de l'application hôte — un `Password::defaults()`
+     * appelé dans son `AppServiceProvider` la remplace.
+     */
+    private function registerPasswordDefaults(): void
+    {
+        Password::defaults(fn (): Password => Password::min(12));
     }
 
     /**

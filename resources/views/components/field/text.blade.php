@@ -3,26 +3,28 @@
     'label' => null,
     'value' => null,
     'type' => 'text',
+    'bag' => 'default',
+    'id' => null,
 ])
 
 <div class="mb-4">
     @if ($label)
-        <label for="{{ $name }}" class="mb-1 block text-sm font-medium text-foreground">{{ $label }}</label>
+        <label for="{{ $id ?? $name }}" class="mb-1 block text-sm font-medium text-foreground">{{ $label }}</label>
     @endif
 
     <input
         type="{{ $type }}"
-        id="{{ $name }}"
+        id="{{ $id ?? $name }}"
         name="{{ $name }}"
         value="{{ old($name, $value) }}"
-        aria-invalid="{{ $errors->has($name) ? 'true' : 'false' }}"
-        @if ($errors->has($name)) aria-describedby="{{ $name }}-error" @endif
+        aria-invalid="{{ $errors->getBag($bag)->has($name) ? 'true' : 'false' }}"
+        @if ($errors->getBag($bag)->has($name)) aria-describedby="{{ $id ?? $name }}-error" @endif
         {{ $attributes->class([
             'w-full rounded-md border px-3 py-2 text-sm text-foreground',
-            'border-danger' => $errors->has($name),
-            'border-border' => ! $errors->has($name),
+            'border-danger' => $errors->getBag($bag)->has($name),
+            'border-border' => ! $errors->getBag($bag)->has($name),
         ]) }}
     >
 
-    <x-baobab::field.error :name="$name" />
+    <x-baobab::field.error :name="$name" :bag="$bag" :id="$id" />
 </div>

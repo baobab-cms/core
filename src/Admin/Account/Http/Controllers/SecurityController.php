@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Baobab\Admin\Account\Http\Controllers;
 
+use Baobab\Admin\Account\Http\Requests\ChangePasswordRequest;
 use Baobab\Admin\Account\Http\Requests\DisableTwoFactorRequest;
+use Baobab\Auth\Actions\ChangePassword;
 use Baobab\Auth\Actions\ConfirmTwoFactorCode;
 use Baobab\Auth\Actions\DisableTwoFactor;
 use Baobab\Auth\Actions\EnableTwoFactor;
@@ -96,6 +98,27 @@ final class SecurityController
         session()->flash('toast', [
             'type' => 'success',
             'message' => __('baobab::admin.account.security.disabled'),
+        ]);
+
+        return redirect()->route('admin.account.security.show');
+    }
+
+    public function updatePassword(ChangePasswordRequest $request, ChangePassword $changePassword): RedirectResponse
+    {
+        try {
+            $changePassword(
+                $this->actor(),
+                (string) $request->validated('current_password'),
+                (string) $request->validated('password'),
+                $request->session()->getId(),
+            );
+        } catch (ValidationException $e) {
+            throw $e->errorBag(ChangePasswordRequest::ERROR_BAG);
+        }
+
+        session()->flash('toast', [
+            'type' => 'success',
+            'message' => __('baobab::admin.account.security.password_changed'),
         ]);
 
         return redirect()->route('admin.account.security.show');

@@ -63,6 +63,7 @@ Route::prefix('account/security')
         Route::post('/confirm', [SecurityController::class, 'confirm'])->name('confirm');
         Route::post('/recovery-codes', [SecurityController::class, 'regenerateRecoveryCodes'])->name('recovery-codes.regenerate');
         Route::post('/disable', [SecurityController::class, 'disable'])->name('disable');
+        Route::put('/password', [SecurityController::class, 'updatePassword'])->name('password.update');
     });
 
 Route::prefix('account/notifications')

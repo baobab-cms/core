@@ -34,6 +34,18 @@ return [
         'two_factor_recovery_code' => 'Code de récupération',
         'two_factor_use_recovery_code' => 'Utiliser un code de récupération',
         'two_factor_use_code' => 'Utiliser le code de l\'application à la place',
+        'forgot_password_link' => 'Mot de passe oublié ?',
+        'forgot_password_title' => 'Mot de passe oublié',
+        'forgot_password_intro' => 'Saisissez l\'adresse e-mail de votre compte : nous vous enverrons un lien pour choisir un nouveau mot de passe.',
+        'forgot_password_submit' => 'Envoyer le lien',
+        'reset_link_sent' => 'Si un compte correspond à cette adresse, un lien de réinitialisation vient de lui être envoyé. Il est valable 60 minutes.',
+        'reset_password_title' => 'Nouveau mot de passe',
+        'new_password' => 'Nouveau mot de passe',
+        'password_confirmation' => 'Confirmer le mot de passe',
+        'reset_password_submit' => 'Enregistrer le mot de passe',
+        'reset_link_invalid' => 'Ce lien de réinitialisation est invalide ou a expiré. Demandez-en un nouveau.',
+        'password_reset_done' => 'Votre mot de passe a été réinitialisé. Vous pouvez vous connecter.',
+        'back_to_login' => 'Retour à la connexion',
     ],
 
     'errors' => [
@@ -188,6 +200,13 @@ return [
             'confirmed' => 'Vérification en deux étapes confirmée.',
             'recovery_codes_regenerated' => 'Codes de récupération régénérés.',
             'disabled' => 'Vérification en deux étapes désactivée.',
+            'password_title' => 'Mot de passe',
+            'password_intro' => 'Changer votre mot de passe ferme vos sessions ouvertes sur les autres appareils.',
+            'new_password_label' => 'Nouveau mot de passe',
+            'password_confirmation_label' => 'Confirmer le nouveau mot de passe',
+            'password_change_action' => 'Changer le mot de passe',
+            'current_password_invalid' => 'Le mot de passe actuel est incorrect.',
+            'password_changed' => 'Mot de passe changé. Vos autres sessions ont été fermées.',
         ],
 
         'api_tokens' => [

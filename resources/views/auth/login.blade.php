@@ -3,6 +3,12 @@
 @section('title', __('baobab::admin.auth.login_title'))
 
 @section('content')
+    @if (session('status'))
+        <div class="mb-4 rounded-md border border-success p-3 text-sm text-success" role="status">
+            {{ session('status') }}
+        </div>
+    @endif
+
     @if ($errors->any())
         <div class="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
             {{ $errors->first() }}
@@ -28,12 +34,18 @@
             >
         </div>
 
-        <div class="flex items-center gap-2">
-            <input
-                id="remember" name="remember" type="checkbox" value="1" @checked(old('remember'))
-                class="h-4 w-4 rounded border-border"
-            >
-            <label for="remember" class="text-sm text-foreground">{{ __('baobab::admin.auth.remember') }}</label>
+        <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <input
+                    id="remember" name="remember" type="checkbox" value="1" @checked(old('remember'))
+                    class="h-4 w-4 rounded border-border"
+                >
+                <label for="remember" class="text-sm text-foreground">{{ __('baobab::admin.auth.remember') }}</label>
+            </div>
+
+            <a href="{{ route('password.request') }}" class="text-sm text-primary underline">
+                {{ __('baobab::admin.auth.forgot_password_link') }}
+            </a>
         </div>
 
         <button type="submit" class="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-white">

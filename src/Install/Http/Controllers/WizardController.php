@@ -18,6 +18,7 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 use Throwable;
 
@@ -125,11 +126,12 @@ final class WizardController
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            // Douze caractères, et aucune règle de composition. Les règles de
+            // La politique commune du Core (spec 04 §9, décision 7) : douze
+            // caractères, et aucune règle de composition. Les règles de
             // composition produisent des mots de passe courts et prévisibles ;
             // la longueur est la seule contrainte qui augmente réellement le
             // coût d'une attaque.
-            'password' => ['required', 'string', 'min:12', 'max:255', 'confirmed'],
+            'password' => ['required', 'string', Password::defaults(), 'max:255', 'confirmed'],
         ]);
 
         $draft->put(InstallDraft::SECTION_ACCOUNT, [

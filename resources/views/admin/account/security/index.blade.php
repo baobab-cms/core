@@ -101,5 +101,41 @@
                 </x-baobab::form>
             </x-baobab::confirm>
         @endif
+
+        <x-baobab::card class="mt-6">
+            <x-slot:header>
+                <span class="font-medium text-foreground">{{ __('baobab::admin.account.security.password_title') }}</span>
+            </x-slot:header>
+
+            <p class="mb-4 text-sm text-muted">{{ __('baobab::admin.account.security.password_intro') }}</p>
+
+            <x-baobab::form method="PUT" action="{{ route('admin.account.security.password.update') }}" class="max-w-sm">
+                <x-baobab::field.text
+                    type="password"
+                    name="current_password"
+                    id="password_current"
+                    bag="updatePassword"
+                    autocomplete="current-password"
+                    label="{{ __('baobab::admin.account.security.current_password_label') }}"
+                />
+                <x-baobab::field.text
+                    type="password"
+                    name="password"
+                    bag="updatePassword"
+                    autocomplete="new-password"
+                    label="{{ __('baobab::admin.account.security.new_password_label') }}"
+                />
+                <x-baobab::field.text
+                    type="password"
+                    name="password_confirmation"
+                    bag="updatePassword"
+                    autocomplete="new-password"
+                    label="{{ __('baobab::admin.account.security.password_confirmation_label') }}"
+                />
+                <x-baobab::button type="submit" variant="primary">
+                    {{ __('baobab::admin.account.security.password_change_action') }}
+                </x-baobab::button>
+            </x-baobab::form>
+        </x-baobab::card>
     </x-baobab::page>
 @endsection

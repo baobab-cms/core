@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
+use Baobab\Auth\Http\Controllers\ForgotPasswordController;
 use Baobab\Auth\Http\Controllers\LoginController;
+use Baobab\Auth\Http\Controllers\ResetPasswordController;
 use Baobab\Auth\Http\Controllers\TwoFactorChallengeController;
 use Baobab\Install\Http\Middleware\RedirectToInstaller;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +26,12 @@ Route::middleware([RedirectToInstaller::class, 'web', 'guest:baobab'])->group(fu
 
     Route::get('/two-factor-challenge', [TwoFactorChallengeController::class, 'create'])->name('two-factor.challenge');
     Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'store'])->middleware('throttle:5,1');
+
+    // Spec 04 §9, décision 7 : mot de passe oublié.
+    Route::get('/forgot-password', [ForgotPasswordController::class, 'create'])->name('password.request');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'store'])->middleware('throttle:5,1')->name('password.email');
+    Route::get('/reset-password/{token}', [ResetPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reset-password', [ResetPasswordController::class, 'store'])->middleware('throttle:5,1')->name('password.update');
 });
 
 Route::post('/logout', [LoginController::class, 'destroy'])

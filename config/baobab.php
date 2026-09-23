@@ -359,6 +359,27 @@ return [
                 'defaults' => __DIR__.'/../resources/mails/core/security-impersonation-started.json',
             ],
             [
+                'key' => 'core.password_reset',
+                'description' => 'Envoyé à un utilisateur qui a demandé à réinitialiser son mot de passe (spec 04 §9, décision 7) : un lien à durée courte, rien d\'autre.',
+                'variables' => [
+                    'reset_url' => [
+                        'label' => 'Lien de réinitialisation',
+                        'required' => true,
+                    ],
+                    'expires_in' => 'Durée de validité du lien, en minutes',
+                    'user_name' => 'Nom de l\'utilisateur',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/password-reset.json',
+            ],
+            [
+                'key' => 'core.security.password_changed',
+                'description' => 'Envoyé à un utilisateur dont le mot de passe vient d\'être changé ou réinitialisé (spec 11 §6, notification de sécurité non désactivable).',
+                'variables' => [
+                    'occurred_at' => 'Date/heure du changement',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/security-password-changed.json',
+            ],
+            [
                 'key' => 'core.privacy_verification',
                 'description' => 'Envoyé à l\'adresse saisie sur le portail RGPD public, pour confirmer une demande (spec 16 §4, M9 0.b Pass E1) : un lien signé à durée courte, rien de personnel.',
                 'variables' => [
@@ -481,6 +502,13 @@ return [
                 'description' => 'Quelqu\'un s\'est connecté en tant que vous.',
                 'channels' => ['database', 'mail'],
                 'mail_template' => 'core.security.impersonation_started',
+                'configurable' => false,
+            ],
+            [
+                'key' => 'core.security.password_changed',
+                'description' => 'Votre mot de passe a été changé.',
+                'channels' => ['database', 'mail'],
+                'mail_template' => 'core.security.password_changed',
                 'configurable' => false,
             ],
             [
