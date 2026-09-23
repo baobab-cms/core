@@ -19,6 +19,7 @@ use Baobab\Api\Models\ApiSetting;
 use Baobab\Api\Support\ProblemDetailsRenderer;
 use Baobab\Audit\AuditLogger;
 use Baobab\Auth\Models\PersonalAccessToken;
+use Baobab\Auth\RememberDuration;
 use Baobab\Auth\TwoFactorManager;
 use Baobab\Branding\Actions\CompileDesignTokens;
 use Baobab\Branding\Actions\SyncThemeFonts;
@@ -2320,9 +2321,12 @@ class BaobabServiceProvider extends ServiceProvider
             User::class,
         );
 
+        // `remember` (minutes) : durée du cookie « se souvenir de moi »,
+        // appliquée nativement par `AuthManager` (spec 04 §9, décision 6).
         $this->app->make('config')->set('auth.guards.baobab', [
             'driver' => 'session',
             'provider' => 'baobab_users',
+            'remember' => RememberDuration::minutes(),
         ]);
 
         $this->app->make('config')->set('auth.providers.baobab_users', [

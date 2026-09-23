@@ -70,9 +70,13 @@ return [
     | Baobab\Users\Models\User (table `users`). Remplacer par une classe
     | étendant ce modèle pour ajouter des colonnes applicatives.
     |
+    | remember_days : durée, en jours, du cookie « se souvenir de moi » de
+    | l'admin (spec 04 §9, décision 6). Défaut : 30.
+    |
     */
     'auth' => [
         'user_model' => User::class,
+        'remember_days' => (int) env('BAOBAB_REMEMBER_DAYS', 30),
     ],
 
     /*

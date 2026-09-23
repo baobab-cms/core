@@ -59,9 +59,10 @@ final class TwoFactorChallengeController extends Controller
             ]);
         }
 
+        $remember = $request->session()->pull('baobab.2fa.remember') === true;
         $request->session()->forget('baobab.2fa.challenge_user_id');
 
-        Auth::guard('baobab')->login($user);
+        Auth::guard('baobab')->login($user, $remember);
         $request->session()->regenerate();
 
         return redirect()->route('admin.dashboard');

@@ -23,6 +23,7 @@ return [
         'login_title' => 'Connexion',
         'email' => 'E-mail',
         'password' => 'Mot de passe',
+        'remember' => 'Se souvenir de moi',
         'submit' => 'Continuer',
         'failed' => 'Ces identifiants ne correspondent à aucun compte.',
         'two_factor_title' => 'Vérification en deux étapes',

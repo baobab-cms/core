@@ -62,7 +62,7 @@ it('declares the Core cookies as necessary only, so a bare install asks no conse
 
     $names = array_map(fn (CookieDeclaration $cookie): string => $cookie->name, $register->cookies);
 
-    expect($names)->toContain(config('session.cookie'), 'XSRF-TOKEN', 'remember_web_*', 'baobab_consent')
+    expect($names)->toContain(config('session.cookie'), 'XSRF-TOKEN', 'remember_baobab_*', 'baobab_consent')
         ->and($register->inCategory(CookieCategory::Necessary))->toHaveCount(count($register->cookies))
         ->and($register->requiresConsent())->toBeFalse()
         ->and($register->consentCategories())->toBe([]);
