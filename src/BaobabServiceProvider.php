@@ -2114,6 +2114,14 @@ class BaobabServiceProvider extends ServiceProvider
                     url: route('admin.privacy.register.index'),
                     order: 2,
                 );
+
+                $coreItems[] = new SidebarItem(
+                    id: -31,
+                    label: __('baobab::admin.sidebar.privacy_cookies'),
+                    icon: 'bi-cookie',
+                    url: route('admin.privacy.cookies.index'),
+                    order: 2,
+                );
             }
 
             if ($user->can('baobab.privacy.requests.manage')) {

@@ -97,6 +97,7 @@ return [
         'export' => 'Export',
         'import' => 'Import',
         'privacy_register' => 'Registre RGPD',
+        'privacy_cookies' => 'Cookies déclarés',
         'privacy_requests' => 'Demandes RGPD',
         'toggle_collapse' => 'Réduire/étendre la barre latérale',
         'nav_label' => 'Navigation admin',
@@ -774,6 +775,22 @@ return [
         'document_title' => 'Registre des traitements de données personnelles',
         'document_generated' => 'Généré le :date.',
         'document_disclaimer' => 'Document d\'appui : il ne constitue pas le registre légal de l\'exploitant (contexte, responsable de traitement et DPO à compléter).',
+    ],
+
+    'privacy_cookies' => [
+        'title' => 'Cookies déclarés',
+        'intro' => 'Cookies et traceurs déclarés par le Core et par les modules actifs, par catégorie de consentement. C\'est la liste que présente la bannière aux visiteurs ; leur qualification juridique reste de votre ressort.',
+        'banner_shown' => 'Bannière affichée',
+        'banner_shown_help' => 'Au moins un module actif déclare un cookie soumis au consentement : la bannière est proposée aux visiteurs.',
+        'banner_hidden' => 'Bannière non affichée',
+        'banner_hidden_help' => 'Seuls des cookies strictement nécessaires sont déclarés : ils n\'appellent pas de consentement, aucune bannière n\'est proposée.',
+        'name' => 'Nom',
+        'purpose' => 'Finalité',
+        'duration' => 'Durée',
+        'provider' => 'Fournisseur',
+        'source' => 'Déclaré par',
+        'source_core' => 'Core',
+        'empty' => 'Aucun cookie déclaré dans cette catégorie.',
     ],
 
     'export' => [

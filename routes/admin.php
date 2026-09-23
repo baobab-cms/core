@@ -25,6 +25,7 @@ use Baobab\Admin\Media\Http\Controllers\MediaFolderController;
 use Baobab\Admin\Menus\Http\Controllers\MenusController;
 use Baobab\Admin\Modules\Http\Controllers\ModulesController;
 use Baobab\Admin\Notifications\Http\Controllers\NotificationController;
+use Baobab\Admin\Privacy\Http\Controllers\CookiesController;
 use Baobab\Admin\Privacy\Http\Controllers\RegisterController;
 use Baobab\Admin\Privacy\Http\Controllers\RequestsController;
 use Baobab\Admin\Rendering\Http\Controllers\ReadingSettingsController;
@@ -215,6 +216,10 @@ Route::middleware('can:baobab.privacy.register.view')
         Route::get('/', [RegisterController::class, 'index'])->name('index');
         Route::get('/export', [RegisterController::class, 'export'])->name('export');
     });
+
+Route::middleware('can:baobab.privacy.register.view')
+    ->get('privacy/cookies', [CookiesController::class, 'index'])
+    ->name('privacy.cookies.index');
 
 Route::middleware('can:baobab.privacy.requests.manage')
     ->prefix('privacy/requests')
