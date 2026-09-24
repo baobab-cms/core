@@ -9,6 +9,7 @@ use Baobab\Access\Exceptions\HierarchyViolationException;
 use Baobab\Facades\Hook;
 use Baobab\Users\Exceptions\InvitationNotPendingException;
 use Baobab\Users\Models\User;
+use Illuminate\Auth\Passwords\PasswordBroker;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 
@@ -44,7 +45,9 @@ final class CancelUserInvitation
         $id = $user->id;
 
         DB::transaction(function () use ($user): void {
-            Password::broker('baobab_invitations')->deleteToken($user);
+            /** @var PasswordBroker $broker */
+            $broker = Password::broker('baobab_invitations');
+            $broker->deleteToken($user);
 
             // `HasRoles` détache les rôles à la suppression du modèle.
             $user->delete();
