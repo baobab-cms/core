@@ -165,6 +165,89 @@ it('ne prend le mot de passe que par variable d\'environnement', function () {
         ->and(auth('baobab')->attempt(['email' => 'admin@exemple.fr', 'password' => 'motdepasse-choisi']))->toBeTrue();
 });
 
+/**
+ * Suivi n° 355 : la politique s'applique avant la première étape, pas à
+ * l'étape 4 — un refus là laisserait une base migrée pour une faute de saisie.
+ */
+it('refuse un mot de passe trop faible avant de toucher à quoi que ce soit', function () {
+    putenv('BAOBAB_TEST_ADMIN_PASSWORD=court');
+
+    $this->artisan('baobab:install', [
+        '--no-interaction' => true,
+        '--db-connection' => 'sqlite',
+        '--db-database' => ':memory:',
+        '--admin-email' => 'admin@exemple.fr',
+        '--admin-password-env' => 'BAOBAB_TEST_ADMIN_PASSWORD',
+        '--site-name' => 'Mon site',
+        '--url' => 'https://monsite.fr',
+    ])
+        ->expectsOutputToContain('Mot de passe de l\'administrateur refusé')
+        ->assertExitCode(1);
+
+    putenv('BAOBAB_TEST_ADMIN_PASSWORD');
+
+    expect($this->state->hasCompleted(InstallationPipeline::STEP_DATABASE))->toBeFalse()
+        ->and($this->state->isInstalled())->toBeFalse();
+});
+
+/**
+ * Hors test, l'invite redemande tant que la règle n'est pas tenue. Sous
+ * PHPUnit, Laravel lève `PromptValidationException` au premier refus au lieu
+ * de reboucler (`ConfiguresPrompts::promptUntilValid()`), et la console en
+ * fait un code de sortie 1 : ce qui se vérifie ici est donc que le refus
+ * tombe **à l'invite**, avant toute étape.
+ */
+it('refuse à l\'invite, en interactif, un mot de passe trop faible', function () {
+    $this->artisan('baobab:install', [
+        '--db-connection' => 'sqlite',
+        '--db-database' => ':memory:',
+        '--admin-email' => 'admin@exemple.fr',
+        '--site-name' => 'Mon site',
+        '--url' => 'https://monsite.fr',
+    ])
+        ->expectsQuestion('Mot de passe de l\'administrateur', 'court')
+        ->assertExitCode(1);
+
+    expect($this->state->hasCompleted(InstallationPipeline::STEP_DATABASE))->toBeFalse()
+        ->and($this->state->isInstalled())->toBeFalse();
+});
+
+it('accepte en interactif un mot de passe conforme', function () {
+    $this->artisan('baobab:install', [
+        '--db-connection' => 'sqlite',
+        '--db-database' => ':memory:',
+        '--admin-email' => 'admin@exemple.fr',
+        '--site-name' => 'Mon site',
+        '--url' => 'https://monsite.fr',
+    ])
+        ->expectsQuestion('Mot de passe de l\'administrateur', 'motdepasse-choisi')
+        ->expectsConfirmation('Poser un contenu de démonstration (deux pages, trois articles) ?', 'no')
+        ->assertExitCode(0);
+
+    expect(auth('baobab')->attempt(['email' => 'admin@exemple.fr', 'password' => 'motdepasse-choisi']))->toBeTrue();
+});
+
+/**
+ * Une réponse vide créait jusque-là un compte au mot de passe vide : elle
+ * fait désormais générer le mot de passe, comme l'absence de variable en
+ * mode non interactif.
+ */
+it('génère le mot de passe sur une réponse vide en interactif', function () {
+    $this->artisan('baobab:install', [
+        '--db-connection' => 'sqlite',
+        '--db-database' => ':memory:',
+        '--admin-email' => 'admin@exemple.fr',
+        '--site-name' => 'Mon site',
+        '--url' => 'https://monsite.fr',
+    ])
+        ->expectsQuestion('Mot de passe de l\'administrateur', '')
+        ->expectsConfirmation('Poser un contenu de démonstration (deux pages, trois articles) ?', 'no')
+        ->assertExitCode(0);
+
+    expect(auth('baobab')->attempt(['email' => 'admin@exemple.fr', 'password' => '']))->toBeFalse()
+        ->and(mb_strlen((string) User::query()->where('email', 'admin@exemple.fr')->value('password')))->toBeGreaterThan(0);
+});
+
 it('reprend une installation coupée sans rejouer ce qui est fait', function () {
     $this->state->recordStep(InstallationPipeline::STEP_DATABASE);
     $this->state->recordStep(InstallationPipeline::STEP_MIGRATIONS);

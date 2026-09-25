@@ -6,7 +6,10 @@ namespace Baobab\Install\Actions;
 
 use Baobab\Install\SuperAdminResult;
 use Baobab\Users\Models\User;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password as PasswordRule;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
 /**
@@ -24,6 +27,11 @@ use Spatie\Permission\Models\Role;
  * toucher au mot de passe. C'est ce qui permet à la commande de servir de
  * secours sur une instance vivante, et à une installation reprise de repasser
  * ici sans casser le compte qu'elle venait de créer.
+ *
+ * **Un mot de passe fourni respecte `Password::defaults()`** (spec 15 §4,
+ * spec admin §9 « installateur compris ») — vérifié ici et non dans les seuls
+ * adaptateurs, depuis le 24 septembre 2026 : l'assistant le contrôlait dans
+ * son contrôleur, `baobab:install` ne le contrôlait nulle part (suivi n° 355).
  */
 final class CreateSuperAdmin
 {
@@ -31,6 +39,9 @@ final class CreateSuperAdmin
 
     public const GUARD = 'baobab';
 
+    /**
+     * @throws ValidationException mot de passe fourni trop faible (`password`)
+     */
     public function __invoke(string $email, ?string $name = null, ?string $password = null): SuperAdminResult
     {
         $user = User::query()->where('email', $email)->first();
@@ -38,6 +49,13 @@ final class CreateSuperAdmin
         $generated = null;
 
         if (! $user instanceof User) {
+            if ($password !== null) {
+                Validator::make(
+                    ['password' => $password],
+                    ['password' => ['required', 'string', PasswordRule::defaults()]],
+                )->validate();
+            }
+
             // Un mot de passe forgé plutôt qu'un compte sans mot de passe :
             // la commande de secours doit pouvoir créer un accès utilisable
             // sans qu'on lui en dicte un.

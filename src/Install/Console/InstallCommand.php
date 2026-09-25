@@ -15,6 +15,8 @@ use Baobab\Install\InstallationSummary;
 use Baobab\Install\InstallPaths;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\password;
@@ -152,7 +154,7 @@ final class InstallCommand extends Command
             siteName: (string) $siteName,
             url: (string) $url,
             adminName: $this->stringOption('admin-name'),
-            adminPassword: $this->secretFromEnv('admin-password-env', $interactive, 'Mot de passe de l\'administrateur'),
+            adminPassword: $this->adminPassword($interactive),
             timezone: $this->stringOption('timezone') ?? 'UTC',
             registrationOpen: ! $this->option('closed-registration'),
             // **Drapeau et non invite** : le §8 point 2 veut un opt-in
@@ -247,6 +249,57 @@ final class InstallCommand extends Command
         }
 
         return $interactive ? password($label) : null;
+    }
+
+    /**
+     * Le mot de passe du premier compte, soumis à `Password::defaults()`
+     * **avant la première étape** (suivi n° 355). `CreateSuperAdmin` le
+     * vérifie aussi, mais à l'étape 4, base déjà migrée : un refus là
+     * laisserait une installation à reprendre pour une faute de saisie.
+     *
+     * En interactif, l'invite redemande tant que la règle n'est pas tenue ;
+     * une réponse vide fait générer le mot de passe, comme l'absence de
+     * variable en mode non interactif — elle créait jusque-là un compte au
+     * mot de passe vide.
+     */
+    private function adminPassword(bool $interactive): ?string
+    {
+        $variable = $this->stringOption('admin-password-env');
+
+        if ($variable !== null) {
+            $value = getenv($variable);
+
+            if ($value === false) {
+                return null;
+            }
+
+            $error = $this->passwordError($value);
+
+            if ($error !== null) {
+                throw InstallationStepFailed::database('Mot de passe de l\'administrateur refusé : '.$error);
+            }
+
+            return $value;
+        }
+
+        if (! $interactive) {
+            return null;
+        }
+
+        $value = password(
+            label: 'Mot de passe de l\'administrateur',
+            validate: fn (string $value): ?string => $value === '' ? null : $this->passwordError($value),
+            hint: 'Laisser vide pour en générer un.',
+        );
+
+        return $value === '' ? null : $value;
+    }
+
+    private function passwordError(string $value): ?string
+    {
+        $validator = Validator::make(['password' => $value], ['password' => ['string', PasswordRule::defaults()]]);
+
+        return $validator->fails() ? $validator->errors()->first('password') : null;
     }
 
     private function stringOption(string $name): ?string

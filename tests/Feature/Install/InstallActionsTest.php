@@ -15,6 +15,8 @@ use Baobab\Users\Models\RegistrationSetting;
 use Baobab\Users\Models\User;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Spec 15 §4, étapes 2 à 6 — les cinq Actions de la Pass A2.
@@ -125,6 +127,24 @@ it('reste idempotente sur un e-mail déjà connu, sans toucher au mot de passe',
         ->and($second->user->fresh()->password)->toBe($empreinte)
         ->and(User::query()->where('email', 'admin@exemple.fr')->count())->toBe(1);
 })->note('C\'est ce qui permet à baobab:super-admin de servir de secours sur une instance vivante.');
+
+/**
+ * Suivi n° 355 : la règle vit dans l'Action, pas dans le seul contrôleur de
+ * l'assistant — `baobab:install` passait un mot de passe sans aucun contrôle.
+ */
+it('refuse un mot de passe fourni plus faible que Password::defaults(), sans créer le compte', function () {
+    expect(fn () => app(CreateSuperAdmin::class)('admin@exemple.fr', 'Privat', 'court'))
+        ->toThrow(ValidationException::class);
+
+    expect(User::query()->where('email', 'admin@exemple.fr')->exists())->toBeFalse();
+});
+
+it('applique la politique surchargée par l\'application hôte', function () {
+    Password::defaults(fn (): Password => Password::min(20));
+
+    expect(fn () => app(CreateSuperAdmin::class)('admin@exemple.fr', 'Privat', 'motdepasse-choisi'))
+        ->toThrow(ValidationException::class);
+});
 
 // ── Étape 5 ────────────────────────────────────────────────────────────────
 
