@@ -52,6 +52,9 @@ final class UserController
             'canImpersonate' => $actor->can('baobab.users.impersonate') && ! $user->is($actor) && $user->level() < $actor->level(),
             'canManageRoles' => $canManageRoles,
             'canResendInvitation' => $canManageRoles && $user->hasPendingInvitation(),
+            // Même garde que les rôles (spec 05 §4.1) ; son propre profil
+            // se modifie depuis Mon compte.
+            'canEditProfile' => $canManageRoles,
             'grantableRoles' => $canManageRoles
                 ? $roleOptions->assignableBy($actor)->reject(fn ($role): bool => $user->roles->contains('id', $role->id))->values()
                 : collect(),

@@ -25,6 +25,10 @@ final class ImpersonationGuard
     private const BLOCKED_ROUTE_PREFIXES = [
         'admin.access.',
         'admin.account.security.',
+        // Changer l'e-mail du compte usurpé serait en reprendre la main :
+        // le lien de validation part à l'adresse actuelle, jamais à
+        // l'usurpateur, mais la demande elle-même n'a pas à se faire ici.
+        'admin.account.profile.',
         // Audit sécurité du 7 septembre 2026 (constat n° 3) : sans ce blocage,
         // l'identité impersonée pouvait créer un token API Sanctum portant ses
         // propres abilities, puis conserver un accès durable une fois

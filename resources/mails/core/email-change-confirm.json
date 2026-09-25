@@ -1,0 +1,4 @@
+{
+    "subject": "Confirmez votre nouvelle adresse e-mail",
+    "body": "Bonjour {{ user_name }},<br><br>Cette adresse a été indiquée comme nouvelle adresse e-mail de votre compte. Pour la confirmer, ouvrez ce lien : <a href=\"{{ confirm_url }}\">Confirmer mon adresse</a>.<br><br>Ce lien est valable {{ expires_in }} heures et ne peut servir qu'une fois. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : rien ne sera modifié."
+}

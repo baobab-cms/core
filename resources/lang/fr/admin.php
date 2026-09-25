@@ -51,6 +51,16 @@ return [
         'invitation_submit' => 'Activer mon compte',
         'invitation_accepted' => 'Votre compte est activé. Vous pouvez vous connecter.',
         'invitation_link_invalid' => 'Ce lien d\'invitation est invalide ou a expiré. Demandez à un administrateur de vous en renvoyer un.',
+        'profile_change_title' => 'Confirmer une modification de compte',
+        'profile_change_intro_verify' => 'Vous validez, depuis votre adresse actuelle, la modification suivante de votre compte :',
+        'profile_change_intro_confirm' => 'Vous confirmez cette adresse comme nouvelle adresse e-mail du compte de :name.',
+        'profile_change_new_name' => 'Nouveau nom : :name',
+        'profile_change_new_email' => 'Nouvelle adresse e-mail : :email',
+        'profile_change_submit' => 'Confirmer',
+        'profile_change_applied' => 'La modification est appliquée. Si vous aviez changé d\'adresse e-mail, connectez-vous avec la nouvelle.',
+        'profile_change_awaiting' => 'Adresse actuelle validée. Un message a été envoyé à la nouvelle adresse : la modification s\'applique quand elle l\'aura confirmée.',
+        'profile_change_invalid' => 'Ce lien est invalide, a expiré ou a été remplacé par une demande plus récente. Refaites la demande depuis votre compte.',
+        'profile_change_login' => 'Aller à la connexion',
     ],
 
     'errors' => [
@@ -174,6 +184,22 @@ return [
             'cancelled' => 'Invitation de :email annulée, compte supprimé.',
         ],
 
+        'profile' => [
+            'title' => 'Nom et adresse e-mail',
+            'intro' => 'La modification est validée par un lien envoyé à l\'adresse actuelle du compte ; pour un e-mail, la nouvelle adresse doit ensuite la confirmer.',
+            'name_label' => 'Nom',
+            'email_label' => 'Adresse e-mail',
+            'submit' => 'Demander la modification',
+            'requested' => 'Un message de validation a été envoyé à :email. Rien ne change avant que son titulaire ait ouvert le lien.',
+            'lost_mailbox_toggle' => 'Boîte e-mail perdue : le titulaire n\'a plus accès à son adresse actuelle',
+            'lost_mailbox_hint' => 'Exception tracée : la validation par l\'adresse actuelle est contournée, la nouvelle adresse confirme seule, l\'ancienne est avertie, les sessions du compte sont fermées à l\'application. Ne change que l\'e-mail ; la 2FA est conservée.',
+            'admin_password_label' => 'Votre mot de passe',
+            'admin_password_invalid' => 'Votre mot de passe est incorrect.',
+            'justification_label' => 'Justification (conservée dans l\'audit)',
+            'lost_mailbox_submit' => 'Demander le changement d\'adresse',
+            'lost_mailbox_email_only' => 'Cette exception ne change que l\'adresse e-mail, et une adresse différente de l\'actuelle.',
+            'requested_lost_mailbox' => 'Un message de confirmation a été envoyé à :email. Le changement s\'applique quand cette adresse l\'aura confirmé.',
+        ],
         'roles' => [
             'grant_label' => 'Ajouter un rôle',
             'grant_action' => 'Ajouter',
@@ -214,6 +240,20 @@ return [
     ],
 
     'account' => [
+        'profile' => [
+            'title' => 'Profil',
+            'intro' => 'Toute modification est validée par un lien envoyé à votre adresse actuelle. Pour un changement d\'adresse e-mail, la nouvelle adresse doit ensuite la confirmer à son tour.',
+            'name_label' => 'Nom',
+            'email_label' => 'Adresse e-mail',
+            'submit' => 'Demander la modification',
+            'requested' => 'Un message de validation a été envoyé à :email. Rien ne change avant que vous ayez ouvert son lien.',
+            'nothing_to_change' => 'Rien à modifier : les valeurs saisies sont déjà celles du compte.',
+            'email_taken' => 'Cette adresse e-mail est déjà utilisée par un autre compte.',
+            'invitation_pending' => 'Ce compte n\'a pas encore accepté son invitation : annulez l\'invitation, puis invitez la bonne adresse.',
+            'pending_verify' => 'Une demande est en attente de validation par votre adresse actuelle (:email). Une nouvelle demande la remplace.',
+            'pending_confirm' => 'Une demande est en attente de confirmation par la nouvelle adresse (:email). Une nouvelle demande la remplace.',
+            'pending_expires' => 'Le lien expire le :date.',
+        ],
         'security' => [
             'title' => 'Sécurité du compte',
             'not_enabled_intro' => 'La vérification en deux étapes n\'est pas activée sur votre compte.',

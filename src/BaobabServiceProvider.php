@@ -171,6 +171,7 @@ use Baobab\System\HealthChecks\SchedulerCheck;
 use Baobab\System\HealthChecks\StorageCheck;
 use Baobab\System\Http\Middleware\PreventAdminAccessDuringMaintenance;
 use Baobab\Users\Actions\SendUserInvitation;
+use Baobab\Users\Models\ProfileChangeRequest;
 use Baobab\Users\Models\User;
 use Baobab\Users\UserDirectory;
 use Baobab\Webhooks\Actions\DispatchWebhookEvent;
@@ -1570,6 +1571,33 @@ class BaobabServiceProvider extends ServiceProvider
 
         $registry->listen('baobab.user.password.changed', function (User $user) use ($audit): void {
             $audit()->record('user.password.changed', $user);
+        });
+
+        // Changement de nom ou d'e-mail (spec 05 §5, décision 5 f-g et j). La
+        // justification de l'exception « boîte perdue » est tracée à la
+        // demande comme à l'application ; jamais de jeton dans l'audit.
+        $registry->listen('baobab.user.profile.change_requested', function (User $user, ProfileChangeRequest $request, User $actor) use ($audit): void {
+            $audit()->record('user.profile.change_requested', $user, array_filter([
+                'new_name' => $request->new_name,
+                'new_email' => $request->new_email,
+                'lost_mailbox' => $request->forced ?: null,
+                'justification' => $request->justification,
+                'requested_by' => $actor->name,
+            ], fn (mixed $value): bool => $value !== null));
+        });
+
+        $registry->listen('baobab.user.profile.change_verified', function (User $user, ProfileChangeRequest $request) use ($audit): void {
+            $audit()->record('user.profile.change_verified', $user, ['new_email' => $request->new_email]);
+        });
+
+        $registry->listen('baobab.user.profile.changed', function (User $user, array $before, ProfileChangeRequest $request, ?User $requester) use ($audit): void {
+            $audit()->record('user.profile.changed', $user, array_filter([
+                'before' => $before,
+                'after' => ['name' => $user->name, 'email' => $user->email],
+                'lost_mailbox' => $request->forced ?: null,
+                'justification' => $request->justification,
+                'requested_by' => $requester?->name,
+            ], fn (mixed $value): bool => $value !== null));
         });
     }
 

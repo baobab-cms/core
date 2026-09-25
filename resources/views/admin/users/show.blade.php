@@ -95,6 +95,67 @@
             </x-baobab::card>
         </div>
 
+        @if ($canEditProfile)
+            <x-baobab::card class="mt-6" :header="__('baobab::admin.users.profile.title')">
+                <p class="mb-4 text-sm text-muted">{{ __('baobab::admin.users.profile.intro') }}</p>
+
+                <x-baobab::form
+                    method="PUT"
+                    action="{{ route('admin.users.profile.update', ['user' => $user]) }}"
+                    class="max-w-sm"
+                    x-data="{ lostMailbox: {{ old('lost_mailbox') ? 'true' : 'false' }} }"
+                >
+                    <x-baobab::field.text
+                        name="name"
+                        id="profile_name"
+                        bag="updateProfile"
+                        :value="$user->name"
+                        label="{{ __('baobab::admin.users.profile.name_label') }}"
+                    />
+                    <x-baobab::field.text
+                        type="email"
+                        name="email"
+                        id="profile_email"
+                        bag="updateProfile"
+                        :value="$user->email"
+                        :readonly="$user->hasPendingInvitation()"
+                        label="{{ __('baobab::admin.users.profile.email_label') }}"
+                    />
+
+                    @if ($user->hasPendingInvitation())
+                        <p class="mb-4 text-xs text-muted">{{ __('baobab::admin.account.profile.invitation_pending') }}</p>
+                    @else
+                        <label class="mb-2 flex items-start gap-2 text-sm text-foreground">
+                            <input type="checkbox" name="lost_mailbox" value="1" x-model="lostMailbox" class="mt-1 rounded border-border">
+                            <span>{{ __('baobab::admin.users.profile.lost_mailbox_toggle') }}</span>
+                        </label>
+
+                        <div x-show="lostMailbox" x-cloak class="mb-2">
+                            <p class="mb-3 text-xs text-muted">{{ __('baobab::admin.users.profile.lost_mailbox_hint') }}</p>
+                            <x-baobab::field.text
+                                type="password"
+                                name="admin_password"
+                                id="profile_admin_password"
+                                bag="updateProfile"
+                                autocomplete="current-password"
+                                label="{{ __('baobab::admin.users.profile.admin_password_label') }}"
+                            />
+                            <x-baobab::field.text
+                                name="justification"
+                                id="profile_justification"
+                                bag="updateProfile"
+                                label="{{ __('baobab::admin.users.profile.justification_label') }}"
+                            />
+                        </div>
+                    @endif
+
+                    <x-baobab::button type="submit" variant="primary">
+                        {{ __('baobab::admin.users.profile.submit') }}
+                    </x-baobab::button>
+                </x-baobab::form>
+            </x-baobab::card>
+        @endif
+
         <x-baobab::card class="mt-6" :header="__('baobab::admin.users.show.direct_permissions_title')">
             <p class="mb-3 text-xs text-muted">{{ __('baobab::admin.users.show.direct_permissions_hint') }}</p>
 

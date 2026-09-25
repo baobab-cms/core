@@ -6,6 +6,7 @@ use Baobab\Admin\Access\Http\Controllers\AccessMatrixController;
 use Baobab\Admin\Access\Http\Controllers\DirectPermissionController;
 use Baobab\Admin\Account\Http\Controllers\ApiTokenController;
 use Baobab\Admin\Account\Http\Controllers\NotificationPreferencesController;
+use Baobab\Admin\Account\Http\Controllers\ProfileController;
 use Baobab\Admin\Account\Http\Controllers\SecurityController;
 use Baobab\Admin\Api\Http\Controllers\ApiSettingsController;
 use Baobab\Admin\Branding\Http\Controllers\BrandingController;
@@ -48,6 +49,7 @@ use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Admin\Users\Http\Controllers\SessionController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
 use Baobab\Admin\Users\Http\Controllers\UserInvitationController;
+use Baobab\Admin\Users\Http\Controllers\UserProfileController;
 use Baobab\Admin\Users\Http\Controllers\UserRoleController;
 use Baobab\Admin\Webhooks\Http\Controllers\WebhookDeliveriesController;
 use Baobab\Admin\Webhooks\Http\Controllers\WebhookSubscriptionsController;
@@ -57,6 +59,13 @@ use Baobab\Users\UserDirectory;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('baobab::admin.dashboard'))->name('dashboard');
+
+Route::prefix('account/profile')
+    ->name('account.profile.')
+    ->group(function (): void {
+        Route::get('/', [ProfileController::class, 'show'])->name('show');
+        Route::put('/', [ProfileController::class, 'update'])->name('update');
+    });
 
 Route::prefix('account/security')
     ->name('account.security.')
@@ -465,6 +474,7 @@ Route::middleware('can:baobab.users.manage')
         Route::post('/', [UserInvitationController::class, 'store'])->name('store');
         Route::post('/{user}/invitation', [UserInvitationController::class, 'resend'])->name('invitation.resend');
         Route::delete('/{user}/invitation', [UserInvitationController::class, 'cancel'])->name('invitation.cancel');
+        Route::put('/{user}/profile', [UserProfileController::class, 'update'])->name('profile.update');
         Route::post('/{user}/roles', [UserRoleController::class, 'store'])->name('roles.store');
         Route::delete('/{user}/roles/{role}', [UserRoleController::class, 'destroy'])->name('roles.destroy');
     });

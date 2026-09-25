@@ -174,6 +174,117 @@
                         "$ref": "#/components/responses/NotFound"
                     }
                 }
+            },
+            "patch": {
+                "summary": "Modifier le nom ou l'e-mail d'un utilisateur (validé par e-mail)",
+                "description": "Le titulaire ou un admin qui le domine (baobab.users.manage). Un compte dont l'invitation est en attente n'a pas d'e-mail modifiable : annuler l'invitation, puis inviter la bonne adresse.",
+                "tags": [
+                    "users"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "maxLength": 255
+                                    },
+                                    "lost_mailbox": {
+                                        "type": "boolean",
+                                        "description": "Exception « boîte perdue » : réservée à un admin qui domine le compte, ne change que l'e-mail. Exige admin_password et justification ; la demande part à la nouvelle adresse."
+                                    },
+                                    "admin_password": {
+                                        "type": "string",
+                                        "description": "Mot de passe de l'admin qui fait la demande (« boîte perdue » seulement)."
+                                    },
+                                    "justification": {
+                                        "type": "string",
+                                        "maxLength": 1000,
+                                        "description": "Obligatoire pour « boîte perdue » ; conservée dans l'audit."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Demande enregistrée. Rien n'est modifié tant que le lien envoyé par e-mail n'est pas confirmé : à l'adresse actuelle du compte (puis à la nouvelle pour un e-mail), ou à la nouvelle adresse seule pour « boîte perdue ».",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "pending"
+                                                    ]
+                                                },
+                                                "stage": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "verify",
+                                                        "confirm"
+                                                    ],
+                                                    "description": "verify : en attente de l'adresse actuelle ; confirm : en attente de la nouvelle."
+                                                },
+                                                "new_name": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "new_email": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "lost_mailbox": {
+                                                    "type": "boolean"
+                                                },
+                                                "expires_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
             }
         },
         "/users/{user}/invitation": {
@@ -393,6 +504,93 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            }
+        },
+        "/me": {
+            "patch": {
+                "summary": "Modifier son propre nom ou e-mail (validé par e-mail)",
+                "description": "Le compte authentifié. Mêmes règles que PATCH /users/{user}, sans l'exception « boîte perdue ».",
+                "tags": [
+                    "users"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "maxLength": 255
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Demande enregistrée. Rien n'est modifié tant que le lien envoyé par e-mail n'est pas confirmé : à l'adresse actuelle du compte (puis à la nouvelle pour un e-mail), ou à la nouvelle adresse seule pour « boîte perdue ».",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "pending"
+                                                    ]
+                                                },
+                                                "stage": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "verify",
+                                                        "confirm"
+                                                    ],
+                                                    "description": "verify : en attente de l'adresse actuelle ; confirm : en attente de la nouvelle."
+                                                },
+                                                "new_name": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "new_email": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "lost_mailbox": {
+                                                    "type": "boolean"
+                                                },
+                                                "expires_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
                     }
                 }
             }

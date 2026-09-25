@@ -1,0 +1,4 @@
+{
+    "subject": "Confirmez la modification de votre compte",
+    "body": "Bonjour {{ user_name }},<br><br>Une modification de votre compte a été demandée :<br>{{# if new_name }}— nouveau nom : {{ new_name }}<br>{{/ if }}{{# if new_email }}— nouvelle adresse e-mail : {{ new_email }}<br>{{/ if }}<br>Pour la valider, ouvrez ce lien : <a href=\"{{ confirm_url }}\">Confirmer la modification</a>.<br><br>{{# if new_email }}Un second message sera ensuite envoyé à la nouvelle adresse, qui devra aussi la confirmer.<br><br>{{/ if }}Ce lien est valable {{ expires_in }} heures et ne peut servir qu'une fois. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : rien ne sera modifié."
+}

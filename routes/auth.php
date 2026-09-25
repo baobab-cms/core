@@ -6,6 +6,7 @@ use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Auth\Http\Controllers\ForgotPasswordController;
 use Baobab\Auth\Http\Controllers\InvitationController;
 use Baobab\Auth\Http\Controllers\LoginController;
+use Baobab\Auth\Http\Controllers\ProfileChangeController;
 use Baobab\Auth\Http\Controllers\ResetPasswordController;
 use Baobab\Auth\Http\Controllers\TwoFactorChallengeController;
 use Baobab\Install\Http\Middleware\RedirectToInstaller;
@@ -37,6 +38,14 @@ Route::middleware([RedirectToInstaller::class, 'web', 'guest:baobab'])->group(fu
     // Spec 05 §5, décision 5 : l'invité choisit son mot de passe.
     Route::get('/invitation/{token}', [InvitationController::class, 'create'])->name('invitation.accept');
     Route::post('/invitation', [InvitationController::class, 'store'])->middleware('throttle:5,1')->name('invitation.store');
+});
+
+// Spec 05 §5, décision 5 f-g et j : confirmation d'un changement de nom ou
+// d'e-mail depuis le lien reçu. Connecté ou non — le titulaire confirme depuis
+// sa messagerie, pas forcément depuis son navigateur d'administration.
+Route::middleware([RedirectToInstaller::class, 'web'])->group(function (): void {
+    Route::get('/profile-change/{token}', [ProfileChangeController::class, 'show'])->name('profile-change.show');
+    Route::post('/profile-change', [ProfileChangeController::class, 'confirm'])->middleware('throttle:5,1')->name('profile-change.confirm');
 });
 
 Route::post('/logout', [LoginController::class, 'destroy'])

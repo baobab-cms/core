@@ -386,6 +386,44 @@ return [
                 'defaults' => __DIR__.'/../resources/mails/core/user-invited.json',
             ],
             [
+                'key' => 'core.email_change_verify',
+                'description' => 'Envoyé à l\'adresse actuelle d\'un compte dont le nom ou l\'e-mail est modifié, pour valider la demande (spec 05 §5, décision 5 f et j) : un lien, et ce qui va changer.',
+                'variables' => [
+                    'confirm_url' => [
+                        'label' => 'Lien de validation',
+                        'required' => true,
+                    ],
+                    'expires_in' => 'Durée de validité du lien, en heures',
+                    'user_name' => 'Nom du titulaire du compte',
+                    'new_name' => 'Nouveau nom (vide si le nom ne change pas)',
+                    'new_email' => 'Nouvelle adresse e-mail (vide si elle ne change pas)',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/email-change-verify.json',
+            ],
+            [
+                'key' => 'core.email_change_confirm',
+                'description' => 'Envoyé à la nouvelle adresse d\'un compte, une fois l\'adresse actuelle validée — ou seul, dans l\'exception « boîte perdue » (spec 05 §5, décision 5 f-g et j).',
+                'variables' => [
+                    'confirm_url' => [
+                        'label' => 'Lien de confirmation',
+                        'required' => true,
+                    ],
+                    'expires_in' => 'Durée de validité du lien, en heures',
+                    'user_name' => 'Nom du titulaire du compte',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/email-change-confirm.json',
+            ],
+            [
+                'key' => 'core.email_change_warning',
+                'description' => 'Envoyé à l\'adresse actuelle quand un admin demande un changement d\'e-mail par l\'exception « boîte perdue » (spec 05 §5, décision 5 g et j) ; la justification n\'y figure pas, elle reste dans l\'audit.',
+                'variables' => [
+                    'new_email' => 'Adresse demandée',
+                    'actor_name' => 'Nom de l\'admin qui fait la demande',
+                    'changed_at' => 'Date/heure de la demande',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/email-change-warning.json',
+            ],
+            [
                 'key' => 'core.security.password_changed',
                 'description' => 'Envoyé à un utilisateur dont le mot de passe vient d\'être changé ou réinitialisé (spec 11 §6, notification de sécurité non désactivable).',
                 'variables' => [

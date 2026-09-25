@@ -25,6 +25,8 @@ Route::get('content/{type}/{entry}/revisions', [ContentController::class, 'revis
 Route::get('users', [UsersController::class, 'index'])->name('users.index');
 Route::post('users', [UsersController::class, 'store'])->name('users.store');
 Route::get('users/{user}', [UsersController::class, 'show'])->name('users.show');
+Route::patch('users/{user}', [UsersController::class, 'update'])->name('users.update');
+Route::patch('me', [UsersController::class, 'updateMe'])->name('me.update');
 Route::post('users/{user}/invitation', [UsersController::class, 'resendInvitation'])->name('users.invitation.resend');
 Route::delete('users/{user}/invitation', [UsersController::class, 'cancelInvitation'])->name('users.invitation.cancel');
 Route::post('users/{user}/roles', [UsersController::class, 'grantRole'])->name('users.roles.store');

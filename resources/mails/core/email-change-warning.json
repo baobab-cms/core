@@ -1,0 +1,4 @@
+{
+    "subject": "Le changement de l'adresse e-mail de votre compte a été demandé",
+    "body": "Bonjour,<br><br>{{ actor_name }} a demandé, le {{ changed_at }}, que l'adresse e-mail de votre compte devienne {{ new_email }}. Cette demande contourne la validation par votre adresse actuelle : elle n'aboutira que si la nouvelle adresse la confirme.<br><br>Si vous n'êtes pas à l'origine de cette demande ou si vous ne la reconnaissez pas, contactez sans attendre un administrateur du site."
+}

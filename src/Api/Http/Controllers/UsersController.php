@@ -11,11 +11,14 @@ use Baobab\Api\Support\ApiActor;
 use Baobab\Users\Actions\CancelUserInvitation;
 use Baobab\Users\Actions\GrantUserRole;
 use Baobab\Users\Actions\InviteUser;
+use Baobab\Users\Actions\RequestProfileChange;
 use Baobab\Users\Actions\RevokeUserRole;
 use Baobab\Users\Actions\SendUserInvitation;
 use Baobab\Users\Exceptions\InvitationNotPendingException;
+use Baobab\Users\Models\ProfileChangeRequest;
 use Baobab\Users\Models\User;
 use Baobab\Users\UserDirectory;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -96,6 +99,75 @@ final class UsersController
             201,
             ['Location' => route('api.v1.users.show', ['user' => $user->id])],
         );
+    }
+
+    /**
+     * `PATCH /users/{id}` (spec 05 §5, décision 5 f-g et j) : nom et e-mail
+     * d'un compte. Chemin ordinaire : `202`, la demande est enregistrée et
+     * part à l'adresse actuelle du compte pour validation ; rien n'est encore
+     * modifié. « Boîte perdue » : `lost_mailbox`, `admin_password` et
+     * `justification`, la demande part à la nouvelle adresse.
+     */
+    public function update(Request $request, string $user, RequestProfileChange $requestChange): JsonResponse
+    {
+        return $this->requestProfileChange($request, $this->requireActor(), $this->findUserOrFail($user), $requestChange);
+    }
+
+    /**
+     * `PATCH /me` : nom et e-mail du compte authentifié — mêmes règles, sans
+     * l'exception « boîte perdue » (on ne perd pas la boîte de son propre
+     * compte : un admin le fait pour lui).
+     */
+    public function updateMe(Request $request, RequestProfileChange $requestChange): JsonResponse
+    {
+        $actor = $this->requireActor();
+
+        return $this->requestProfileChange($request, $actor, $actor, $requestChange);
+    }
+
+    private function requestProfileChange(Request $request, User $actor, User $target, RequestProfileChange $requestChange): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['sometimes', 'string', 'max:255'],
+            'email' => ['sometimes', 'string', 'max:255'],
+            'lost_mailbox' => ['sometimes', 'boolean'],
+            'admin_password' => ['sometimes', 'nullable', 'string'],
+            'justification' => ['sometimes', 'nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $pending = $requestChange(
+                $actor,
+                $target,
+                isset($validated['name']) ? (string) $validated['name'] : null,
+                isset($validated['email']) ? (string) $validated['email'] : null,
+                (bool) ($validated['lost_mailbox'] ?? false),
+                isset($validated['admin_password']) ? (string) $validated['admin_password'] : null,
+                isset($validated['justification']) ? (string) $validated['justification'] : null,
+            );
+        } catch (HierarchyViolationException|AuthorizationException) {
+            abort(403);
+        }
+
+        return response()->json(['data' => $this->pendingChange($pending)], 202);
+    }
+
+    /**
+     * Ce que la réponse dit d'une demande en attente : jamais le jeton, ni la
+     * justification.
+     *
+     * @return array<string, mixed>
+     */
+    private function pendingChange(ProfileChangeRequest $pending): array
+    {
+        return [
+            'status' => 'pending',
+            'stage' => $pending->stage->value,
+            'new_name' => $pending->new_name,
+            'new_email' => $pending->new_email,
+            'lost_mailbox' => $pending->forced,
+            'expires_at' => $pending->expires_at->toIso8601String(),
+        ];
     }
 
     public function resendInvitation(string $user, SendUserInvitation $send): Response
