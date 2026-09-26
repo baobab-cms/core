@@ -77,6 +77,7 @@ use Baobab\Console\Commands\ThemeMakeCommand;
 use Baobab\Console\Commands\ThemePackageCommand;
 use Baobab\Console\Commands\ThemePreviewCommand;
 use Baobab\Console\Commands\ThemeValidateCommand;
+use Baobab\Console\Commands\UserPasswordCommand;
 use Baobab\ContentTypes\Fields\FieldRegistry;
 use Baobab\ContentTypes\Fields\Types\BooleanField;
 use Baobab\ContentTypes\Fields\Types\DateField;
@@ -512,6 +513,7 @@ class BaobabServiceProvider extends ServiceProvider
                 InstallCommand::class,
                 CheckCommand::class,
                 SuperAdminCommand::class,
+                UserPasswordCommand::class,
                 ContentTypeBuildCommand::class,
                 ContentTypeMakeCommand::class,
                 MediaRegenerateCommand::class,
@@ -1585,8 +1587,10 @@ class BaobabServiceProvider extends ServiceProvider
             ], fn (mixed $value): bool => $value !== null));
         });
 
-        $registry->listen('baobab.user.password.changed', function (User $user) use ($audit): void {
-            $audit()->record('user.password.changed', $user);
+        // `$source` n'est renseignée que par la commande de secours console
+        // (spec 05 §6.1) : l'écran de compte n'en passe pas.
+        $registry->listen('baobab.user.password.changed', function (User $user, ?string $source = null) use ($audit): void {
+            $audit()->record('user.password.changed', $user, $source === null ? [] : ['source' => $source]);
         });
 
         // Changement de nom ou d'e-mail (spec 05 §5, décision 5 f-g et j). La
