@@ -51,6 +51,68 @@
                         </x-baobab::confirm>
                     @endif
                 @endif
+
+                @if ($user->isDeactivated())
+                    <p class="mt-3 text-sm font-medium text-danger">
+                        {{ __('baobab::admin.users.status.deactivated_since', ['date' => $user->deactivated_at?->format('Y-m-d H:i')]) }}
+                    </p>
+
+                    @if ($user->deactivation_reason)
+                        <p class="mt-1 text-sm text-muted">
+                            {{ __('baobab::admin.users.status.reason_shown', ['reason' => $user->deactivation_reason]) }}
+                        </p>
+                    @endif
+                @endif
+
+                @if ($canManageStatus)
+                    <div class="mt-3">
+                        @if ($user->isDeactivated())
+                            <x-baobab::button type="button" variant="secondary" x-on:click="$dispatch('open-modal', 'reactivate-user')">
+                                {{ __('baobab::admin.users.status.reactivate_action') }}
+                            </x-baobab::button>
+                        @else
+                            <x-baobab::button type="button" variant="danger" x-on:click="$dispatch('open-modal', 'deactivate-user')">
+                                {{ __('baobab::admin.users.status.deactivate_action') }}
+                            </x-baobab::button>
+                        @endif
+                    </div>
+
+                    @if ($user->isDeactivated())
+                        <x-baobab::confirm name="reactivate-user" :title="__('baobab::admin.users.status.reactivate_confirm_title')">
+                            <x-slot:description>
+                                {{ __('baobab::admin.users.status.reactivate_confirm_description', ['email' => $user->email]) }}
+                            </x-slot:description>
+
+                            <x-baobab::form method="POST" action="{{ route('admin.users.reactivate', ['user' => $user]) }}">
+                                <x-baobab::field.textarea
+                                    name="reason"
+                                    rows="2"
+                                    label="{{ __('baobab::admin.users.status.reason_label') }}"
+                                />
+                                <x-baobab::button type="submit" variant="primary">
+                                    {{ __('baobab::admin.users.status.reactivate_action') }}
+                                </x-baobab::button>
+                            </x-baobab::form>
+                        </x-baobab::confirm>
+                    @else
+                        <x-baobab::confirm name="deactivate-user" :title="__('baobab::admin.users.status.deactivate_confirm_title')">
+                            <x-slot:description>
+                                {{ __('baobab::admin.users.status.deactivate_confirm_description', ['email' => $user->email]) }}
+                            </x-slot:description>
+
+                            <x-baobab::form method="POST" action="{{ route('admin.users.deactivate', ['user' => $user]) }}">
+                                <x-baobab::field.textarea
+                                    name="reason"
+                                    rows="2"
+                                    label="{{ __('baobab::admin.users.status.reason_label') }}"
+                                />
+                                <x-baobab::button type="submit" variant="danger">
+                                    {{ __('baobab::admin.users.status.deactivate_action') }}
+                                </x-baobab::button>
+                            </x-baobab::form>
+                        </x-baobab::confirm>
+                    @endif
+                @endif
             </x-baobab::card>
 
             <x-baobab::card :header="__('baobab::admin.users.show.roles_title')">

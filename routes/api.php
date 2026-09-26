@@ -29,6 +29,8 @@ Route::patch('users/{user}', [UsersController::class, 'update'])->name('users.up
 Route::patch('me', [UsersController::class, 'updateMe'])->name('me.update');
 Route::post('users/{user}/invitation', [UsersController::class, 'resendInvitation'])->name('users.invitation.resend');
 Route::delete('users/{user}/invitation', [UsersController::class, 'cancelInvitation'])->name('users.invitation.cancel');
+Route::post('users/{user}/deactivate', [UsersController::class, 'deactivate'])->name('users.deactivate');
+Route::post('users/{user}/reactivate', [UsersController::class, 'reactivate'])->name('users.reactivate');
 Route::post('users/{user}/roles', [UsersController::class, 'grantRole'])->name('users.roles.store');
 Route::delete('users/{user}/roles/{role}', [UsersController::class, 'revokeRole'])->name('users.roles.destroy');
 Route::get('roles', [RolesController::class, 'index'])->name('roles.index');

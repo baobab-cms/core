@@ -47,6 +47,7 @@ use Baobab\Admin\Themes\Http\Controllers\ThemeBlueprintController;
 use Baobab\Admin\Themes\Http\Controllers\ThemesController;
 use Baobab\Admin\Users\Http\Controllers\ImpersonationController;
 use Baobab\Admin\Users\Http\Controllers\SessionController;
+use Baobab\Admin\Users\Http\Controllers\UserAccountStatusController;
 use Baobab\Admin\Users\Http\Controllers\UserController;
 use Baobab\Admin\Users\Http\Controllers\UserInvitationController;
 use Baobab\Admin\Users\Http\Controllers\UserProfileController;
@@ -475,6 +476,8 @@ Route::middleware('can:baobab.users.manage')
         Route::post('/{user}/invitation', [UserInvitationController::class, 'resend'])->name('invitation.resend');
         Route::delete('/{user}/invitation', [UserInvitationController::class, 'cancel'])->name('invitation.cancel');
         Route::put('/{user}/profile', [UserProfileController::class, 'update'])->name('profile.update');
+        Route::post('/{user}/deactivate', [UserAccountStatusController::class, 'deactivate'])->name('deactivate');
+        Route::post('/{user}/reactivate', [UserAccountStatusController::class, 'reactivate'])->name('reactivate');
         Route::post('/{user}/roles', [UserRoleController::class, 'store'])->name('roles.store');
         Route::delete('/{user}/roles/{role}', [UserRoleController::class, 'destroy'])->name('roles.destroy');
     });

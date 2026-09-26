@@ -38,7 +38,7 @@ final class ResetPassword
         )->validate();
 
         $status = Password::broker('baobab_users')->reset(
-            ['email' => $email, 'token' => $token, 'password' => $password],
+            ['email' => $email, 'token' => $token, 'password' => $password, 'deactivated_at' => null],
             function (User $user, string $password): void {
                 $this->writer->write($user, $password);
 

@@ -33,6 +33,22 @@ final class AccessManager
         }
     }
 
+    /**
+     * Vrai quand `$user` est le seul Super Admin **actif** : le retirer (rôle
+     * ôté, compte désactivé ou effacé) laisserait le site sans aucun accès
+     * complet. Un Super Admin désactivé ne compte pas (spec 05 §5, décision
+     * 5 k) — sans quoi il resterait un « dernier » fantôme —, et n'est lui-même
+     * jamais « le dernier » : le retirer ne coûte aucun accès.
+     */
+    public function isLastActiveSuperAdmin(User $user): bool
+    {
+        if ($user->isDeactivated() || ! $user->hasRole('super-admin', 'baobab')) {
+            return false;
+        }
+
+        return User::role('super-admin', 'baobab')->notDeactivated()->count() <= 1;
+    }
+
     public function createRole(string $name, int $level, string $guard = 'baobab'): RoleContract
     {
         /** @var RoleContract $role */

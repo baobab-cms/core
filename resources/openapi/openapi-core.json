@@ -29,6 +29,15 @@
                         }
                     },
                     {
+                        "name": "filter[deactivated]",
+                        "in": "query",
+                        "required": false,
+                        "description": "true : uniquement les comptes désactivés ; false : uniquement les autres.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
                         "name": "page",
                         "in": "query",
                         "schema": {
@@ -120,14 +129,14 @@
                             }
                         }
                     },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationError"
-                    },
                     "401": {
                         "$ref": "#/components/responses/Unauthenticated"
                     },
                     "403": {
                         "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
                     }
                 }
             }
@@ -308,9 +317,6 @@
                     "202": {
                         "description": "Envoyée"
                     },
-                    "409": {
-                        "$ref": "#/components/responses/Conflict"
-                    },
                     "401": {
                         "$ref": "#/components/responses/Unauthenticated"
                     },
@@ -319,6 +325,9 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
                     }
                 }
             },
@@ -342,8 +351,70 @@
                     "204": {
                         "description": "Annulée"
                     },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
                     "409": {
                         "$ref": "#/components/responses/Conflict"
+                    }
+                }
+            }
+        },
+        "/users/{user}/deactivate": {
+            "post": {
+                "summary": "Désactiver un compte",
+                "tags": [
+                    "users"
+                ],
+                "description": "Blocage total et immédiat (spec 05 décision 5 k) : connexion refusée, sessions fermées, tokens API révoqués, usurpation impossible. Réservé à un acteur de niveau strictement supérieur à la cible ; jamais son propre compte, jamais le dernier Super Admin actif (403). 409 si le compte n'est pas actif (déjà désactivé, ou invitation en attente : l'annuler à la place).",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "reason": {
+                                        "type": "string",
+                                        "maxLength": 500,
+                                        "description": "Motif facultatif, consigné dans l'audit et affiché sur la fiche ; absent du message envoyé à l'utilisateur."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     },
                     "401": {
                         "$ref": "#/components/responses/Unauthenticated"
@@ -353,6 +424,80 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                }
+            }
+        },
+        "/users/{user}/reactivate": {
+            "post": {
+                "summary": "Réactiver un compte",
+                "tags": [
+                    "users"
+                ],
+                "description": "Le mot de passe est invalidé et l'utilisateur en choisit un nouveau par un lien envoyé par e-mail ; la 2FA est réinitialisée, les tokens API ne reviennent pas, les rôles et permissions sont conservés (spec 05 décision 5 k). 409 si le compte n'est pas désactivé.",
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "reason": {
+                                        "type": "string",
+                                        "maxLength": 500,
+                                        "description": "Motif facultatif, consigné dans l'audit."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
                     }
                 }
             }
@@ -407,9 +552,6 @@
                             }
                         }
                     },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationError"
-                    },
                     "401": {
                         "$ref": "#/components/responses/Unauthenticated"
                     },
@@ -418,6 +560,9 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
                     }
                 }
             }
@@ -681,6 +826,24 @@
                             "null"
                         ],
                         "format": "date-time"
+                    },
+                    "deactivated": {
+                        "type": "boolean",
+                        "description": "Compte désactivé par un administrateur."
+                    },
+                    "deactivated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "deactivation_reason": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Motif facultatif de la désactivation."
                     },
                     "created_at": {
                         "type": [

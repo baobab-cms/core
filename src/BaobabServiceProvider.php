@@ -1569,6 +1569,22 @@ class BaobabServiceProvider extends ServiceProvider
             $audit()->record('user.invitation.cancelled', null, ['email' => $email, 'user_id' => $id]);
         });
 
+        // Désactivation et réactivation d'un compte (spec 05 §5, décision 5 k) :
+        // le motif est facultatif, l'entrée est écrite dans tous les cas.
+        $registry->listen('baobab.user.deactivated', function (User $user, User $actor, ?string $reason) use ($audit): void {
+            $audit()->record('user.deactivated', $user, array_filter([
+                'email' => $user->email,
+                'reason' => $reason,
+            ], fn (mixed $value): bool => $value !== null));
+        });
+
+        $registry->listen('baobab.user.reactivated', function (User $user, User $actor, ?string $reason) use ($audit): void {
+            $audit()->record('user.reactivated', $user, array_filter([
+                'email' => $user->email,
+                'reason' => $reason,
+            ], fn (mixed $value): bool => $value !== null));
+        });
+
         $registry->listen('baobab.user.password.changed', function (User $user) use ($audit): void {
             $audit()->record('user.password.changed', $user);
         });

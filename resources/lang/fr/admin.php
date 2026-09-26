@@ -160,6 +160,7 @@ return [
         'column_email' => 'E-mail',
         'column_roles' => 'Rôles',
         'column_level' => 'Niveau',
+        'column_status' => 'Statut',
         'impersonate_action' => 'Se connecter en tant que',
 
         'invite' => [
@@ -182,6 +183,33 @@ return [
             'cancel_confirm_title' => 'Annuler cette invitation ?',
             'cancel_confirm_description' => 'Le compte :email sera supprimé et son lien d\'invitation cessera de fonctionner. Il n\'a jamais été utilisé : rien d\'autre n\'est touché.',
             'cancelled' => 'Invitation de :email annulée, compte supprimé.',
+        ],
+
+        // Désactivation d'un compte (spec 05 §5, décision 5 k).
+        'status' => [
+            'active_badge' => 'actif',
+            'deactivated_badge' => 'désactivé',
+            'filter_label' => 'Statut',
+            'filter_all' => 'Tous les comptes',
+            'filter_active' => 'Actifs',
+            'filter_deactivated' => 'Désactivés',
+            'filter_pending' => 'Invitation en attente',
+            'filter_submit' => 'Filtrer',
+            'deactivate_action' => 'Désactiver le compte',
+            'deactivate_confirm_title' => 'Désactiver ce compte ?',
+            'deactivate_confirm_description' => 'Le compte :email ne pourra plus se connecter : ses sessions sont fermées et ses tokens d\'API révoqués. Ses contenus et son historique restent en place. Il en est informé par e-mail, sans le motif.',
+            'reactivate_action' => 'Réactiver le compte',
+            'reactivate_confirm_title' => 'Réactiver ce compte ?',
+            'reactivate_confirm_description' => 'Le compte :email reçoit un lien pour choisir un nouveau mot de passe ; l\'ancien est invalidé et la 2FA est réinitialisée. Ses rôles et permissions sont conservés, ses tokens d\'API ne reviennent pas.',
+            'reason_label' => 'Motif (facultatif)',
+            'deactivated_since' => 'Compte désactivé depuis le :date.',
+            'reason_shown' => 'Motif : :reason',
+            'deactivated' => 'Le compte :email est désactivé.',
+            'reactivated' => 'Le compte :email est réactivé : un lien pour choisir un nouveau mot de passe lui a été envoyé.',
+            'forbidden' => 'Vous ne pouvez désactiver ou réactiver qu\'un utilisateur de niveau inférieur au vôtre, et jamais votre propre compte.',
+            'lockout' => 'Cette désactivation est refusée : elle supprimerait le dernier Super Admin actif.',
+            'not_active' => 'Seul un compte actif peut être désactivé.',
+            'not_deactivated' => 'Ce compte n\'est pas désactivé.',
         ],
 
         'profile' => [

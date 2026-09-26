@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Users\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -24,6 +25,8 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $updated_at
  * @property Carbon|null $two_factor_confirmed_at
  * @property Carbon|null $invited_at
+ * @property Carbon|null $deactivated_at
+ * @property string|null $deactivation_reason
  */
 class User extends Authenticatable
 {
@@ -61,6 +64,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
             'invited_at' => 'datetime',
+            'deactivated_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_secret' => 'encrypted',
             'two_factor_recovery_codes' => 'encrypted:array',
@@ -80,6 +84,32 @@ class User extends Authenticatable
     public function hasPendingInvitation(): bool
     {
         return $this->invited_at !== null;
+    }
+
+    /**
+     * Bloqué par un admin (spec 05 §5, décision 5 k) : ni connexion, ni
+     * session, ni token, ni usurpation, jusqu'à la réactivation.
+     */
+    public function isDeactivated(): bool
+    {
+        return $this->deactivated_at !== null;
+    }
+
+    /**
+     * Ni désactivé ni en attente d'invitation : le compte qu'une personne
+     * utilise réellement.
+     */
+    public function isActive(): bool
+    {
+        return ! $this->isDeactivated() && ! $this->hasPendingInvitation();
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     */
+    public function scopeNotDeactivated(Builder $query): void
+    {
+        $query->whereNull('deactivated_at');
     }
 
     /**

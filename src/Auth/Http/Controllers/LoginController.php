@@ -26,7 +26,10 @@ final class LoginController extends Controller
         $credentials = $request->safe()->only(['email', 'password']);
         $remember = $request->boolean('remember');
 
-        if (! Auth::guard('baobab')->validate($credentials)) {
+        // Un compte désactivé (spec 05 §5, décision 5 k) ne s'authentifie
+        // pas : la condition est celle des identifiants faux, le message est
+        // le même — l'écran ne révèle rien de l'état du compte.
+        if (! Auth::guard('baobab')->validate($credentials + ['deactivated_at' => null])) {
             throw ValidationException::withMessages([
                 'email' => __('baobab::admin.auth.failed'),
             ]);

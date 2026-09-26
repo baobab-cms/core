@@ -386,6 +386,14 @@ return [
                 'defaults' => __DIR__.'/../resources/mails/core/user-invited.json',
             ],
             [
+                'key' => 'core.account_deactivated',
+                'description' => 'Envoyé à un utilisateur dont le compte vient d\'être désactivé par un administrateur (spec 05 §5, décision 5 k) : une information, sans le motif, qui reste dans l\'audit.',
+                'variables' => [
+                    'user_name' => 'Nom du titulaire du compte',
+                ],
+                'defaults' => __DIR__.'/../resources/mails/core/account-deactivated.json',
+            ],
+            [
                 'key' => 'core.email_change_verify',
                 'description' => 'Envoyé à l\'adresse actuelle d\'un compte dont le nom ou l\'e-mail est modifié, pour valider la demande (spec 05 §5, décision 5 f et j) : un lien, et ce qui va changer.',
                 'variables' => [

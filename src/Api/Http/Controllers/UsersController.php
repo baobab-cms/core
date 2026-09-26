@@ -9,11 +9,14 @@ use Baobab\Access\Exceptions\HierarchyViolationException;
 use Baobab\Api\Http\Resources\UserResource;
 use Baobab\Api\Support\ApiActor;
 use Baobab\Users\Actions\CancelUserInvitation;
+use Baobab\Users\Actions\DeactivateUser;
 use Baobab\Users\Actions\GrantUserRole;
 use Baobab\Users\Actions\InviteUser;
+use Baobab\Users\Actions\ReactivateUser;
 use Baobab\Users\Actions\RequestProfileChange;
 use Baobab\Users\Actions\RevokeUserRole;
 use Baobab\Users\Actions\SendUserInvitation;
+use Baobab\Users\Exceptions\InvalidAccountStateException;
 use Baobab\Users\Exceptions\InvitationNotPendingException;
 use Baobab\Users\Models\ProfileChangeRequest;
 use Baobab\Users\Models\User;
@@ -50,6 +53,12 @@ final class UsersController
             filter_var($filters['pending'], FILTER_VALIDATE_BOOLEAN)
                 ? $query->whereNotNull('invited_at')
                 : $query->whereNull('invited_at');
+        }
+
+        if (isset($filters['deactivated'])) {
+            filter_var($filters['deactivated'], FILTER_VALIDATE_BOOLEAN)
+                ? $query->whereNotNull('deactivated_at')
+                : $query->whereNull('deactivated_at');
         }
 
         $perPage = min(max((int) ($request->query('per_page') ?? 25), 1), 100);
@@ -198,6 +207,53 @@ final class UsersController
         }
 
         return response()->noContent();
+    }
+
+    public function deactivate(Request $request, string $user, DeactivateUser $deactivate): JsonResponse
+    {
+        $actor = $this->authorizeManage();
+
+        $target = $this->findUserOrFail($user);
+        $reason = $this->validatedReason($request);
+
+        try {
+            $deactivate($actor, $target, $reason);
+        } catch (HierarchyViolationException) {
+            abort(403, __('baobab::admin.users.status.forbidden'));
+        } catch (AdminLockoutException) {
+            abort(403, __('baobab::admin.users.status.lockout'));
+        } catch (InvalidAccountStateException) {
+            abort(409, __('baobab::admin.users.status.not_active'));
+        }
+
+        return response()->json(['data' => (new UserResource($this->findUserOrFail($user)))->resolve($request)]);
+    }
+
+    public function reactivate(Request $request, string $user, ReactivateUser $reactivate): JsonResponse
+    {
+        $actor = $this->authorizeManage();
+
+        $target = $this->findUserOrFail($user);
+        $reason = $this->validatedReason($request);
+
+        try {
+            $reactivate($actor, $target, $reason);
+        } catch (HierarchyViolationException) {
+            abort(403, __('baobab::admin.users.status.forbidden'));
+        } catch (InvalidAccountStateException) {
+            abort(409, __('baobab::admin.users.status.not_deactivated'));
+        }
+
+        return response()->json(['data' => (new UserResource($this->findUserOrFail($user)))->resolve($request)]);
+    }
+
+    private function validatedReason(Request $request): ?string
+    {
+        $validated = $request->validate([
+            'reason' => ['sometimes', 'nullable', 'string', 'max:'.DeactivateUser::MAX_REASON_LENGTH],
+        ]);
+
+        return isset($validated['reason']) ? (string) $validated['reason'] : null;
     }
 
     public function grantRole(Request $request, string $user, GrantUserRole $grant): JsonResponse

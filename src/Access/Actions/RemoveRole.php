@@ -17,7 +17,7 @@ final class RemoveRole
 
     public function __invoke(User $user, Role $role): void
     {
-        if ($role->name === 'super-admin' && $this->isLastSuperAdmin($user)) {
+        if ($role->name === 'super-admin' && $this->manager->isLastActiveSuperAdmin($user)) {
             throw new AdminLockoutException('Cannot remove the last super-admin.');
         }
 
@@ -26,15 +26,6 @@ final class RemoveRole
         }
 
         $this->manager->removeRole($user, $role);
-    }
-
-    private function isLastSuperAdmin(User $user): bool
-    {
-        if (! $user->hasRole('super-admin', 'baobab')) {
-            return false;
-        }
-
-        return User::role('super-admin', 'baobab')->count() <= 1;
     }
 
     private function isActingOnSelf(User $user): bool

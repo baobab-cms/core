@@ -71,6 +71,9 @@ final class UsersProvider extends CoreProvider
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
+            // Le motif d'une désactivation (spec 05 §5, décision 5 k) est une
+            // donnée du sujet ; la date, elle, ne dit rien de personne.
+            'deactivation_reason' => null,
         ])->save();
 
         $user->syncRoles([]);
@@ -107,6 +110,8 @@ final class UsersProvider extends CoreProvider
                 'email' => $user->email,
                 'email_verified_at' => $user->email_verified_at?->toIso8601String(),
                 'two_factor_enabled' => $user->two_factor_confirmed_at !== null,
+                'deactivated_at' => $user->deactivated_at?->toIso8601String(),
+                'deactivation_reason' => $user->deactivation_reason,
                 'created_at' => $user->created_at?->toIso8601String(),
                 'updated_at' => $user->updated_at?->toIso8601String(),
             ],

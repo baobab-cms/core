@@ -14,7 +14,7 @@ return [
 
     'users' => [
         'title' => 'Comptes utilisateurs',
-        'nature' => 'Nom, adresse e-mail, mot de passe (haché), secret et codes de récupération 2FA (chiffrés), rôles et sessions actives.',
+        'nature' => 'Nom, adresse e-mail, mot de passe (haché), secret et codes de récupération 2FA (chiffrés), rôles, sessions actives et, le cas échéant, date et motif de désactivation du compte.',
         'purpose' => 'Authentification et gestion des accès à l\'administration et au site.',
         'legal_basis' => 'Exécution du service demandé par l\'utilisateur.',
         'retention' => 'Tant que le compte existe.',
@@ -73,7 +73,7 @@ return [
         'ghost_name' => 'Utilisateur supprimé #:hash',
         'last_super_admin' => 'Impossible d\'effacer le dernier super-administrateur : le site n\'aurait plus aucun accès d\'administration.',
         'audit_append_only' => 'Le journal d\'audit est en ajout seul : une entrée existante ne se modifie ni ne se supprime.',
-        'users_note' => 'Compte anonymisé en place : nom et e-mail neutralisés, mot de passe, 2FA, sessions, jetons, rôles, permissions et préférences retirés.',
+        'users_note' => 'Compte anonymisé en place : nom et e-mail neutralisés, mot de passe, 2FA, sessions, jetons, rôles, permissions, préférences et motif de désactivation retirés.',
         'content_authorship_note' => 'Conservé : le contenu appartient au site ; son auteur est désormais le compte anonymisé. Sa suppression éventuelle est une décision éditoriale séparée.',
         'media_note' => 'Conservé : les fichiers appartiennent au site ; leur auteur est désormais le compte anonymisé.',
         'mail_log_note' => 'Destinataire haché, corps et erreur vidés ; l\'objet du message, le gabarit, le statut et la date d\'envoi sont conservés.',

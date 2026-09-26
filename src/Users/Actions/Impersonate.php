@@ -27,6 +27,12 @@ final class Impersonate
             throw new ImpersonationException('Cannot start an impersonation while already impersonating.');
         }
 
+        // Un compte désactivé n'a aucun accès (spec 05 §5, décision 5 k) :
+        // l'usurper contournerait le blocage, on le réactive d'abord.
+        if ($target->isDeactivated()) {
+            throw new ImpersonationException('Cannot impersonate a deactivated account.');
+        }
+
         $this->manager->assertOutranks($actor, $target->level());
 
         Hook::action('baobab.user.impersonation.started', $actor, $target);

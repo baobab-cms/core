@@ -29,7 +29,9 @@ final class SendPasswordResetLink
     public function __invoke(string $email): void
     {
         Password::broker('baobab_users')->sendResetLink(
-            ['email' => $email],
+            // Un compte désactivé (spec 05 §5, décision 5 k) n'a pas de lien :
+            // c'est la réactivation qui en envoie un.
+            ['email' => $email, 'deactivated_at' => null],
             function (User $user, string $token): void {
                 $this->mailer->send('core.password_reset', $user, [
                     'reset_url' => route('password.reset', ['token' => $token, 'email' => $user->email]),

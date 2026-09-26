@@ -12,25 +12,46 @@ use Baobab\Auth\Actions\ListActiveSessions;
 use Baobab\Users\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 final class UserController
 {
+    /** Filtres de statut de la liste (spec 05 §5, décision 5 k) ; sans filtre, tous les comptes. */
+    private const STATUSES = ['active', 'deactivated', 'pending'];
+
     public function __construct(private readonly PermissionMatrixBuilder $permissionMatrixBuilder) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
         /** @var User $actor */
         $actor = Auth::guard('baobab')->user();
 
-        $users = User::query()->with('roles')->orderBy('name')->get();
+        $status = $request->query('status');
+        $status = is_string($status) && in_array($status, self::STATUSES, true) ? $status : '';
+
+        $users = User::query()
+            ->with('roles')
+            ->when($status === 'active', fn (Builder $query) => $query->whereNull('deactivated_at')->whereNull('invited_at'))
+            ->when($status === 'deactivated', fn (Builder $query) => $query->whereNotNull('deactivated_at'))
+            ->when($status === 'pending', fn (Builder $query) => $query->whereNotNull('invited_at'))
+            ->orderBy('name')
+            ->get();
 
         return view('baobab::admin.users.index', [
             'users' => $users,
             'columns' => $this->columns(),
             'canInvite' => $actor->can('baobab.users.manage'),
+            'status' => $status,
+            'statusOptions' => [
+                '' => __('baobab::admin.users.status.filter_all'),
+                'active' => __('baobab::admin.users.status.filter_active'),
+                'deactivated' => __('baobab::admin.users.status.filter_deactivated'),
+                'pending' => __('baobab::admin.users.status.filter_pending'),
+            ],
         ]);
     }
 
@@ -49,9 +70,12 @@ final class UserController
 
         return view('baobab::admin.users.show', [
             'user' => $user,
-            'canImpersonate' => $actor->can('baobab.users.impersonate') && ! $user->is($actor) && $user->level() < $actor->level(),
+            'canImpersonate' => $actor->can('baobab.users.impersonate') && ! $user->is($actor) && $user->level() < $actor->level() && ! $user->isDeactivated(),
             'canManageRoles' => $canManageRoles,
             'canResendInvitation' => $canManageRoles && $user->hasPendingInvitation(),
+            // Un compte en attente d'invitation s'annule, il ne se désactive
+            // pas (spec 05 §5, décision 5 i et k) ; les Actions revérifient.
+            'canManageStatus' => $canManageRoles && ! $user->hasPendingInvitation(),
             // Même garde que les rôles (spec 05 §4.1) ; son propre profil
             // se modifie depuis Mon compte.
             'canEditProfile' => $canManageRoles,
@@ -139,9 +163,13 @@ final class UserController
             [
                 'key' => 'email',
                 'label' => __('baobab::admin.users.column_email'),
-                'render' => fn (User $user) => $user->hasPendingInvitation()
-                    ? $user->email.' — '.__('baobab::admin.users.invite.pending_badge')
-                    : $user->email,
+                'render' => fn (User $user) => $user->email,
+            ],
+            [
+                'key' => 'status',
+                'label' => __('baobab::admin.users.column_status'),
+                'raw' => true,
+                'render' => fn (User $user) => view('baobab::admin.users.partials.status-badge', ['user' => $user])->render(),
             ],
             [
                 'key' => 'roles',

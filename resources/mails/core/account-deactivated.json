@@ -1,0 +1,4 @@
+{
+    "subject": "Votre compte a été désactivé",
+    "body": "Bonjour {{ user_name }},<br><br>Un administrateur du site a désactivé votre compte. Vous ne pouvez plus vous y connecter, vos sessions ouvertes ont été fermées et vos tokens d'accès à l'API ont été révoqués.<br><br>Si vous pensez qu'il s'agit d'une erreur, contactez un administrateur du site."
+}

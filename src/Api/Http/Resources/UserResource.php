@@ -36,6 +36,9 @@ final class UserResource extends JsonResource
             'level' => $user->level(),
             'invitation_pending' => $user->hasPendingInvitation(),
             'invited_at' => $user->invited_at?->toIso8601String(),
+            'deactivated' => $user->isDeactivated(),
+            'deactivated_at' => $user->deactivated_at?->toIso8601String(),
+            'deactivation_reason' => $user->deactivation_reason,
             'created_at' => $user->created_at?->toIso8601String(),
             'updated_at' => $user->updated_at?->toIso8601String(),
         ];

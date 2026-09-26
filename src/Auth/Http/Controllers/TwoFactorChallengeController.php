@@ -46,6 +46,15 @@ final class TwoFactorChallengeController extends Controller
         /** @var User $user */
         $user = User::findOrFail($userId);
 
+        // Désactivé entre le mot de passe et le défi (spec 05 §5, décision
+        // 5 k) : la session du défi n'a pas d'utilisateur, la fermeture des
+        // sessions ne l'a pas atteinte.
+        if ($user->isDeactivated()) {
+            $request->session()->forget(['baobab.2fa.challenge_user_id', 'baobab.2fa.remember']);
+
+            return redirect()->route('login');
+        }
+
         $recoveryCode = trim((string) $request->input('recovery_code'));
         $code = trim((string) $request->input('code'));
 
