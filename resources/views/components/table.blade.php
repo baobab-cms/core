@@ -32,7 +32,7 @@
         @endif
 
         <table class="w-full text-left text-sm">
-            <thead class="bg-surface-subtle text-xs uppercase text-muted">
+            <thead class="bg-surface-subtle text-sm text-muted">
                 <tr>
                     @if ($hasBulkActions)
                         <th class="w-10 px-3 py-2">
@@ -46,7 +46,7 @@
                     @endif
 
                     @foreach ($columns as $column)
-                        <th class="px-3 py-2 font-medium">
+                        <th class="{{ $columnHeaderClasses($column) }}">
                             @if ($column['sortable'] ?? false)
                                 <a href="{{ $sortUrl($column) }}" class="hover:text-foreground">
                                     {{ $column['label'] }}
@@ -64,15 +64,15 @@
 
             <tbody class="divide-y divide-border">
                 @foreach ($rows as $row)
-                    <tr>
+                    <tr class="hover:bg-surface transition-colors duration-[120ms]">
                         @if ($hasBulkActions)
-                            <td class="px-3 py-2">
+                            <td class="px-3 py-3">
                                 <input type="checkbox" name="ids[]" value="{{ data_get($row, $rowKey) }}" form="table-bulk-actions">
                             </td>
                         @endif
 
                         @foreach ($columns as $column)
-                            <td class="px-3 py-2 text-foreground">
+                            <td class="{{ $columnCellClasses($column) }}">
                                 @if (isset($column['render']) && ($column['raw'] ?? false))
                                     {!! ($column['render'])($row) !!}
                                 @elseif (isset($column['render']))
@@ -89,7 +89,11 @@
     </div>
 
     @if ($isPaginated)
-        <div class="mt-4">
+        <div class="mt-4 flex items-center justify-between gap-4">
+            @if ($resultsSummary())
+                <p class="text-sm text-muted">{{ $resultsSummary() }}</p>
+            @endif
+
             {{ $rows->links() }}
         </div>
     @endif

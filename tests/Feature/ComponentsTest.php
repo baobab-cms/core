@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\ViewErrorBag;
@@ -163,6 +164,83 @@ it('renders bulk action checkboxes and buttons when bulkActions are provided', f
         ->toContain('name="ids[]"')
         ->toContain('Delete')
         ->toContain('/admin/bulk-delete');
+});
+
+it('gives x-baobab::table a header without forced uppercase, and a row hover transition', function () {
+    $html = Blade::render(
+        '<x-baobab::table :columns="$columns" :rows="$rows" />',
+        [
+            'columns' => [['key' => 'name', 'label' => 'Name']],
+            'rows' => collect([['id' => 1, 'name' => 'Alice']]),
+        ]
+    );
+
+    expect($html)
+        ->not->toContain('uppercase')
+        ->toContain('hover:bg-surface');
+});
+
+it('applies primary, mono and numeric column variants (suivi n° 371)', function () {
+    $html = Blade::render(
+        '<x-baobab::table :columns="$columns" :rows="$rows" />',
+        [
+            'columns' => [
+                ['key' => 'name', 'label' => 'Name', 'variant' => 'primary'],
+                ['key' => 'slug', 'label' => 'Slug', 'variant' => 'mono'],
+                ['key' => 'count', 'label' => 'Count', 'variant' => 'numeric'],
+            ],
+            'rows' => collect([['id' => 1, 'name' => 'Alice', 'slug' => 'alice', 'count' => 3]]),
+        ]
+    );
+
+    expect($html)
+        ->toContain('text-foreground font-medium')
+        ->toContain('font-mono text-muted')
+        ->toContain('text-right tabular-nums');
+});
+
+it('leaves untagged columns on their current, un-varianted styling', function () {
+    $html = Blade::render(
+        '<x-baobab::table :columns="$columns" :rows="$rows" />',
+        [
+            'columns' => [['key' => 'name', 'label' => 'Name']],
+            'rows' => collect([['id' => 1, 'name' => 'Alice']]),
+        ]
+    );
+
+    expect($html)->not->toContain('tabular-nums')->not->toContain('font-mono');
+});
+
+it('shows an explicit result total in the footer, next to pagination, for a length-aware paginator', function () {
+    $paginator = new LengthAwarePaginator(
+        items: [['id' => 1, 'name' => 'Alice']],
+        total: 47,
+        perPage: 15,
+        currentPage: 1,
+    );
+
+    $html = Blade::render(
+        '<x-baobab::table :columns="$columns" :rows="$rows" />',
+        ['columns' => [['key' => 'name', 'label' => 'Name']], 'rows' => $paginator]
+    );
+
+    expect($html)->toContain('47 résultats');
+});
+
+it('lets a screen customize the result label instead of the generic default', function () {
+    $paginator = new LengthAwarePaginator(
+        items: [['id' => 1, 'name' => 'Alice']],
+        total: 3,
+        perPage: 15,
+        currentPage: 1,
+    );
+
+    $html = Blade::render(
+        '<x-baobab::table :columns="$columns" :rows="$rows" result-label="{1} :count contenu|[2,*] :count contenus" />',
+        ['columns' => [['key' => 'name', 'label' => 'Name']], 'rows' => $paginator]
+    );
+
+    expect($html)->toContain('3 contenus')->not->toContain('3 résultats');
 });
 
 it('renders x-baobab::modal scaffold targeting the given name', function () {

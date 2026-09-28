@@ -77,6 +77,7 @@ return [
 
     'components' => [
         'no_results' => 'Aucun résultat.',
+        'results_count' => '{0} Aucun résultat|{1} :count résultat|[2,*] :count résultats',
         'loading' => 'Chargement…',
         'select_all' => 'Tout sélectionner',
         'confirm_placeholder' => 'Retapez « :text » pour confirmer.',
