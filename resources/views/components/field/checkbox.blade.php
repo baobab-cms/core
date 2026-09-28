@@ -14,7 +14,7 @@
             @checked(old($name, $checked))
             aria-invalid="{{ $errors->has($name) ? 'true' : 'false' }}"
             @if ($errors->has($name)) aria-describedby="{{ $name }}-error" @endif
-            {{ $attributes->class(['rounded border-border']) }}
+            {{ $attributes->class(['rounded border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface-subtle']) }}
         >
         {{ $label }}
     </label>

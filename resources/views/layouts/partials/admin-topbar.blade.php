@@ -178,12 +178,13 @@
                         </div>
                     </div>
 
-                    <a
-                        href="{{ route('admin.account.profile.show') }}"
-                        class="mb-2 block rounded-md bg-primary px-2 py-1.5 text-center text-sm font-medium text-white hover:opacity-90"
+                    <x-baobab::button
+                        :href="route('admin.account.profile.show')"
+                        size="sm"
+                        class="mb-2 w-full justify-center"
                     >
                         {{ __('baobab::admin.account.view_profile_action') }}
-                    </a>
+                    </x-baobab::button>
 
                     <div class="border-t border-border pt-1">
                         <a

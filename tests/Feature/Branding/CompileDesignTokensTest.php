@@ -29,6 +29,30 @@ it('writes a CSS artifact containing every group and key of the vocabulary', fun
     }
 });
 
+it('derives a primary-strong shade that meets AA contrast against on-primary', function () {
+    // Défauts Core : #C2571B sur #FFFFFF donne 4,49:1 (spec 18 §5.5), sous
+    // le seuil — la variable dérivée doit corriger ça (suivi n° 368).
+    $path = app(CompileDesignTokens::class)();
+    $css = File::get($path);
+
+    expect($css)->toContain('--bb-color-primary-strong:')
+        ->and($css)->not->toContain('--bb-color-primary-strong: #C2571B')
+        ->and($css)->not->toContain('--bb-color-primary-strong: #c2571b');
+});
+
+it('recomputes primary-strong when a site overrides its primary branding color', function () {
+    BrandingSetting::create(['tokens' => ['colors' => ['primary' => '#FDE8DC']]]);
+
+    $path = app(CompileDesignTokens::class)();
+    $css = File::get($path);
+
+    // Un remplissage clair face à un premier plan blanc par défaut doit
+    // s'assombrir, pas rester tel quel ni s'éclaircir davantage.
+    expect($css)->toContain('--bb-color-primary-strong:')
+        ->and($css)->not->toContain('--bb-color-primary-strong: #FDE8DC')
+        ->and($css)->not->toContain('--bb-color-primary-strong: #fde8dc');
+});
+
 it('does not rewrite the artifact when the resolved tokens are unchanged', function () {
     $path = app(CompileDesignTokens::class)();
     $mtime = filemtime($path);

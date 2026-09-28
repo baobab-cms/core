@@ -14,5 +14,5 @@
     :label="$label"
     :value="$value"
     placeholder="mon-titre-de-page"
-    {{ $attributes }}
+    {{ $attributes->class('font-mono') }}
 />

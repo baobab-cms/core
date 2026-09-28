@@ -20,7 +20,7 @@
         aria-invalid="{{ $errors->getBag($bag)->has($name) ? 'true' : 'false' }}"
         @if ($errors->getBag($bag)->has($name)) aria-describedby="{{ $id ?? $name }}-error" @endif
         {{ $attributes->class([
-            'w-full rounded-md border px-3 py-2 text-sm text-foreground',
+            'w-full rounded-md border bg-surface px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface-subtle',
             'border-danger' => $errors->getBag($bag)->has($name),
             'border-border' => ! $errors->getBag($bag)->has($name),
         ]) }}

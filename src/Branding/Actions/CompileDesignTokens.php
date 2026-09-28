@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\Branding\Actions;
 
+use Baobab\Branding\Support\ContrastSafeColor;
 use Baobab\Branding\Support\DesignTokenSchema;
 use Baobab\Branding\Support\FontFaceGenerator;
 use Baobab\Branding\Support\PublishFontAssets;
@@ -74,6 +75,15 @@ final class CompileDesignTokens
                 $lines[] = '  '.DesignTokenSchema::cssVar($group, $key).': '.($tokens[$group][$key] ?? '').';';
             }
         }
+
+        // Dérivé, pas un jeton du vocabulaire fermé (spec 18 §2.1-2.4) : un
+        // site ne le règle jamais lui-même. Garantit le seuil AA (§13.4
+        // règle 3) du remplissage plein du bouton primaire (§5.5) quelle que
+        // soit la couleur de marque choisie, sans figer `primary` sur la
+        // palette fixe du produit — voir suivi n° 368.
+        $primary = $tokens['colors']['primary'] ?? DesignTokenSchema::CORE_DEFAULTS['colors']['primary'];
+        $onPrimary = $tokens['colors']['on-primary'] ?? DesignTokenSchema::CORE_DEFAULTS['colors']['on-primary'];
+        $lines[] = '  --bb-color-primary-strong: '.ContrastSafeColor::ensureContrast($primary, $onPrimary).';';
 
         $root = ":root {\n".implode("\n", $lines)."\n}\n";
 

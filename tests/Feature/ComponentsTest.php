@@ -84,6 +84,29 @@ it('renders x-baobab::button variants and href mode', function () {
     expect($link)->toContain('<a')->toContain('href="/foo"');
 });
 
+it('renders the primary button on the AA-safe derived fill and the on-primary token, not raw primary/white', function () {
+    $html = Blade::render('<x-baobab::button>Save</x-baobab::button>');
+
+    expect($html)->toContain('bg-primary-strong')
+        ->toContain('text-on-primary')
+        ->not->toContain('bg-primary ')
+        ->not->toContain('text-white');
+});
+
+it('renders x-baobab::button size variants, defaulting to default', function () {
+    $default = Blade::render('<x-baobab::button>Save</x-baobab::button>');
+    expect($default)->toContain('px-3 py-2');
+
+    $small = Blade::render('<x-baobab::button size="sm">Save</x-baobab::button>');
+    expect($small)->toContain('px-2 py-1.5');
+});
+
+it('gives x-baobab::button a visible focus ring', function () {
+    $html = Blade::render('<x-baobab::button>Save</x-baobab::button>');
+
+    expect($html)->toContain('focus-visible:ring-2')->toContain('focus-visible:ring-primary');
+});
+
 it('renders x-baobab::badge variants', function () {
     $html = Blade::render('<x-baobab::badge variant="success">Active</x-baobab::badge>');
     expect($html)->toContain('bg-leaf-50')->toContain('text-leaf-600')->toContain('Active');
@@ -394,4 +417,24 @@ it('renders x-baobab::field.textarea, field.select and field.checkbox', function
 
     $checkbox = Blade::render('<x-baobab::field.checkbox name="active" label="Active" :checked="true" />');
     expect($checkbox)->toContain('Active')->toContain('checked');
+});
+
+it('gives text, textarea, select and checkbox fields a visible focus ring and a surface background', function () {
+    $text = Blade::render('<x-baobab::field.text name="email" label="E-mail" />');
+    $textarea = Blade::render('<x-baobab::field.textarea name="bio" label="Bio" />');
+    $select = Blade::render('<x-baobab::field.select name="role" label="Role" :options="$options" />', ['options' => ['admin' => 'Admin']]);
+    $checkbox = Blade::render('<x-baobab::field.checkbox name="active" label="Active" />');
+
+    foreach ([$text, $textarea, $select, $checkbox] as $html) {
+        expect($html)->toContain('bg-surface')->toContain('focus:ring-2')->toContain('focus:ring-primary');
+    }
+});
+
+it('renders x-baobab::field.slug in mono, delegating to field.text', function () {
+    $html = Blade::render('<x-baobab::field.slug name="slug" label="Slug" value="mon-titre" />');
+
+    expect($html)
+        ->toContain('font-mono')
+        ->toContain('placeholder="mon-titre-de-page"')
+        ->toContain('value="mon-titre"');
 });
