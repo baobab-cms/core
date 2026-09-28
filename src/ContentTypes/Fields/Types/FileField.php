@@ -40,7 +40,7 @@ final class FileField extends FieldType
                     return;
                 }
 
-                $media = Media::find((int) $value);
+                $media = Media::findCached((int) $value);
 
                 if ($media === null) {
                     return;
@@ -77,7 +77,7 @@ final class FileField extends FieldType
 
     public function toApi(mixed $value, array $options): mixed
     {
-        $media = $value === null ? null : Media::find((int) $value);
+        $media = $value === null ? null : Media::findCached((int) $value);
 
         return $media === null ? null : ['id' => $media->id, 'url' => $media->url(), 'file_name' => $media->file_name];
     }

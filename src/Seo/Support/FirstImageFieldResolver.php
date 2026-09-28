@@ -31,6 +31,6 @@ final class FirstImageFieldResolver
 
         $mediaId = $entry->getAttribute((string) $field['key']);
 
-        return $mediaId !== null ? Media::find((int) $mediaId) : null;
+        return $mediaId !== null ? Media::findCached((int) $mediaId) : null;
     }
 }

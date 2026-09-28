@@ -47,6 +47,16 @@ class Media extends Model
     use SoftDeletes;
 
     /**
+     * Mémoïse `findCached()` — invalidée à chaque écriture (suivi n° 364) :
+     * `ImageField`/`FileField` la résolvent une fois par entrée rendue
+     * (`toApi()`, validation), et un même média est couramment réutilisé par
+     * de nombreuses entrées (logo, photo d'auteur…).
+     *
+     * @var array<int, self|null>
+     */
+    private static array $cachedById = [];
+
+    /**
      * @var list<string>
      */
     protected $fillable = [
@@ -81,6 +91,26 @@ class Media extends Model
         static::creating(function (self $media): void {
             $media->uuid ??= (string) Str::uuid();
         });
+
+        static::saved(static function (self $media): void {
+            unset(self::$cachedById[$media->id]);
+        });
+
+        static::deleted(static function (self $media): void {
+            unset(self::$cachedById[$media->id]);
+        });
+    }
+
+    /**
+     * Comme `find()`, mémoïsé pour la durée du process — `ImageField` et
+     * `FileField` n'ont besoin que de la lecture, jamais d'une instance
+     * fraîche à modifier (suivi n° 364).
+     */
+    public static function findCached(int $id): ?self
+    {
+        return array_key_exists($id, self::$cachedById)
+            ? self::$cachedById[$id]
+            : self::$cachedById[$id] = self::find($id);
     }
 
     /**

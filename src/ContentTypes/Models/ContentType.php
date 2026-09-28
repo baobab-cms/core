@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Baobab\ContentTypes\Models;
 
 use Baobab\Modules\Models\Module;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Schema;
@@ -21,6 +22,17 @@ use Illuminate\Support\Str;
  */
 class ContentType extends Model
 {
+    /**
+     * Mémoïse `self::all()` pour `forModelClass()` — invalidée à chaque
+     * écriture (suivi n° 364) : appelée une à trois fois **par entrée rendue**
+     * (`EntryLink`, `Field\Auto`), elle interrogeait la table entière à chaque
+     * fois plutôt qu'une fois par requête, sur une table qui change rarement
+     * en cours de rendu.
+     *
+     * @var Collection<int, self>|null
+     */
+    private static ?Collection $cachedAll = null;
+
     /**
      * @var list<string>
      */
@@ -42,6 +54,17 @@ class ContentType extends Model
             'is_addressable' => 'boolean',
             'blueprint' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(static function (): void {
+            self::$cachedAll = null;
+        });
+
+        static::deleted(static function (): void {
+            self::$cachedAll = null;
+        });
     }
 
     /**
@@ -73,7 +96,8 @@ class ContentType extends Model
      */
     public static function forModelClass(string $class): ?self
     {
-        return self::all()->first(fn (self $contentType): bool => $contentType->modelClass() === $class);
+        return (self::$cachedAll ??= self::all())
+            ->first(fn (self $contentType): bool => $contentType->modelClass() === $class);
     }
 
     /**
