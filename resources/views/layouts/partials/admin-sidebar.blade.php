@@ -7,11 +7,47 @@
 ></div>
 
 <aside
-    class="group fixed inset-y-16 left-0 z-30 w-64 -translate-x-full transform overflow-y-auto border-r border-border bg-surface-subtle transition-transform duration-200 ease-in-out lg:static lg:inset-auto lg:z-auto lg:w-64 lg:shrink-0 lg:translate-x-0 lg:transition-[width] lg:duration-200 lg:data-[collapsed]:w-20"
+    class="group fixed inset-y-0 left-0 z-30 flex w-64 -translate-x-full transform flex-col border-r border-border bg-surface-subtle transition-transform duration-200 ease-in-out lg:translate-x-0 lg:transition-[width] lg:duration-200 lg:data-[collapsed]:w-20"
     :class="{ 'translate-x-0': sidebarOpen }"
     :data-collapsed="sidebarCollapsed ? '' : null"
 >
-    <nav class="flex h-full flex-col justify-between p-4" aria-label="{{ __('baobab::admin.sidebar.nav_label') }}">
+    {{--
+        Ligne de logo, même hauteur (h-16) et même bordure basse que la
+        topbar : les deux forment une seule rangée visuelle continue plutôt
+        que deux blocs empilés (direction-visuelle.md §7.1, revu après
+        premier rendu navigateur — M9 point 5, Pass A, suivi n° 366).
+
+        Icône + nom de marque côte à côte, jamais l'un ou l'autre : ce que
+        l'utilisateur a demandé en revoyant le premier rendu, à structure
+        égale avec la référence fournie, palette claire inchangée (§2.3,
+        aucun mode sombre avant v1). L'icône réutilise le favicon de la
+        marque, déjà carré et déjà pensé pour un petit format — pas de
+        nouveau champ ; le repli est l'initiale du nom d'application, jamais
+        un fichier absent. Seul le nom se cache en sidebar repliée, l'icône
+        reste seule (§3.5).
+    --}}
+    <a
+        href="{{ route('admin.dashboard') }}"
+        class="flex h-16 shrink-0 items-center gap-2.5 border-b border-border px-4 group-data-[collapsed]:justify-center group-data-[collapsed]:px-0"
+    >
+        @if ($branding->favicon)
+            <img
+                src="{{ $branding->favicon->url() }}"
+                alt=""
+                class="h-8 w-8 shrink-0 rounded-md"
+            >
+        @else
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary font-display text-sm font-semibold text-white">
+                {{ mb_substr(config('app.name', 'Baobab'), 0, 1) }}
+            </span>
+        @endif
+
+        <span class="truncate font-display text-lg font-semibold leading-none text-foreground group-data-[collapsed]:hidden">
+            {{ config('app.name', 'Baobab') }}
+        </span>
+    </a>
+
+    <nav class="flex flex-1 flex-col justify-between overflow-y-auto p-4" aria-label="{{ __('baobab::admin.sidebar.nav_label') }}">
         <div>
             <button
                 type="button"

@@ -452,6 +452,8 @@ class BaobabServiceProvider extends ServiceProvider
 
         $this->registerNotificationCenterComposer();
 
+        $this->registerQuickActionsComposer();
+
         $this->registerAuditListeners();
 
         $this->registerMediaUsageListener();
@@ -1212,6 +1214,16 @@ class BaobabServiceProvider extends ServiceProvider
         $this->app->make(PublicRouteRegistrar::class)->register($router);
     }
 
+    /**
+     * L'icône de la coquille (direction-visuelle.md §7.1) vit dans la
+     * sidebar, pas la topbar (M9 point 5, Pass A, suivi n° 366) : `$branding`
+     * est donc chargé ici, sur le composer propre à ce partial, plutôt que
+     * hérité du scope de `layouts.admin` — un `@include` direct du partial
+     * (patron déjà utilisé par les tests d'accessibilité, `AdminLayoutTest`)
+     * doit rester autonome. Seul `favicon` est chargé : la ligne de logo
+     * pose icône + nom côte à côte (revu après premier rendu navigateur), le
+     * logo complet de la marque n'y sert plus.
+     */
     private function registerAdminSidebarComposer(): void
     {
         View::composer('baobab::layouts.partials.admin-sidebar', function (ViewContract $view): void {
@@ -1222,6 +1234,7 @@ class BaobabServiceProvider extends ServiceProvider
             $user = auth('baobab')->user();
 
             $view->with('sidebar', $builder->build($user));
+            $view->with('branding', BrandingSetting::current()->load(['favicon']));
         });
     }
 
@@ -1274,6 +1287,43 @@ class BaobabServiceProvider extends ServiceProvider
             $user = auth('baobab')->user();
 
             $view->with('unreadNotificationsCount', $user?->unreadNotifications()->count() ?? 0);
+        });
+    }
+
+    /**
+     * Menu « raccourcis » de la topbar (M9 point 5, Pass A, suivi n° 366) —
+     * navigation vers six écrans déjà dans la sidebar, jamais une liste
+     * distincte de la sienne : mêmes permissions, mêmes routes, mêmes
+     * icônes que `registerCoreSidebarItems()`, filtrées ici plutôt que
+     * dans la vue (une vue admin ne porte pas de logique, n° 138). Ne
+     * duplique pas l'omnibox (Ctrl+K, recherche libre) : ce menu n'offre
+     * que des destinations fixes, choisies avec l'utilisateur.
+     */
+    private function registerQuickActionsComposer(): void
+    {
+        View::composer('baobab::layouts.partials.admin-topbar', function (ViewContract $view): void {
+            /** @var User|null $user */
+            $user = auth('baobab')->user();
+
+            $candidates = [
+                ['permission' => 'baobab.media.view', 'label' => __('baobab::admin.sidebar.media'), 'icon' => 'bi-images', 'route' => 'admin.media.index'],
+                ['permission' => 'baobab.system.studio.manage', 'label' => __('baobab::admin.sidebar.studio'), 'icon' => 'bi-magic', 'route' => 'admin.studio.index'],
+                ['permission' => UserDirectory::ABILITY, 'label' => __('baobab::admin.sidebar.users'), 'icon' => 'bi-people', 'route' => 'admin.users.index'],
+                ['permission' => 'baobab.system.themes.manage', 'label' => __('baobab::admin.sidebar.themes'), 'icon' => 'bi-brush', 'route' => 'admin.themes.index'],
+                ['permission' => 'baobab.menus.manage', 'label' => __('baobab::admin.sidebar.menus'), 'icon' => 'bi-list-nested', 'route' => 'admin.menus.index'],
+                ['permission' => 'baobab.system.seo.manage', 'label' => __('baobab::admin.sidebar.seo'), 'icon' => 'bi-globe2', 'route' => 'admin.seo.index'],
+            ];
+
+            $quickActions = collect($candidates)
+                ->filter(fn (array $candidate): bool => $user !== null && $user->can($candidate['permission']))
+                ->map(fn (array $candidate): array => [
+                    'label' => $candidate['label'],
+                    'icon' => $candidate['icon'],
+                    'url' => route($candidate['route']),
+                ])
+                ->values();
+
+            $view->with('quickActions', $quickActions);
         });
     }
 

@@ -33,6 +33,37 @@ it('renders the x-baobab::page actions slot', function () {
     expect($html)->toContain('Create user');
 });
 
+// ── M9 point 5, Pass A (Coquille) — suivi n° 366 ────────────────────────────
+
+it('renders x-baobab::avatar with the first two initials of a full name', function () {
+    $html = Blade::render('<x-baobab::avatar name="Jean Dupont" />');
+
+    expect($html)->toContain('JD')->not->toContain('Jean Dupont');
+});
+
+it('renders x-baobab::avatar with a single initial for a one-word name', function () {
+    $html = Blade::render('<x-baobab::avatar name="Madonna" />');
+
+    expect(trim($html))->toContain('>M<')->not->toContain('Madonna');
+});
+
+it('renders the x-baobab::page mono subtitle only when given one', function () {
+    $withSubtitle = Blade::render(<<<'BLADE'
+    <x-baobab::page title="Cars" subtitle="ct_cars">
+        Body
+    </x-baobab::page>
+    BLADE);
+
+    $withoutSubtitle = Blade::render(<<<'BLADE'
+    <x-baobab::page title="Cars">
+        Body
+    </x-baobab::page>
+    BLADE);
+
+    expect($withSubtitle)->toContain('font-mono')->toContain('ct_cars')
+        ->and($withoutSubtitle)->not->toContain('font-mono');
+});
+
 it('renders x-baobab::card with header, footer and slot', function () {
     $html = Blade::render(<<<'BLADE'
     <x-baobab::card>

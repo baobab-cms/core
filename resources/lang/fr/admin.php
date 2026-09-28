@@ -268,6 +268,8 @@ return [
     ],
 
     'account' => [
+        'view_profile_action' => 'Voir le profil',
+
         'profile' => [
             'title' => 'Profil',
             'intro' => 'Toute modification est validée par un lien envoyé à votre adresse actuelle. Pour un changement d\'adresse e-mail, la nouvelle adresse doit ensuite la confirmer à son tour.',
@@ -1184,6 +1186,10 @@ return [
         'empty' => 'Aucun résultat.',
     ],
 
+    'quick_actions' => [
+        'title' => 'Raccourcis',
+    ],
+
     'search' => [
         'title' => 'Recherche',
         'driver_title' => 'Driver actif',
@@ -1211,6 +1217,8 @@ return [
     'admin_bar' => [
         'dashboard' => 'Tableau de bord',
         'logout' => 'Se déconnecter',
+        'preview_notice' => 'Aperçu du thème « :theme » — visible par vous seul.',
+        'preview_stop' => 'Quitter l\'aperçu',
     ],
 
     'menus' => [

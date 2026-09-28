@@ -90,6 +90,44 @@ it('labels the admin sidebar nav landmark distinctly from other <nav> regions', 
     expect($html)->toContain('aria-label="'.__('baobab::admin.sidebar.nav_label').'"');
 });
 
+// ── M9 point 5, Pass A (Coquille) — icône + nom en sidebar, suivi n° 366 ────
+
+it('pairs the app name with its initial-letter badge when no branding favicon is set', function () {
+    $html = Blade::render("@include('baobab::layouts.partials.admin-sidebar')");
+
+    expect($html)->toContain(config('app.name', 'Baobab'))
+        ->and($html)->toContain(mb_substr(config('app.name', 'Baobab'), 0, 1))
+        ->and($html)->toContain(route('admin.dashboard'));
+});
+
+it('no longer carries the branding logo in the topbar, which moved to the sidebar', function () {
+    $html = Blade::render("@include('baobab::layouts.partials.admin-topbar')");
+
+    expect($html)->not->toContain(route('admin.dashboard'));
+});
+
+// ── M9 point 5, Pass A (Coquille) — menu raccourcis, suivi n° 366 ───────────
+
+it('shows no quick actions trigger for a guest', function () {
+    $html = Blade::render("@include('baobab::layouts.partials.admin-topbar')");
+
+    expect($html)->not->toContain(__('baobab::admin.quick_actions.title'));
+});
+
+it('shows only the quick actions the user holds the permission for', function () {
+    $user = User::create(['name' => 'Media Only', 'email' => 'media-only@example.com', 'password' => 'secret']);
+    app(GrantPermission::class)($user, 'baobab.admin.access');
+    app(GrantPermission::class)($user, 'baobab.media.view');
+
+    $html = $this->actingAs($user, 'baobab')->get('/admin')->getContent();
+
+    expect((string) $html)
+        ->toContain(__('baobab::admin.quick_actions.title'))
+        ->toContain(route('admin.media.index'))
+        ->not->toContain(route('admin.themes.index'))
+        ->not->toContain(route('admin.menus.index'));
+});
+
 it('exposes aria-expanded on a collapsible sidebar group and aria-current on the active link', function () {
     $items = [
         new SidebarItem(

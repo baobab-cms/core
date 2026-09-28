@@ -18,7 +18,11 @@
             @endif
 
             @if ($title)
-                <h1 class="font-display text-2xl font-semibold leading-tight text-foreground">{{ $title }}</h1>
+                <h1 class="font-display text-3xl font-bold leading-tight tracking-tight text-foreground">{{ $title }}</h1>
+            @endif
+
+            @if ($subtitle)
+                <p class="mt-1 font-mono text-[0.92em] leading-tight text-muted">{{ $subtitle }}</p>
             @endif
         </div>
 
@@ -27,7 +31,9 @@
         @endisset
     </div>
 
-    <div class="mt-4">
+    <div class="mt-4 border-b border-border"></div>
+
+    <div class="mt-10">
         {{ $slot }}
     </div>
 </div>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Baobab\View\Components;
 
+use Baobab\Modules\Models\Module;
 use Baobab\Rendering\ActiveThemeResolver;
 use Baobab\Users\Models\User;
 use Illuminate\Contracts\View\View;
@@ -25,6 +26,13 @@ use Illuminate\View\Component;
  * est ici, avec le lien qui permet d'y remédier. La bande est le bon endroit
  * parce qu'elle n'existe que pour un administrateur connecté — la condition
  * d'affichage du diagnostic est déjà celle du composant.
+ *
+ * **Porte, sur le même principe, l'indicateur de préview de thème** (spec 03
+ * §7 ; M9 point 5, Pass A, suivi n° 366) : le mécanisme serveur
+ * (`ResolveActiveTheme`, `session('baobab.preview_theme_id')`) ne laissait
+ * jusqu'ici aucune trace visible à l'administrateur qui prévisualise un
+ * thème inactif. Même condition d'affichage que le diagnostic ci-dessus, pas
+ * de nouveau point de câblage dans les deux stubs de thème.
  */
 final class AdminBar extends Component
 {
@@ -42,12 +50,18 @@ final class AdminBar extends Component
         /** @var User $user */
         $user = auth('baobab')->user();
 
+        /** @var int|null $previewThemeId */
+        $previewThemeId = session('baobab.preview_theme_id');
+
         return view('baobab::components.admin-bar', [
             'userName' => $user->name,
             // Résolu ici, jamais dans la vue : « y a-t-il un thème actif ? »
             // est une question qui se teste.
             'noActiveTheme' => $this->themes->current() === null,
             'canManageThemes' => $user->can('baobab.system.themes.manage'),
+            'previewTheme' => $previewThemeId !== null
+                ? Module::where('id', $previewThemeId)->where('type', 'theme')->first()
+                : null,
         ]);
     }
 }

@@ -9,6 +9,7 @@
         :title="$contentType === null
             ? __('baobab::admin.content_types.new')
             : __('baobab::admin.content_types.edit_title', ['key' => $contentType->key])"
+        :subtitle="$contentType?->table_name"
         :breadcrumbs="[[__('baobab::admin.content_types.title'), route('admin.content-types.index')]]"
     >
         @error('blueprint')

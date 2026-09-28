@@ -1,5 +1,17 @@
-<header class="flex h-16 items-center justify-between border-b border-border bg-surface px-4">
-    <div class="flex items-center gap-3">
+{{--
+    Ne porte que les quatre fonctions déjà livrées et spécifiées — bascule de
+    sidebar, lien tableau de bord, cloche, compte (direction-visuelle.md
+    §7.1) — plus le déclencheur de l'omnibox, déjà là. Le logo est parti en
+    sidebar avec le lien tableau de bord (M9 point 5, Pass A, suivi n° 366) :
+    la topbar ne porte plus jamais de marque, seulement du global.
+
+    Deux zones plutôt qu'un unique espaceur : la recherche à gauche (juste
+    après la bascule mobile), les icônes globales groupées à droite — revu
+    après rendu navigateur, l'omnibox squeezé contre la cloche ne se lisait
+    pas comme sa propre zone.
+--}}
+<header class="flex h-16 items-center justify-between gap-4 border-b border-border bg-surface px-4">
+    <div class="flex flex-1 items-center gap-3">
         <button
             type="button"
             class="lg:hidden"
@@ -9,33 +21,23 @@
             <span aria-hidden="true">&#9776;</span>
         </button>
 
-        <a href="{{ route('admin.dashboard') }}" class="font-semibold text-foreground">
-            @if ($branding->logo)
-                <img src="{{ $branding->logo->url() }}" alt="{{ config('app.name', 'Baobab') }}" class="h-8 w-auto">
-            @else
-                Baobab
-            @endif
-        </a>
+        @auth('baobab')
+            <button
+                type="button"
+                class="flex w-full max-w-80 items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-muted hover:bg-surface-subtle"
+                x-on:click="window.dispatchEvent(new CustomEvent('open-omnibox'))"
+            >
+                <span aria-hidden="true">&#128269;</span>
+                <span class="hidden sm:inline">{{ __('baobab::admin.omnibox.trigger_label') }}</span>
+                <kbd class="ml-auto hidden rounded border border-border px-1 text-xs sm:inline">Ctrl+K</kbd>
+            </button>
+        @endauth
     </div>
-
-    <div class="flex-1"></div>
-
-    @auth('baobab')
-        <button
-            type="button"
-            class="mr-3 flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-muted hover:bg-surface-subtle"
-            x-on:click="window.dispatchEvent(new CustomEvent('open-omnibox'))"
-        >
-            <span aria-hidden="true">&#128269;</span>
-            <span class="hidden sm:inline">{{ __('baobab::admin.omnibox.trigger_label') }}</span>
-            <kbd class="hidden rounded border border-border px-1 text-xs sm:inline">Ctrl+K</kbd>
-        </button>
-    @endauth
 
     @stack('admin.topbar.before-user')
 
     @auth('baobab')
-        <div class="flex items-center gap-3">
+        <div class="flex shrink-0 items-center gap-3">
             <div
                 class="relative"
                 x-data="notificationCenter({
@@ -100,55 +102,120 @@
                 </div>
             </div>
 
+            {{--
+                Raccourcis vers six écrans déjà dans la sidebar (M9 point 5,
+                Pass A, suivi n° 366) — jamais la recherche libre de
+                l'omnibox, des destinations fixes. Liste calculée dans
+                `registerQuickActionsComposer()`, filtrée aux mêmes
+                permissions que la sidebar : un item ici est toujours
+                atteignable ailleurs, jamais une fuite d'accès.
+            --}}
+            @if ($quickActions->isNotEmpty())
+                <div class="relative" x-data="{ quickActionsOpen: false }">
+                    <button
+                        type="button"
+                        @click="quickActionsOpen = !quickActionsOpen"
+                        class="flex items-center text-foreground"
+                        aria-label="{{ __('baobab::admin.quick_actions.title') }}"
+                    >
+                        <x-baobab::icon name="bi-grid-3x3-gap" class="h-4 w-4" />
+                    </button>
+
+                    <div
+                        x-show="quickActionsOpen"
+                        @click.outside="quickActionsOpen = false"
+                        x-cloak
+                        class="absolute right-0 top-10 z-10 w-64 rounded-md border border-border bg-surface p-2 shadow-lg"
+                    >
+                        <p class="px-2 py-1 text-xs font-medium text-muted">{{ __('baobab::admin.quick_actions.title') }}</p>
+
+                        <div class="grid grid-cols-3 gap-1">
+                            @foreach ($quickActions as $action)
+                                <a
+                                    href="{{ $action['url'] }}"
+                                    class="flex flex-col items-center gap-1.5 rounded-md p-2 text-center hover:bg-surface-subtle"
+                                >
+                                    {{-- Palette neutre déjà établie par <x-baobab::badge variant="neutral"> --}}
+                                    <span class="flex h-9 w-9 items-center justify-center rounded-md bg-sand-100 text-sand-600">
+                                        <x-baobab::icon :name="$action['icon']" class="h-4 w-4" />
+                                    </span>
+                                    <span class="text-xs text-foreground">{{ $action['label'] }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <div class="relative" x-data="{ userMenuOpen: false }">
                 <button
                     type="button"
                     @click="userMenuOpen = !userMenuOpen"
                     class="flex items-center gap-2 text-sm text-foreground"
                 >
-                    {{ auth('baobab')->user()?->name }}
+                    <x-baobab::avatar :name="auth('baobab')->user()?->name ?? ''" class="h-8 w-8 text-xs" />
+                    <span class="hidden sm:inline">{{ auth('baobab')->user()?->name }}</span>
                 </button>
 
                 <div
                     x-show="userMenuOpen"
                     @click.outside="userMenuOpen = false"
                     x-cloak
-                    class="absolute right-0 top-10 z-10 rounded-md border border-border bg-surface p-2 shadow-lg"
+                    class="absolute right-0 top-10 z-10 w-64 rounded-md border border-border bg-surface p-2 shadow-lg"
                 >
+                    {{--
+                        Carte profil (M9 point 5, Pass A, suivi n° 366) :
+                        espace photo réservé, avatar en initiales tant que
+                        `User` ne porte aucun champ media pour ça — l'upload
+                        est une brique à part, hors retrofit de coquille.
+                    --}}
+                    <div class="flex items-center gap-3 p-2">
+                        <x-baobab::avatar :name="auth('baobab')->user()?->name ?? ''" class="h-10 w-10 text-sm" />
+
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-medium text-foreground">{{ auth('baobab')->user()?->name }}</p>
+                            <p class="truncate text-xs text-muted">{{ auth('baobab')->user()?->email }}</p>
+                        </div>
+                    </div>
+
                     <a
                         href="{{ route('admin.account.profile.show') }}"
-                        class="block whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle"
+                        class="mb-2 block rounded-md bg-primary px-2 py-1.5 text-center text-sm font-medium text-white hover:opacity-90"
                     >
-                        {{ __('baobab::admin.account.profile.title') }}
+                        {{ __('baobab::admin.account.view_profile_action') }}
                     </a>
 
-                    <a
-                        href="{{ route('admin.account.notifications.show') }}"
-                        class="block whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle"
-                    >
-                        {{ __('baobab::admin.notifications.preferences_title') }}
-                    </a>
+                    <div class="border-t border-border pt-1">
+                        <a
+                            href="{{ route('admin.account.notifications.show') }}"
+                            class="block whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle"
+                        >
+                            {{ __('baobab::admin.notifications.preferences_title') }}
+                        </a>
 
-                    <a
-                        href="{{ route('admin.account.security.show') }}"
-                        class="block whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle"
-                    >
-                        {{ __('baobab::admin.account.security.title') }}
-                    </a>
+                        <a
+                            href="{{ route('admin.account.security.show') }}"
+                            class="block whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle"
+                        >
+                            {{ __('baobab::admin.account.security.title') }}
+                        </a>
 
-                    <a
-                        href="{{ route('admin.account.api-tokens.index') }}"
-                        class="block whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle"
-                    >
-                        {{ __('baobab::admin.account.api_tokens.title') }}
-                    </a>
+                        <a
+                            href="{{ route('admin.account.api-tokens.index') }}"
+                            class="block whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle"
+                        >
+                            {{ __('baobab::admin.account.api_tokens.title') }}
+                        </a>
+                    </div>
 
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="w-full whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle">
-                            {{ __('baobab::admin.layout.logout') }}
-                        </button>
-                    </form>
+                    <div class="mt-1 border-t border-border pt-1">
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="w-full whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-foreground hover:bg-surface-subtle">
+                                {{ __('baobab::admin.layout.logout') }}
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
