@@ -73,6 +73,25 @@ it('refuses to change your own roles', function () {
     expect($admin->fresh()->hasRole('admin', 'baobab'))->toBeTrue();
 });
 
+it('refuses to grant a role to yourself', function () {
+    $admin = rolesUser('admin', 'roles-grant-self@example.com');
+
+    expect(fn () => app(GrantUserRole::class)($admin, $admin, Role::findByName('editor', 'baobab')))
+        ->toThrow(HierarchyViolationException::class, 'Cannot change your own roles.');
+});
+
+it('is a no-op when the user already has the role, without a second audit entry', function () {
+    $admin = rolesUser('admin', 'roles-noop-admin@example.com');
+    $author = rolesUser('author', 'roles-noop-author@example.com');
+    $editor = Role::findByName('editor', 'baobab');
+
+    app(GrantUserRole::class)($admin, $author, $editor);
+    app(GrantUserRole::class)($admin, $author, $editor);
+
+    expect($author->fresh()->hasRole('editor', 'baobab'))->toBeTrue()
+        ->and(AuditEntry::where('action', 'role.assigned')->where('auditable_id', $author->id)->count())->toBe(1);
+});
+
 it('keeps the last super-admin protected', function () {
     $superAdmin = rolesUser('super-admin', 'roles-last-super@example.com');
     $owner = User::create(['name' => 'Owner', 'email' => 'roles-owner@example.com', 'password' => 'secret-password']);

@@ -34,6 +34,88 @@ it('denies access without baobab.system.redirects.manage', function () {
     $this->actingAs($user, 'baobab')->get(route('admin.redirects.index'))->assertForbidden();
 });
 
+it('denies create, edit, store, update, destroy, export and import without baobab.system.redirects.manage', function () {
+    $user = redirectsActor([]);
+    $redirect = Redirect::create(['source' => '/old', 'target' => '/new', 'status_code' => 301]);
+
+    $this->actingAs($user, 'baobab')->get(route('admin.redirects.create'))->assertForbidden();
+    $this->actingAs($user, 'baobab')->get(route('admin.redirects.edit', ['redirect' => $redirect->id]))->assertForbidden();
+    $this->actingAs($user, 'baobab')->post(route('admin.redirects.store'), [])->assertForbidden();
+    $this->actingAs($user, 'baobab')->put(route('admin.redirects.update', ['redirect' => $redirect->id]), [])->assertForbidden();
+    $this->actingAs($user, 'baobab')->delete(route('admin.redirects.destroy', ['redirect' => $redirect->id]))->assertForbidden();
+    $this->actingAs($user, 'baobab')->get(route('admin.redirects.export'))->assertForbidden();
+    $this->actingAs($user, 'baobab')->post(route('admin.redirects.import'), [])->assertForbidden();
+});
+
+it('renders the create form, pre-filling the source from the query string', function () {
+    $user = redirectsActor(['baobab.system.redirects.manage']);
+
+    $response = $this->actingAs($user, 'baobab')
+        ->get(route('admin.redirects.create', ['source' => '/from-404-log']))
+        ->assertOk();
+
+    expect($response->viewData('prefillSource'))->toBe('/from-404-log');
+});
+
+it('renders the edit form for an existing redirect', function () {
+    $user = redirectsActor(['baobab.system.redirects.manage']);
+    $redirect = Redirect::create(['source' => '/old', 'target' => '/new', 'status_code' => 301]);
+
+    $this->actingAs($user, 'baobab')
+        ->get(route('admin.redirects.edit', ['redirect' => $redirect->id]))
+        ->assertOk()
+        ->assertSee('/old');
+});
+
+it('filters the list by source with the q query parameter', function () {
+    $user = redirectsActor(['baobab.system.redirects.manage']);
+    Redirect::create(['source' => '/keep-this', 'target' => '/a', 'status_code' => 301]);
+    Redirect::create(['source' => '/drop-that', 'target' => '/b', 'status_code' => 301]);
+
+    $this->actingAs($user, 'baobab')
+        ->get(route('admin.redirects.index', ['q' => 'keep']))
+        ->assertOk()
+        ->assertSee('/keep-this')
+        ->assertDontSee('/drop-that');
+});
+
+it('renders the manual and automatic source_kind labels in the list', function () {
+    $user = redirectsActor(['baobab.system.redirects.manage']);
+    Redirect::create(['source' => '/manual', 'target' => '/a', 'status_code' => 301, 'source_kind' => 'manual']);
+    Redirect::create(['source' => '/auto', 'target' => '/b', 'status_code' => 301, 'source_kind' => 'auto']);
+
+    $this->actingAs($user, 'baobab')
+        ->get(route('admin.redirects.index'))
+        ->assertOk()
+        ->assertSee(__('baobab::admin.redirects.kind_manual'))
+        ->assertSee(__('baobab::admin.redirects.kind_auto'));
+});
+
+it('rejects a source without a leading slash', function () {
+    $user = redirectsActor(['baobab.system.redirects.manage']);
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.redirects.store'), ['source' => 'no-leading-slash', 'target' => '/new', 'status_code' => 301])
+        ->assertSessionHasErrors('source');
+});
+
+it('rejects a status_code outside 301, 302 and 410', function () {
+    $user = redirectsActor(['baobab.system.redirects.manage']);
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.redirects.store'), ['source' => '/old', 'target' => '/new', 'status_code' => 404])
+        ->assertSessionHasErrors('status_code');
+});
+
+it('rejects an import file that is not a CSV', function () {
+    $user = redirectsActor(['baobab.system.redirects.manage']);
+    $file = UploadedFile::fake()->create('not-a-csv.pdf', 10, 'application/pdf');
+
+    $this->actingAs($user, 'baobab')
+        ->post(route('admin.redirects.import'), ['file' => $file])
+        ->assertSessionHasErrors('file');
+});
+
 it('creates a redirect from the admin form', function () {
     $user = redirectsActor(['baobab.system.redirects.manage']);
 

@@ -1,5 +1,6 @@
 <?php
 
+use Baobab\Audit\Models\AuditEntry;
 use Baobab\Modules\Models\Module;
 use Baobab\Studio\Actions\GenerateModuleFromDraft;
 use Baobab\Studio\Exceptions\ModuleGenerationFailedException;
@@ -219,4 +220,35 @@ it('never destroys an already installed module when a regeneration fails', funct
     expect(Module::where('name', $draft->vendor_slug)->exists())->toBeTrue()
         ->and(Schema::hasTable(rollbackTable()))->toBeTrue()
         ->and(File::isDirectory(rollbackModuleDirectory()))->toBeTrue();
+});
+
+/**
+ * `ModuleSchemaEvolutionTest` exerce déjà la clé `schema` du résultat, jamais
+ * `manifest` — la resynchronisation qui suit l'évolution de schéma sur une
+ * régénération (`$draft->module !== null`), suivi n° 363.
+ */
+it('returns the manifest sync result alongside the schema on a regeneration', function () {
+    $draft = rollbackDraft();
+
+    app(GenerateModuleFromDraft::class)($draft);
+
+    $result = app(GenerateModuleFromDraft::class)($draft->fresh() ?? $draft);
+
+    expect($result)->toHaveKeys(['written', 'skipped', 'schema', 'manifest'])
+        ->and($result['manifest'] ?? [])->toHaveKeys(['manifest_changed', 'permissions', 'menu_items']);
+});
+
+it('records an audit entry naming the module and what was written', function () {
+    $draft = rollbackDraft();
+
+    $result = app(GenerateModuleFromDraft::class)($draft);
+
+    $entry = AuditEntry::where('action', 'studio.draft.generated')->where('auditable_id', $draft->id)->sole();
+
+    expect($entry->data)->toBe([
+        'module' => $draft->vendor_slug,
+        'written' => count($result['written']),
+        'skipped' => $result['skipped'],
+        'overwritten' => [],
+    ]);
 });
