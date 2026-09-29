@@ -71,9 +71,18 @@ it('rejects an invalid password', function () {
  * le défaut lui-même ; en colonne, chacun est centré. C'est un test de
  * présentation, assumé comme tel — ce défaut a traversé deux hébergements et
  * une semaine sans que rien ne le voie, faute de quoi que ce soit qui regarde.
+ *
+ * `login` a son propre layout depuis la Pass D du M9 point 5 (suivi n° 373
+ * décision 5, `layouts/login.blade.php`) : la direction/le centrage horizontal
+ * restent inconditionnels (`flex flex-col items-center`), mais le centrage
+ * vertical (`min-h-svh`/`justify-center`) est réservé à `sm:` et plus — sur
+ * mobile, centrer un formulaire court dans toute la hauteur de l'écran ne
+ * fait que le repousser sous le pli (retour utilisateur, deux allers-retours
+ * avant ce réglage).
  */
 it('garde la carte de connexion centrée, toasts compris', function () {
     $this->get('/login')
         ->assertOk()
-        ->assertSee('flex h-full flex-col items-center justify-center', false);
+        ->assertSee('flex flex-col items-center', false)
+        ->assertSee('sm:min-h-svh sm:justify-center', false);
 });

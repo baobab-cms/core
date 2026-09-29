@@ -1,5 +1,6 @@
 <?php
 
+use Baobab\Support\PublishBrandAssets;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\MessageBag;
@@ -515,4 +516,25 @@ it('renders x-baobab::field.slug in mono, delegating to field.text', function ()
         ->toContain('font-mono')
         ->toContain('placeholder="mon-titre-de-page"')
         ->toContain('value="mon-titre"');
+});
+
+// ── M9 point 5, Pass D (Écrans d'authentification) — suivi n° 373 ──────────
+
+it('renders x-baobab::brand-mark with a publish-baobab/images src and a Baobab alt text', function () {
+    $html = Blade::render('<x-baobab::brand-mark class="h-14 w-14" />');
+
+    expect($html)
+        ->toContain('<img')
+        ->toContain('src="/baobab/images/baobab-icon.png?v=')
+        ->toContain('alt="Baobab"')
+        ->toContain('h-14 w-14');
+
+    expect(is_file(public_path('baobab/images/baobab-icon.png')))->toBeTrue();
+});
+
+it('publishes the same brand icon url on repeated calls (idempotent symlink)', function () {
+    $first = app(PublishBrandAssets::class)();
+    $second = app(PublishBrandAssets::class)();
+
+    expect($first)->toBe($second);
 });

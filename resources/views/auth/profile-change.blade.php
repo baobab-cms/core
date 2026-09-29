@@ -22,8 +22,8 @@
         @csrf
         <input type="hidden" name="token" value="{{ $token }}">
 
-        <button type="submit" class="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-white">
+        <x-baobab::button type="submit" class="w-full justify-center">
             {{ __('baobab::admin.auth.profile_change_submit') }}
-        </button>
+        </x-baobab::button>
     </form>
 @endsection

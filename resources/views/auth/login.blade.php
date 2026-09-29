@@ -1,4 +1,4 @@
-@extends('baobab::layouts.guest')
+@extends('baobab::layouts.login')
 
 @section('title', __('baobab::admin.auth.login_title'))
 
@@ -9,47 +9,29 @@
         </div>
     @endif
 
-    @if ($errors->any())
-        <div class="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-            {{ $errors->first() }}
-        </div>
-    @endif
-
     <form method="POST" action="{{ route('login') }}" class="space-y-4">
         @csrf
 
-        <div>
-            <label for="email" class="block text-sm text-foreground">{{ __('baobab::admin.auth.email') }}</label>
-            <input
-                id="email" name="email" type="email" value="{{ old('email') }}" required autofocus
-                class="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm"
-            >
-        </div>
+        <x-baobab::field.text
+            type="email" name="email" label="{{ __('baobab::admin.auth.email') }}"
+            value="{{ old('email') }}" required autofocus autocomplete="email"
+        />
 
-        <div>
-            <label for="password" class="block text-sm text-foreground">{{ __('baobab::admin.auth.password') }}</label>
-            <input
-                id="password" name="password" type="password" required
-                class="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm"
-            >
-        </div>
+        <x-baobab::field.text
+            type="password" name="password" label="{{ __('baobab::admin.auth.password') }}"
+            required autocomplete="current-password"
+        />
 
-        <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-                <input
-                    id="remember" name="remember" type="checkbox" value="1" @checked(old('remember'))
-                    class="h-4 w-4 rounded border-border"
-                >
-                <label for="remember" class="text-sm text-foreground">{{ __('baobab::admin.auth.remember') }}</label>
-            </div>
+        <x-baobab::field.checkbox name="remember" label="{{ __('baobab::admin.auth.remember') }}" />
 
-            <a href="{{ route('password.request') }}" class="text-sm text-primary underline">
+        <div class="flex justify-end">
+            <x-baobab::button variant="ghost" size="sm" href="{{ route('password.request') }}">
                 {{ __('baobab::admin.auth.forgot_password_link') }}
-            </a>
+            </x-baobab::button>
         </div>
 
-        <button type="submit" class="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-white">
+        <x-baobab::button type="submit" class="w-full justify-center">
             {{ __('baobab::admin.auth.submit') }}
-        </button>
+        </x-baobab::button>
     </form>
 @endsection
