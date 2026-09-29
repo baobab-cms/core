@@ -1046,6 +1046,27 @@ final class ContentController
     private const LIST_COLUMN_TYPES = ['text', 'integer', 'decimal', 'boolean', 'date', 'select', 'email', 'url', 'tel'];
 
     /**
+     * Cycle éditorial (`ContentStateMachine::graph()`) vers vocabulaire de
+     * `<x-baobab::status>` (spec direction-visuelle §8.5 : secondary/muted/
+     * warning/danger = publié/brouillon/planifié/erreur) : deux états n'ont
+     * pas d'équivalent direct dans ces quatre rôles — `pending` (en attente
+     * d'une décision humaine) rejoint `warning`, même poids visuel que
+     * `scheduled` (en attente d'une échéance) ; `archived` rejoint `muted`,
+     * même statut « non actif » que `draft`. Le mot du statut, pas la seule
+     * couleur, distingue les deux dans chaque paire (§5.5 : aucune
+     * information sur la couleur seule) — suivi n° 376 décision 1.
+     *
+     * @var array<string, string>
+     */
+    private const STATUS_VARIANTS = [
+        'draft' => 'muted',
+        'pending' => 'warning',
+        'published' => 'secondary',
+        'scheduled' => 'warning',
+        'archived' => 'muted',
+    ];
+
+    /**
      * @return list<array<string, mixed>>
      */
     private function listColumns(ContentType $type, string $slug, bool $trashed = false): array
@@ -1065,7 +1086,19 @@ final class ContentController
         }
 
         if (! $trashed) {
-            $columns[] = ['key' => 'status', 'label' => __('baobab::admin.content.column_status')];
+            $columns[] = [
+                'key' => 'status',
+                'label' => __('baobab::admin.content.column_status'),
+                'raw' => true,
+                'render' => function (Model $row): string {
+                    $status = (string) $row->getAttribute('status');
+
+                    return Blade::render(
+                        '<x-baobab::status :variant="$variant">{{ $label }}</x-baobab::status>',
+                        ['variant' => self::STATUS_VARIANTS[$status] ?? 'muted', 'label' => __('baobab::admin.content.status_'.$status)],
+                    );
+                },
+            ];
         }
 
         $actor = $this->actor();

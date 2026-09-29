@@ -75,7 +75,54 @@ it('renders x-baobab::card with header, footer and slot', function () {
     </x-baobab::card>
     BLADE);
 
-    expect($html)->toContain('Header')->toContain('Body')->toContain('Footer');
+    expect($html)->toContain('Header')->toContain('Body')->toContain('Footer')
+        ->toContain('py-2')->not->toContain('py-3');
+});
+
+// ── M9 point 5, Pass E (Cartes, statuts, couches flottantes) — suivi n° 376 ─
+
+it('applies heading/lg/medium to the x-baobab::card title prop, but only without an explicit header slot', function () {
+    $withTitle = Blade::render('<x-baobab::card title="Résumé">Body</x-baobab::card>');
+    expect($withTitle)->toContain('Résumé')
+        ->toContain('font-display')->toContain('text-lg')->toContain('font-medium');
+
+    $withHeaderSlot = Blade::render(<<<'BLADE'
+    <x-baobab::card title="Ignored">
+        <x-slot:header>Custom header</x-slot:header>
+        Body
+    </x-baobab::card>
+    BLADE);
+    expect($withHeaderSlot)->toContain('Custom header')->not->toContain('Ignored');
+});
+
+it('renders x-baobab::status with a coloured dot and the given label, never the dot alone', function () {
+    $html = Blade::render('<x-baobab::status variant="secondary">Publié</x-baobab::status>');
+
+    expect($html)->toContain('Publié')
+        ->toContain('bg-leaf-50')->toContain('text-leaf-600')
+        ->toContain('bg-leaf-600')
+        ->toContain('rounded-full')->toContain('aria-hidden="true"');
+});
+
+it('maps every x-baobab::status variant to its own light background and dot colour', function () {
+    $muted = Blade::render('<x-baobab::status variant="muted">Brouillon</x-baobab::status>');
+    $warning = Blade::render('<x-baobab::status variant="warning">Planifié</x-baobab::status>');
+    $danger = Blade::render('<x-baobab::status variant="danger">Erreur</x-baobab::status>');
+
+    expect($muted)->toContain('bg-sand-100')->toContain('bg-sand-600')
+        ->and($warning)->toContain('bg-warning-50')->toContain('bg-warning-700')
+        ->and($danger)->toContain('bg-danger-50')->toContain('bg-danger-700');
+});
+
+it('gives x-baobab::dropdown the §8.6 geometry (surface, border, radius md, shadow sm, 200px min) wired to the caller\'s Alpine state', function () {
+    $html = Blade::render('<x-baobab::dropdown state="menuOpen" width="w-64">Panel content</x-baobab::dropdown>');
+
+    expect($html)->toContain('Panel content')
+        ->toContain('x-show="menuOpen"')
+        ->toContain('menuOpen = false')
+        ->toContain('bg-surface')->toContain('border-border')->toContain('rounded-md')
+        ->toContain('shadow-sm')->not->toContain('shadow-lg')
+        ->toContain('w-64');
 });
 
 it('renders x-baobab::button variants and href mode', function () {

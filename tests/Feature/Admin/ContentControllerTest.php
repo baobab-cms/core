@@ -127,6 +127,33 @@ it('renders list columns through display components, excluding richtext from the
         ->assertDontSee('alert(1)', false);
 });
 
+// ── M9 point 5, Pass E (statuts, §8.5) — suivi n° 376 ────────────────────────
+
+it('renders the status column as a coloured x-baobab::status pill, not the raw status value', function () {
+    $contentType = app(BuildContentType::class)((string) json_encode([
+        'key' => 'StatusPillEntry',
+        'label' => ['singular' => 'Entrée pastille', 'plural' => 'Entrées pastille'],
+        'fields' => [
+            ['key' => 'headline', 'type' => 'text', 'required' => true],
+        ],
+    ]));
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    /** @var class-string<Model> $modelClass */
+    $modelClass = $contentType->fresh()->modelClass();
+    $owner = contentCrudActor(['content.status_pill_entry.view']);
+    (new $modelClass(['headline' => 'Brouillon en cours', 'status' => 'draft', 'author_id' => $owner->id]))->save();
+
+    $response = $this->actingAs($owner, 'baobab')
+        ->get(route('admin.content.index', ['contentType' => 'status-pill-entries']));
+
+    $response->assertOk()
+        ->assertSee(__('baobab::admin.content.status_draft'))
+        ->assertSee('bg-sand-100', false)
+        ->assertDontSee('>draft<', false);
+});
+
 it('denies the index without content.admin_crud_entry.view', function () {
     buildCarForAdminCrud();
     $user = contentCrudActor([]);

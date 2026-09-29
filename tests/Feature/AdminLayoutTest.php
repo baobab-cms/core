@@ -128,6 +128,22 @@ it('shows only the quick actions the user holds the permission for', function ()
         ->not->toContain(route('admin.menus.index'));
 });
 
+// ── M9 point 5, Pass E (couches flottantes) — suivi n° 376 ──────────────────
+
+it('migrates the three topbar dropdown panels onto x-baobab::dropdown, off shadow-lg (§8.6, suivi n° 376)', function () {
+    $user = User::create(['name' => 'Topbar Dropdowns', 'email' => 'topbar-dropdowns@example.com', 'password' => 'secret']);
+    app(GrantPermission::class)($user, 'baobab.admin.access');
+    app(GrantPermission::class)($user, 'baobab.media.view');
+
+    $html = $this->actingAs($user, 'baobab')->get('/admin')->getContent();
+
+    expect((string) $html)
+        ->toContain('x-show="open"')->toContain('open = false')
+        ->toContain('x-show="quickActionsOpen"')->toContain('quickActionsOpen = false')
+        ->toContain('x-show="userMenuOpen"')->toContain('userMenuOpen = false')
+        ->and(substr_count((string) $html, 'shadow-sm'))->toBeGreaterThanOrEqual(3);
+});
+
 it('exposes aria-expanded on a collapsible sidebar group and aria-current on the active link', function () {
     $items = [
         new SidebarItem(

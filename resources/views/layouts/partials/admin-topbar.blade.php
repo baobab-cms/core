@@ -64,12 +64,7 @@
                     ></span>
                 </button>
 
-                <div
-                    x-show="open"
-                    @click.outside="open = false"
-                    x-cloak
-                    class="absolute right-0 top-10 z-10 w-80 rounded-md border border-border bg-surface p-2 shadow-lg"
-                >
+                <x-baobab::dropdown state="open" width="w-80">
                     <template x-if="items.length === 0">
                         <p class="px-2 py-2 text-sm text-muted">{{ __('baobab::admin.notifications.empty') }}</p>
                     </template>
@@ -99,7 +94,7 @@
                             {{ __('baobab::admin.notifications.view_all_action') }}
                         </a>
                     </div>
-                </div>
+                </x-baobab::dropdown>
             </div>
 
             {{--
@@ -121,12 +116,7 @@
                         <x-baobab::icon name="bi-grid-3x3-gap" class="h-4 w-4" />
                     </button>
 
-                    <div
-                        x-show="quickActionsOpen"
-                        @click.outside="quickActionsOpen = false"
-                        x-cloak
-                        class="absolute right-0 top-10 z-10 w-64 rounded-md border border-border bg-surface p-2 shadow-lg"
-                    >
+                    <x-baobab::dropdown state="quickActionsOpen" width="w-64">
                         <p class="px-2 py-1 text-xs font-medium text-muted">{{ __('baobab::admin.quick_actions.title') }}</p>
 
                         <div class="grid grid-cols-3 gap-1">
@@ -143,7 +133,7 @@
                                 </a>
                             @endforeach
                         </div>
-                    </div>
+                    </x-baobab::dropdown>
                 </div>
             @endif
 
@@ -157,12 +147,7 @@
                     <span class="hidden sm:inline">{{ auth('baobab')->user()?->name }}</span>
                 </button>
 
-                <div
-                    x-show="userMenuOpen"
-                    @click.outside="userMenuOpen = false"
-                    x-cloak
-                    class="absolute right-0 top-10 z-10 w-64 rounded-md border border-border bg-surface p-2 shadow-lg"
-                >
+                <x-baobab::dropdown state="userMenuOpen" width="w-64">
                     {{--
                         Carte profil (M9 point 5, Pass A, suivi n° 366) :
                         espace photo réservé, avatar en initiales tant que
@@ -217,7 +202,7 @@
                             </button>
                         </form>
                     </div>
-                </div>
+                </x-baobab::dropdown>
             </div>
         </div>
     @endauth
