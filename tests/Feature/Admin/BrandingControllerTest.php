@@ -53,6 +53,17 @@ it('shows the branding screen to an actor with baobab.system.branding.manage', f
         ->assertOk();
 });
 
+it('labels every color token card, including on-primary, instead of leaking the raw translation key (suivi n° 381)', function () {
+    $actor = brandingActor(['baobab.system.branding.manage']);
+
+    $response = $this->actingAs($actor, 'baobab')->get(route('admin.branding.index'));
+
+    $response->assertOk()
+        ->assertSee(__('baobab::admin.branding.color_on-primary_label'))
+        ->assertDontSee('baobab::admin.branding.color_on-primary_label')
+        ->assertDontSee('branding.color_on-primary_label');
+});
+
 it('updates the primary color and audits the change', function () {
     $actor = brandingActor(['baobab.system.branding.manage']);
 

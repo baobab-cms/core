@@ -18,7 +18,10 @@
             <x-baobab::form method="POST" action="{{ route('admin.access.roles.store') }}" class="flex flex-wrap items-end gap-2">
                 <x-baobab::field.text name="name" label="{{ __('baobab::admin.access.create_role_name') }}" />
                 <x-baobab::field.text name="level" type="number" label="{{ __('baobab::admin.access.create_role_level') }}" />
-                <x-baobab::button type="submit" variant="primary">
+                {{-- `mb-4` (suivi n° 381) : aligne le bouton sur les champs voisins, qui
+                portent cette marge sur leur conteneur — sans elle, `items-end` décroche
+                le bouton 16px plus bas que leur contrôle visible. --}}
+                <x-baobab::button type="submit" variant="primary" class="mb-4">
                     {{ __('baobab::admin.access.create_role_submit') }}
                 </x-baobab::button>
             </x-baobab::form>

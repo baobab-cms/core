@@ -49,13 +49,24 @@ final class SidebarBuilder
      * spec-admin §10 — même patron que `ResolveMenuTree::applyLiveState`).
      * Reconstruit l'arbre plutôt que de muter : `SidebarItem` est immuable.
      *
+     * Un groupe (suivi n° 383) n'a pas d'URL propre : il est marqué actif
+     * quand l'un de ses enfants l'est, pour rester repérable même replié —
+     * les enfants sont donc résolus d'abord, le groupe hérite ensuite.
+     *
      * @param  list<SidebarItem>  $items
      * @return list<SidebarItem>
      */
     private function applyActiveState(array $items, string $currentPath): array
     {
         return array_map(function (SidebarItem $item) use ($currentPath): SidebarItem {
+            $children = $this->applyActiveState($item->children, $currentPath);
+
             $itemPath = $item->url !== null ? '/'.ltrim((string) parse_url($item->url, PHP_URL_PATH), '/') : null;
+            $isActive = $itemPath !== null && rtrim($itemPath, '/') === rtrim($currentPath, '/');
+
+            if (! $isActive) {
+                $isActive = collect($children)->contains(fn (SidebarItem $child): bool => $child->isActive);
+            }
 
             return new SidebarItem(
                 id: $item->id,
@@ -63,8 +74,8 @@ final class SidebarBuilder
                 icon: $item->icon,
                 url: $item->url,
                 order: $item->order,
-                children: $this->applyActiveState($item->children, $currentPath),
-                isActive: $itemPath !== null && rtrim($itemPath, '/') === rtrim($currentPath, '/'),
+                children: $children,
+                isActive: $isActive,
             );
         }, $items);
     }

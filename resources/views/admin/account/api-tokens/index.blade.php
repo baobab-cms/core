@@ -14,7 +14,7 @@
 
                 <p class="mb-3 text-sm text-muted">{{ __('baobab::admin.account.api_tokens.plain_text_token_warning') }}</p>
 
-                <code class="block break-all rounded-md bg-surface-subtle px-3 py-2 font-mono text-sm text-foreground">{{ $plainTextToken }}</code>
+                <x-baobab::chip :value="$plainTextToken" class="block w-full break-all px-3 py-2 text-left" />
             </x-baobab::card>
         @endif
 

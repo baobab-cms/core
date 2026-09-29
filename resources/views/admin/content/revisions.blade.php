@@ -27,7 +27,8 @@
                     :options="['' => '—'] + $history->pluck('created_at', 'id')->map(fn ($date) => $date->format('d/m/Y H:i'))->all()"
                     :value="$toId"
                 />
-                <x-baobab::button type="submit" variant="secondary">{{ __('baobab::admin.content.compare_action') }}</x-baobab::button>
+                {{-- `mb-4` (suivi n° 381) --}}
+                <x-baobab::button type="submit" variant="secondary" class="mb-4">{{ __('baobab::admin.content.compare_action') }}</x-baobab::button>
             </form>
 
             @if ($diff)

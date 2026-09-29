@@ -512,10 +512,13 @@ it('exposes the media picker selection state and a loading indicator via ARIA', 
     // visuelle (ring-2), aucun état exposé aux technologies d'assistance.
     expect($html)
         ->toContain("x-bind:aria-pressed=\"isSelected(item.id) ? 'true' : 'false'\"")
-        // le chargement asynchrone n'avait ni texte, ni aria-busy.
+        // le chargement asynchrone n'avait ni indicateur visuel, ni aria-busy ;
+        // le texte "Chargement…" du n° 307 est devenu un squelette (§9, suivi
+        // n° 379 décision 3) — aria-busy reste la seule annonce aux lecteurs
+        // d'écran, le squelette lui-même est aria-hidden.
         ->toContain("x-bind:aria-busy=\"loading ? 'true' : 'false'\"")
         ->toContain('x-if="loading"')
-        ->toContain(__('baobab::admin.components.loading'));
+        ->toContain('bg-sand-100');
 });
 
 it('passes hasError/errorId to the richtext editor config when there is an error', function () {
@@ -584,4 +587,84 @@ it('publishes the same brand icon url on repeated calls (idempotent symlink)', f
     $second = app(PublishBrandAssets::class)();
 
     expect($first)->toBe($second);
+});
+
+// ── M9 point 5, Pass F (Signature, la charpente apparente) — suivi n° 377 ──
+
+it('renders x-baobab::chip in mono at 0.92em, sand background, and wires the value to a click-to-copy handler', function () {
+    $html = Blade::render('<x-baobab::chip value="ct_cars" />');
+
+    expect($html)
+        ->toContain('ct_cars')
+        ->toContain('font-mono')->toContain('text-[0.92em]')
+        ->toContain('bg-sand-100')->toContain('text-sand-700')
+        ->toContain('rounded-md')
+        ->toContain('navigator.clipboard.writeText')
+        ->toContain(__('baobab::admin.components.copied'));
+});
+
+it('copies the raw value, not any HTML the caller passed, and merges caller classes without dropping the base ones', function () {
+    $html = Blade::render('<x-baobab::chip value="baobab.content.saved" class="w-full" />');
+
+    expect($html)
+        ->toContain("writeText('baobab.content.saved')")
+        ->toContain('bg-sand-100')->toContain('w-full');
+});
+
+// ── M9 point 5, Pass G (États) — suivi n° 379 ───────────────────────────────
+
+it('adds a short title to x-baobab::empty-state only when given one, leaving the existing message-only usage untouched', function () {
+    $withTitle = Blade::render('<x-baobab::empty-state title="Aucun article" message="Créez votre premier article." />');
+    expect($withTitle)
+        ->toContain('Aucun article')->toContain('Créez votre premier article.')
+        ->toContain('font-display')->toContain('font-medium');
+
+    $messageOnly = Blade::render('<x-baobab::empty-state message="Aucun résultat." />');
+    expect($messageOnly)->toContain('Aucun résultat.')->not->toContain('font-display');
+});
+
+it('renders x-baobab::skeleton as a static sand block, never an animated class (§5.4)', function () {
+    $html = Blade::render('<x-baobab::skeleton class="h-20 w-full" />');
+
+    expect($html)
+        ->toContain('bg-sand-100')->toContain('h-20 w-full')
+        ->toContain('aria-hidden="true"')
+        ->not->toContain('animate-');
+});
+
+it('routes a bulk action flagged confirm through x-baobab::confirm instead of a direct submit, and counts checked rows live', function () {
+    $html = Blade::render(
+        '<x-baobab::table :columns="$columns" :rows="$rows" :bulk-actions="$bulkActions" />',
+        [
+            'columns' => [['key' => 'name', 'label' => 'Nom']],
+            'rows' => [['id' => 1, 'name' => 'Un']],
+            'bulkActions' => [[
+                'route' => '/bulk-delete',
+                'label' => 'Supprimer la sélection',
+                'confirm' => ['title' => 'Supprimer les éléments sélectionnés ?', 'description' => 'Cette action est irréversible.'],
+            ]],
+        ],
+    );
+
+    expect($html)
+        ->toContain("\$dispatch('open-modal', 'bulk-action-confirm-0')")
+        ->toContain('Cette action est irréversible.')
+        ->toContain('checkedCount')
+        // le bouton de soumission réel vit dans la modale, jamais hors confirmation.
+        ->toContain('formaction="/bulk-delete"');
+});
+
+it('leaves a bulk action without confirm on the original direct-submit button, unchanged', function () {
+    $html = Blade::render(
+        '<x-baobab::table :columns="$columns" :rows="$rows" :bulk-actions="$bulkActions" />',
+        [
+            'columns' => [['key' => 'name', 'label' => 'Nom']],
+            'rows' => [['id' => 1, 'name' => 'Un']],
+            'bulkActions' => [['route' => '/bulk-restore', 'label' => 'Restaurer la sélection']],
+        ],
+    );
+
+    expect($html)
+        ->toContain('formaction="/bulk-restore"')
+        ->not->toContain("open-modal', 'bulk-action-confirm-0'");
 });

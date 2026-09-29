@@ -169,7 +169,8 @@
                         <form method="POST" action="{{ route('admin.content.transition', ['contentType' => $slug, 'entry' => $entryId, 'transition' => 'schedule']) }}" class="flex flex-wrap items-end gap-2">
                             @csrf
                             <x-baobab::field.text type="datetime-local" name="published_at" label="{{ __('baobab::admin.content.schedule_date_label') }}" />
-                            <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.content.confirm_action') }}</x-baobab::button>
+                            {{-- `mb-4` (suivi n° 381) --}}
+                            <x-baobab::button type="submit" variant="primary" class="mb-4">{{ __('baobab::admin.content.confirm_action') }}</x-baobab::button>
                         </form>
                     </div>
 
@@ -177,7 +178,8 @@
                         <form method="POST" action="{{ route('admin.content.transition', ['contentType' => $slug, 'entry' => $entryId, 'transition' => 'approve']) }}" class="flex flex-wrap items-end gap-2">
                             @csrf
                             <x-baobab::field.text type="datetime-local" name="published_at" label="{{ __('baobab::admin.content.approve_date_label') }}" />
-                            <x-baobab::button type="submit" variant="primary">{{ __('baobab::admin.content.confirm_action') }}</x-baobab::button>
+                            {{-- `mb-4` (suivi n° 381) --}}
+                            <x-baobab::button type="submit" variant="primary" class="mb-4">{{ __('baobab::admin.content.confirm_action') }}</x-baobab::button>
                         </form>
                     </div>
 

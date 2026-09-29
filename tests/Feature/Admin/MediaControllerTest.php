@@ -286,7 +286,13 @@ it('moves selected media into a folder, skipping items the actor cannot update',
         ->post(route('admin.media.move'), ['ids' => [$media->id], 'folder_id' => $folder->id])
         ->assertRedirect();
 
-    expect($media->fresh()?->folder_id)->toBe($folder->id);
+    expect($media->fresh()?->folder_id)->toBe($folder->id)
+        // suivi n° 380 : `move()` était la seule mutation du contrôleur sans
+        // toast, le déplacement semblait silencieusement ne rien faire.
+        ->and(session('toast'))->toBe([
+            'type' => 'success',
+            'message' => __('baobab::admin.media.show.moved', ['moved' => 1, 'skipped' => 0]),
+        ]);
 });
 
 // ── doublons (HTTP) ────────────────────────────────────────────────────────────

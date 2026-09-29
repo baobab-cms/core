@@ -7,7 +7,8 @@
         <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
             <form method="GET" class="flex items-end gap-2">
                 <x-baobab::field.text name="q" label="{{ __('baobab::admin.redirects.search_placeholder') }}" :value="request('q')" />
-                <x-baobab::button type="submit" variant="secondary">{{ __('baobab::admin.redirects.search_action') }}</x-baobab::button>
+                {{-- `mb-4` (suivi n° 381) --}}
+                <x-baobab::button type="submit" variant="secondary" class="mb-4">{{ __('baobab::admin.redirects.search_action') }}</x-baobab::button>
             </form>
 
             <div class="flex items-center gap-2">

@@ -55,7 +55,9 @@
             x-on:drop.prevent="dragging = false; onDrop($event)"
         >
             <template x-if="loading">
-                <p class="col-span-full py-6 text-center text-sm text-muted">{{ __('baobab::admin.components.loading') }}</p>
+                <template x-for="n in 10" :key="n">
+                    <x-baobab::skeleton class="h-20 w-full" />
+                </template>
             </template>
 
             <template x-if="!loading && items.length === 0">

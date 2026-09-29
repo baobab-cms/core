@@ -154,6 +154,32 @@ it('renders the status column as a coloured x-baobab::status pill, not the raw s
         ->assertDontSee('>draft<', false);
 });
 
+it('routes row delete through x-baobab::confirm, naming the entry, instead of the native browser confirm() (suivi n° 379)', function () {
+    $contentType = app(BuildContentType::class)((string) json_encode([
+        'key' => 'ConfirmRowEntry',
+        'label' => ['singular' => 'Entrée confirmation', 'plural' => 'Entrées confirmation'],
+        'fields' => [
+            ['key' => 'headline', 'type' => 'text', 'required' => true],
+        ],
+        'title_field' => 'headline',
+    ]));
+    $module = Module::findOrFail($contentType->module_id);
+    app(ModuleAutoloader::class)->registerFor($module);
+
+    /** @var class-string<Model> $modelClass */
+    $modelClass = $contentType->fresh()->modelClass();
+    $owner = contentCrudActor(['content.confirm_row_entry.view']);
+    (new $modelClass(['headline' => 'Article à confirmer', 'status' => 'draft', 'author_id' => $owner->id]))->save();
+
+    $response = $this->actingAs($owner, 'baobab')
+        ->get(route('admin.content.index', ['contentType' => 'confirm-row-entries']));
+
+    $response->assertOk()
+        ->assertDontSee('onsubmit="return confirm(', false)
+        ->assertSee('Supprimer « Article à confirmer » ?')
+        ->assertSee("open-modal', 'delete-entry-", false);
+});
+
 it('denies the index without content.admin_crud_entry.view', function () {
     buildCarForAdminCrud();
     $user = contentCrudActor([]);

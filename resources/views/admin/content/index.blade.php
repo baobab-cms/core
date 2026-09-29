@@ -24,7 +24,12 @@
 
         @unless ($trashed)
             <form method="GET" action="{{ route('admin.content.index', ['contentType' => $slug]) }}" class="mb-4 flex flex-wrap items-end gap-2">
-                <x-baobab::field.text name="q" label="" :value="request('q')" placeholder="{{ __('baobab::admin.content.search_placeholder') }}" />
+                <x-baobab::field.text
+                    name="q"
+                    label="{{ __('baobab::admin.content.search_label') }}"
+                    :value="request('q')"
+                    placeholder="{{ __('baobab::admin.content.search_placeholder') }}"
+                />
 
                 <x-baobab::field.select
                     name="status"
@@ -33,7 +38,11 @@
                     :value="request('status')"
                 />
 
-                <x-baobab::button type="submit" variant="secondary">
+                {{-- `mb-4` (suivi n° 381) : les champs voisins portent cette marge sur
+                leur conteneur ; sans elle, `items-end` aligne le bas du bouton (sans
+                marge) sur le bas de leur boîte élargie par cette marge, 16px plus bas
+                que le contrôle visible — le bouton semblait décroché des champs. --}}
+                <x-baobab::button type="submit" variant="secondary" class="mb-4">
                     {{ __('baobab::admin.content.search_submit') }}
                 </x-baobab::button>
             </form>

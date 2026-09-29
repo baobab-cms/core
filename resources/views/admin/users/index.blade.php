@@ -19,7 +19,8 @@
                 :options="$statusOptions"
                 :value="$status"
             />
-            <x-baobab::button type="submit" variant="secondary">{{ __('baobab::admin.users.status.filter_submit') }}</x-baobab::button>
+            {{-- `mb-4` (suivi n° 381) --}}
+            <x-baobab::button type="submit" variant="secondary" class="mb-4">{{ __('baobab::admin.users.status.filter_submit') }}</x-baobab::button>
         </form>
 
         <x-baobab::table :columns="$columns" :rows="$users" />

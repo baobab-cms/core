@@ -19,7 +19,8 @@
             />
             <x-baobab::field.text type="date" name="from" label="{{ __('baobab::admin.review.filter_from') }}" :value="$filters['from'] ?? null" />
             <x-baobab::field.text type="date" name="to" label="{{ __('baobab::admin.review.filter_to') }}" :value="$filters['to'] ?? null" />
-            <x-baobab::button type="submit" variant="secondary">{{ __('baobab::admin.review.filter_submit') }}</x-baobab::button>
+            {{-- `mb-4` (suivi n° 381) --}}
+            <x-baobab::button type="submit" variant="secondary" class="mb-4">{{ __('baobab::admin.review.filter_submit') }}</x-baobab::button>
         </form>
 
         @if (empty($groups))

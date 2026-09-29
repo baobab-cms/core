@@ -208,6 +208,15 @@ final class MediaController
 
         app(MoveMedia::class)($items, $request->integer('folder_id') ?: null);
 
+        // `move()` était la seule mutation de ce contrôleur sans toast (les
+        // sœurs — update/delete/restore/purge/bulk-delete — en flashent
+        // toutes une) : le déplacement semblait ne rien faire, l'écran se
+        // recharge à l'identique sans confirmation (suivi n° 380).
+        session()->flash('toast', [
+            'type' => 'success',
+            'message' => __('baobab::admin.media.show.moved', ['moved' => count($items), 'skipped' => count($ids) - count($items)]),
+        ]);
+
         return back();
     }
 

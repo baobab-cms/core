@@ -38,9 +38,15 @@
                     @if ($trashed)
                         <input type="hidden" name="trashed" value="1">
                     @endif
-                    <x-baobab::field.text name="q" label="" :value="request('q')" placeholder="{{ __('baobab::admin.media.search_placeholder') }}" />
+                    <x-baobab::field.text
+                        name="q"
+                        label="{{ __('baobab::admin.media.search_label') }}"
+                        :value="request('q')"
+                        placeholder="{{ __('baobab::admin.media.search_placeholder') }}"
+                    />
                     <x-baobab::field.select
                         name="type"
+                        label="{{ __('baobab::admin.media.filter_type_label') }}"
                         :options="['' => __('baobab::admin.media.filter_all_types'), 'image' => 'image', 'video' => 'video', 'audio' => 'audio', 'application' => 'document']"
                         :value="request('type')"
                     />
@@ -48,7 +54,8 @@
                         <input type="checkbox" name="unused" value="1" @checked($unused)>
                         {{ __('baobab::admin.media.unused_filter_label') }}
                     </label>
-                    <x-baobab::button type="submit" variant="secondary">{{ __('baobab::admin.media.search_submit') }}</x-baobab::button>
+                    {{-- `mb-4` (suivi n° 381) : même correctif que content/index.blade.php --}}
+                    <x-baobab::button type="submit" variant="secondary" class="mb-4">{{ __('baobab::admin.media.search_submit') }}</x-baobab::button>
                 </form>
 
                 <div class="flex items-center gap-2">

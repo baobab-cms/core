@@ -120,7 +120,13 @@ final class ContentController
     }
 
     /**
-     * @return list<array{route: string, label: string}>
+     * `confirm` (suivi n° 379 décision 1) : gagné dans le même mouvement que
+     * la Pass G, `<x-baobab::table>` route toute action groupée qui le porte
+     * vers `<x-baobab::confirm>` plutôt qu'une soumission directe. La
+     * restauration reste sans confirmation — réversible, aucune donnée
+     * perdue.
+     *
+     * @return list<array{route: string, label: string, confirm?: array{title: string, description?: string}}>
      */
     private function indexBulkActions(string $contentType, bool $trashed, bool $canBulkDelete, bool $canPurge): array
     {
@@ -130,14 +136,28 @@ final class ContentController
             ];
 
             if ($canPurge) {
-                $actions[] = ['route' => route('admin.content.bulk-force-destroy', ['contentType' => $contentType]), 'label' => __('baobab::admin.content.bulk_purge_action')];
+                $actions[] = [
+                    'route' => route('admin.content.bulk-force-destroy', ['contentType' => $contentType]),
+                    'label' => __('baobab::admin.content.bulk_purge_action'),
+                    'confirm' => [
+                        'title' => __('baobab::admin.content.bulk_purge_confirm_title'),
+                        'description' => __('baobab::admin.content.bulk_purge_confirm_description'),
+                    ],
+                ];
             }
 
             return $actions;
         }
 
         return $canBulkDelete ? [
-            ['route' => route('admin.content.bulk-delete', ['contentType' => $contentType]), 'label' => __('baobab::admin.content.bulk_delete_action')],
+            [
+                'route' => route('admin.content.bulk-delete', ['contentType' => $contentType]),
+                'label' => __('baobab::admin.content.bulk_delete_action'),
+                'confirm' => [
+                    'title' => __('baobab::admin.content.bulk_delete_confirm_title'),
+                    'description' => __('baobab::admin.content.bulk_delete_confirm_description'),
+                ],
+            ],
         ] : [];
     }
 
@@ -1108,14 +1128,21 @@ final class ContentController
             'key' => 'actions',
             'label' => '',
             'raw' => true,
-            'render' => fn (Model $row): string => view('baobab::admin.content.partials.row-actions', [
-                'trashed' => $trashed,
-                'editUrl' => route('admin.content.edit', ['contentType' => $slug, 'entry' => $row->getKey()]),
-                'deleteUrl' => route('admin.content.destroy', ['contentType' => $slug, 'entry' => $row->getKey()]),
-                'restoreUrl' => route('admin.content.restore', ['contentType' => $slug, 'entry' => $row->getKey()]),
-                'purgeUrl' => route('admin.content.force-destroy', ['contentType' => $slug, 'entry' => $row->getKey()]),
-                'canPurge' => $canPurge,
-            ])->render(),
+            'render' => function (Model $row) use ($type, $slug, $trashed, $canPurge): string {
+                $titleField = (string) ($type->blueprint['title_field'] ?? '');
+                $entryLabel = $titleField !== '' ? (string) $row->getAttribute($titleField) : '';
+
+                return view('baobab::admin.content.partials.row-actions', [
+                    'trashed' => $trashed,
+                    'entryId' => $row->getKey(),
+                    'entryLabel' => $entryLabel !== '' ? $entryLabel : '#'.$row->getKey(),
+                    'editUrl' => route('admin.content.edit', ['contentType' => $slug, 'entry' => $row->getKey()]),
+                    'deleteUrl' => route('admin.content.destroy', ['contentType' => $slug, 'entry' => $row->getKey()]),
+                    'restoreUrl' => route('admin.content.restore', ['contentType' => $slug, 'entry' => $row->getKey()]),
+                    'purgeUrl' => route('admin.content.force-destroy', ['contentType' => $slug, 'entry' => $row->getKey()]),
+                    'canPurge' => $canPurge,
+                ])->render();
+            },
         ];
 
         return $columns;

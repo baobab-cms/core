@@ -2035,8 +2035,16 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            // Groupes thématiques (suivi n° 383) : chaque enfant garde sa
+            // propre garde de permission ; le groupe n'apparaît que si au
+            // moins un enfant est autorisé. `SidebarItem::$children` et le
+            // rendu en section repliable existaient déjà pour les menus
+            // déclarés par les modules (spec-admin §3.3) — jamais utilisés
+            // pour les entrées Core avant ce point.
+            $appearanceChildren = [];
+
             if ($user->can('baobab.system.branding.manage')) {
-                $coreItems[] = new SidebarItem(
+                $appearanceChildren[] = new SidebarItem(
                     id: -6,
                     label: __('baobab::admin.sidebar.branding'),
                     icon: 'bi-palette',
@@ -2046,7 +2054,7 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.system.themes.manage')) {
-                $coreItems[] = new SidebarItem(
+                $appearanceChildren[] = new SidebarItem(
                     id: -7,
                     label: __('baobab::admin.sidebar.themes'),
                     icon: 'bi-brush',
@@ -2056,7 +2064,7 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.menus.manage')) {
-                $coreItems[] = new SidebarItem(
+                $appearanceChildren[] = new SidebarItem(
                     id: -8,
                     label: __('baobab::admin.sidebar.menus'),
                     icon: 'bi-list-nested',
@@ -2066,7 +2074,7 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.widgets.manage')) {
-                $coreItems[] = new SidebarItem(
+                $appearanceChildren[] = new SidebarItem(
                     id: -9,
                     label: __('baobab::admin.sidebar.widgets'),
                     icon: 'bi-grid',
@@ -2075,8 +2083,21 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
-            if ($user->can('baobab.system.reading.manage')) {
+            if ($appearanceChildren !== []) {
                 $coreItems[] = new SidebarItem(
+                    id: -32,
+                    label: __('baobab::admin.sidebar.group_appearance'),
+                    icon: 'bi-brush',
+                    url: null,
+                    order: -18,
+                    children: $appearanceChildren,
+                );
+            }
+
+            $settingsChildren = [];
+
+            if ($user->can('baobab.system.reading.manage')) {
+                $settingsChildren[] = new SidebarItem(
                     id: -10,
                     label: __('baobab::admin.sidebar.reading'),
                     icon: 'bi-book',
@@ -2086,7 +2107,7 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.system.seo.manage')) {
-                $coreItems[] = new SidebarItem(
+                $settingsChildren[] = new SidebarItem(
                     id: -11,
                     label: __('baobab::admin.sidebar.seo'),
                     icon: 'bi-globe2',
@@ -2096,7 +2117,7 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.system.redirects.manage')) {
-                $coreItems[] = new SidebarItem(
+                $settingsChildren[] = new SidebarItem(
                     id: -12,
                     label: __('baobab::admin.sidebar.redirects'),
                     icon: 'bi-signpost-split',
@@ -2105,8 +2126,21 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
-            if ($user->can('baobab.system.api.manage')) {
+            if ($settingsChildren !== []) {
                 $coreItems[] = new SidebarItem(
+                    id: -33,
+                    label: __('baobab::admin.sidebar.group_settings'),
+                    icon: 'bi-sliders',
+                    url: null,
+                    order: -14,
+                    children: $settingsChildren,
+                );
+            }
+
+            $integrationsChildren = [];
+
+            if ($user->can('baobab.system.api.manage')) {
+                $integrationsChildren[] = new SidebarItem(
                     id: -13,
                     label: __('baobab::admin.sidebar.api'),
                     icon: 'bi-plug',
@@ -2116,7 +2150,7 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.system.webhooks.manage')) {
-                $coreItems[] = new SidebarItem(
+                $integrationsChildren[] = new SidebarItem(
                     id: -14,
                     label: __('baobab::admin.sidebar.webhooks'),
                     icon: 'bi-broadcast',
@@ -2126,12 +2160,23 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.system.search.manage')) {
-                $coreItems[] = new SidebarItem(
+                $integrationsChildren[] = new SidebarItem(
                     id: -15,
                     label: __('baobab::admin.sidebar.search'),
                     icon: 'bi-search',
                     url: route('admin.search.index'),
                     order: -10,
+                );
+            }
+
+            if ($integrationsChildren !== []) {
+                $coreItems[] = new SidebarItem(
+                    id: -36,
+                    label: __('baobab::admin.sidebar.group_integrations'),
+                    icon: 'bi-plug',
+                    url: null,
+                    order: -10,
+                    children: $integrationsChildren,
                 );
             }
 
@@ -2195,8 +2240,10 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
+            $systemChildren = [];
+
             if ($user->can('baobab.system.maintenance.toggle')) {
-                $coreItems[] = new SidebarItem(
+                $systemChildren[] = new SidebarItem(
                     id: -22,
                     label: __('baobab::admin.sidebar.maintenance'),
                     icon: 'bi-cone-striped',
@@ -2206,7 +2253,7 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.system.scheduler.view')) {
-                $coreItems[] = new SidebarItem(
+                $systemChildren[] = new SidebarItem(
                     id: -23,
                     label: __('baobab::admin.sidebar.scheduler'),
                     icon: 'bi-clock-history',
@@ -2216,7 +2263,7 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.system.queues.view')) {
-                $coreItems[] = new SidebarItem(
+                $systemChildren[] = new SidebarItem(
                     id: -24,
                     label: __('baobab::admin.sidebar.queues'),
                     icon: 'bi-list-task',
@@ -2226,7 +2273,7 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.system.backups.view')) {
-                $coreItems[] = new SidebarItem(
+                $systemChildren[] = new SidebarItem(
                     id: -25,
                     label: __('baobab::admin.sidebar.backups'),
                     icon: 'bi-archive',
@@ -2236,7 +2283,7 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.system.health.view')) {
-                $coreItems[] = new SidebarItem(
+                $systemChildren[] = new SidebarItem(
                     id: -26,
                     label: __('baobab::admin.sidebar.health'),
                     icon: 'bi-heart-pulse',
@@ -2246,7 +2293,7 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.system.export.view')) {
-                $coreItems[] = new SidebarItem(
+                $systemChildren[] = new SidebarItem(
                     id: -27,
                     label: __('baobab::admin.sidebar.export'),
                     icon: 'bi-box-arrow-up',
@@ -2255,8 +2302,31 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
-            if ($user->can('baobab.privacy.register.view')) {
+            if ($user->can('baobab.system.import.view')) {
+                $systemChildren[] = new SidebarItem(
+                    id: -28,
+                    label: __('baobab::admin.sidebar.import'),
+                    icon: 'bi-box-arrow-in-down',
+                    url: route('admin.system.import.index'),
+                    order: 1,
+                );
+            }
+
+            if ($systemChildren !== []) {
                 $coreItems[] = new SidebarItem(
+                    id: -35,
+                    label: __('baobab::admin.sidebar.group_system'),
+                    icon: 'bi-hdd-stack',
+                    url: null,
+                    order: -5,
+                    children: $systemChildren,
+                );
+            }
+
+            $privacyChildren = [];
+
+            if ($user->can('baobab.privacy.register.view')) {
+                $privacyChildren[] = new SidebarItem(
                     id: -29,
                     label: __('baobab::admin.sidebar.privacy_register'),
                     icon: 'bi-shield-check',
@@ -2264,7 +2334,7 @@ class BaobabServiceProvider extends ServiceProvider
                     order: 2,
                 );
 
-                $coreItems[] = new SidebarItem(
+                $privacyChildren[] = new SidebarItem(
                     id: -31,
                     label: __('baobab::admin.sidebar.privacy_cookies'),
                     icon: 'bi-cookie',
@@ -2274,7 +2344,7 @@ class BaobabServiceProvider extends ServiceProvider
             }
 
             if ($user->can('baobab.privacy.requests.manage')) {
-                $coreItems[] = new SidebarItem(
+                $privacyChildren[] = new SidebarItem(
                     id: -30,
                     label: __('baobab::admin.sidebar.privacy_requests'),
                     icon: 'bi-person-lock',
@@ -2283,13 +2353,14 @@ class BaobabServiceProvider extends ServiceProvider
                 );
             }
 
-            if ($user->can('baobab.system.import.view')) {
+            if ($privacyChildren !== []) {
                 $coreItems[] = new SidebarItem(
-                    id: -28,
-                    label: __('baobab::admin.sidebar.import'),
-                    icon: 'bi-box-arrow-in-down',
-                    url: route('admin.system.import.index'),
-                    order: 1,
+                    id: -34,
+                    label: __('baobab::admin.sidebar.group_privacy'),
+                    icon: 'bi-shield-check',
+                    url: null,
+                    order: 2,
+                    children: $privacyChildren,
                 );
             }
 

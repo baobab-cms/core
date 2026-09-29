@@ -131,6 +131,24 @@ it('does not mark a sidebar item as active when the current path does not match 
         ->and($item->isActive)->toBeFalse();
 });
 
+it('marks a Core group active when the current path matches one of its children, not only the child itself (suivi n° 383)', function () {
+    $user = User::create(['name' => 'Viewer', 'email' => 'viewer-rgpd@example.com', 'password' => 'secret']);
+    app(GrantPermission::class)($user, 'baobab.privacy.register.view');
+
+    app()->instance('request', Request::create(route('admin.privacy.register.index')));
+
+    $sidebar = app(SidebarBuilder::class)->build($user->fresh());
+    $group = $sidebar->firstWhere('label', __('baobab::admin.sidebar.group_privacy'));
+
+    expect($group)->not->toBeNull()
+        ->and($group->isActive)->toBeTrue();
+
+    $child = collect($group->children)->firstWhere('label', __('baobab::admin.sidebar.privacy_register'));
+
+    expect($child)->not->toBeNull()
+        ->and($child->isActive)->toBeTrue();
+});
+
 // ── Extension via le hook baobab.admin.menu ───────────────────────────────────
 
 // ── Éléments Core (registerCoreSidebarItems) ──────────────────────────────────
