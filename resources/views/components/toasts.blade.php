@@ -85,7 +85,7 @@
                 type="button"
                 x-on:click="dismiss(toast.id)"
                 aria-label="{{ __('baobab::admin.components.close') }}"
-                class="shrink-0 rounded p-0.5 opacity-70 hover:opacity-100"
+                class="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded opacity-70 hover:opacity-100"
             >&#10005;</button>
         </div>
     </template>

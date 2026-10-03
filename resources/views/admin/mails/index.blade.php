@@ -24,7 +24,7 @@
                 <x-baobab::empty-state :message="__('baobab::admin.mails.empty')" />
             </div>
         @else
-            <div class="overflow-hidden rounded-lg border border-border bg-surface">
+            <div class="overflow-x-auto rounded-lg border border-border bg-surface">
                 <table class="w-full text-sm">
                     <thead class="border-b border-border bg-surface-subtle text-left text-xs uppercase text-muted">
                         <tr>

@@ -17,7 +17,7 @@
                             @endforeach
                         </p>
                     @else
-                        <div class="mt-1 grid grid-cols-2 gap-2 text-sm">
+                        <div class="mt-1 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                             <p class="rounded bg-danger/10 p-2 text-danger">{{ json_encode($entry['before']) }}</p>
                             <p class="rounded bg-success/10 p-2 text-success">{{ json_encode($entry['after']) }}</p>
                         </div>

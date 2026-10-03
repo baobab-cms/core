@@ -14,7 +14,7 @@
     <div class="flex flex-1 items-center gap-3">
         <button
             type="button"
-            class="lg:hidden"
+            class="flex min-h-11 min-w-11 items-center justify-center lg:hidden"
             @click="sidebarOpen = !sidebarOpen"
             aria-label="{{ __('baobab::admin.layout.toggle_sidebar') }}"
         >
@@ -24,7 +24,7 @@
         @auth('baobab')
             <button
                 type="button"
-                class="flex w-full max-w-80 items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-muted hover:bg-surface-subtle"
+                class="flex w-full max-w-80 items-center gap-2 rounded-md border border-border bg-surface px-3 py-3 text-sm text-muted hover:bg-surface-subtle"
                 x-on:click="window.dispatchEvent(new CustomEvent('open-omnibox'))"
             >
                 <span aria-hidden="true">&#128269;</span>
@@ -52,7 +52,7 @@
                 <button
                     type="button"
                     @click="open = !open"
-                    class="relative flex items-center text-foreground"
+                    class="relative flex min-h-11 min-w-11 items-center justify-center text-foreground"
                     aria-label="{{ __('baobab::admin.notifications.title') }}"
                 >
                     <span aria-hidden="true">&#128276;</span>
@@ -110,7 +110,7 @@
                     <button
                         type="button"
                         @click="quickActionsOpen = !quickActionsOpen"
-                        class="flex items-center text-foreground"
+                        class="flex min-h-11 min-w-11 items-center justify-center text-foreground"
                         aria-label="{{ __('baobab::admin.quick_actions.title') }}"
                     >
                         <x-baobab::icon name="bi-grid-3x3-gap" class="h-4 w-4" />
@@ -141,7 +141,7 @@
                 <button
                     type="button"
                     @click="userMenuOpen = !userMenuOpen"
-                    class="flex items-center gap-2 text-sm text-foreground"
+                    class="flex min-h-11 min-w-11 items-center justify-center gap-2 text-sm text-foreground"
                 >
                     <x-baobab::avatar :name="auth('baobab')->user()?->name ?? ''" class="h-8 w-8 text-xs" />
                     <span class="hidden sm:inline">{{ auth('baobab')->user()?->name }}</span>

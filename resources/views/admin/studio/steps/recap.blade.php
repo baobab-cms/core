@@ -95,12 +95,12 @@
             </div>
         @endif
 
-        <div class="mt-10 flex items-center justify-between">
+        <div class="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <x-baobab::button :href="route('admin.studio.step.show', [$draft, 8])" variant="ghost">
                 {{ __('baobab::admin.studio.previous') }}
             </x-baobab::button>
 
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 @if (! $blueprintError)
                     {{--
                         Sortie alternative (spec §5.3) : l'archive se construit
@@ -116,7 +116,7 @@
                         {{ __('baobab::admin.studio.back_to_list') }}
                     </x-baobab::button>
                 @else
-                    <form method="POST" action="{{ route('admin.studio.generate', $draft) }}" class="flex items-center gap-3">
+                    <form method="POST" action="{{ route('admin.studio.generate', $draft) }}" class="flex flex-wrap items-center gap-3">
                         @csrf
                         @if ($draft->isGenerated())
                             {{--

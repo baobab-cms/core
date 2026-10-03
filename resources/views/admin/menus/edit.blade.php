@@ -37,7 +37,7 @@
                                             </div>
                                         </div>
 
-                                        <div x-show="item.open" class="mt-2 grid grid-cols-2 gap-2 rounded-md bg-surface-subtle p-2">
+                                        <div x-show="item.open" class="mt-2 grid grid-cols-1 gap-2 rounded-md bg-surface-subtle p-2 sm:grid-cols-2">
                                             <label class="text-xs text-muted">
                                                 {{ __('baobab::admin.menus.label_override_label') }}
                                                 <input type="text" x-model="item.label" class="mt-1 w-full rounded border border-border px-2 py-1 text-sm">

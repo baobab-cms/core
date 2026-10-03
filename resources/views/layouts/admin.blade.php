@@ -55,7 +55,7 @@
         <div class="flex flex-1 flex-col overflow-hidden">
             @stack('admin.content.before')
 
-            <main class="flex-1 overflow-y-auto px-6 py-6">
+            <main class="flex-1 overflow-y-auto px-3 py-6 sm:px-4 lg:px-6">
                 @yield('content')
             </main>
         </div>

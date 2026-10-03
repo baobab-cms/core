@@ -1,5 +1,5 @@
 <div {{ $attributes->class(['mb-6']) }}>
-    <div class="flex items-center justify-between gap-4">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             @if (! empty($crumbs))
                 <nav aria-label="breadcrumb" class="mb-1 flex items-center gap-1 text-xs text-muted">
@@ -27,7 +27,7 @@
         </div>
 
         @isset($actions)
-            <div class="flex items-center gap-2">{{ $actions }}</div>
+            <div class="flex flex-wrap items-center gap-2">{{ $actions }}</div>
         @endisset
     </div>
 
