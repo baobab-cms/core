@@ -29,11 +29,13 @@
                                     {{ __('baobab::admin.menus.edit_action') }}
                                 </a>
 
-                                <form method="POST" action="{{ route('admin.menus.destroy', ['menu' => $menu->id]) }}" onsubmit="return confirm('{{ __('baobab::admin.menus.delete_confirm') }}')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-danger hover:underline">{{ __('baobab::admin.menus.delete_action') }}</button>
-                                </form>
+                                <x-baobab::delete-action
+                                    name="delete-menu-{{ $menu->id }}"
+                                    :action="route('admin.menus.destroy', ['menu' => $menu->id])"
+                                    :title="__('baobab::admin.components.delete.title', ['label' => $menu->name])"
+                                    :description="trans_choice('baobab::admin.components.delete.menu', $menu->items_count, ['count' => $menu->items_count])"
+                                    :label="__('baobab::admin.menus.delete_action')"
+                                />
                             </div>
                         </div>
                     </x-baobab::card>

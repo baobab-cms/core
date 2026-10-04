@@ -34,11 +34,13 @@
                                 </a>
 
                                 @unless ($draft->isGenerated())
-                                    <form method="POST" action="{{ route('admin.studio.destroy', $draft) }}" onsubmit="return confirm('{{ __('baobab::admin.studio.confirm_delete') }}')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-danger hover:underline">{{ __('baobab::admin.studio.delete_draft') }}</button>
-                                    </form>
+                                    <x-baobab::delete-action
+                                        name="delete-draft-{{ $draft->id }}"
+                                        :action="route('admin.studio.destroy', $draft)"
+                                        :title="__('baobab::admin.components.delete.title', ['label' => $draft->title])"
+                                        :description="__('baobab::admin.components.delete.irreversible')"
+                                        :label="__('baobab::admin.studio.delete_draft')"
+                                    />
                                 @endunless
                             </div>
                         </div>

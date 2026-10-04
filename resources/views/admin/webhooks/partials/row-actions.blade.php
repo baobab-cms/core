@@ -7,13 +7,11 @@
         {{ __('baobab::admin.webhooks.edit_action') }}
     </a>
 
-    <form
-        method="POST"
-        action="{{ route('admin.webhooks.destroy', ['subscription' => $subscription->id]) }}"
-        onsubmit="return confirm('{{ __('baobab::admin.webhooks.delete_confirm_title') }}')"
-    >
-        @csrf
-        @method('DELETE')
-        <button type="submit" class="text-danger hover:underline">{{ __('baobab::admin.webhooks.delete_action') }}</button>
-    </form>
+    <x-baobab::delete-action
+        name="delete-webhook-{{ $subscription->id }}"
+        :action="route('admin.webhooks.destroy', ['subscription' => $subscription->id])"
+        :title="__('baobab::admin.components.delete.title', ['label' => $subscription->url])"
+        :description="__('baobab::admin.components.delete.webhook', ['url' => $subscription->url])"
+        :label="__('baobab::admin.webhooks.delete_action')"
+    />
 </div>

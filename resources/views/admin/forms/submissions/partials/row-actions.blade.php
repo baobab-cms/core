@@ -13,13 +13,11 @@
         </select>
     </form>
 
-    <form
-        method="POST"
-        action="{{ route('admin.forms.submissions.destroy', ['form' => $form->id, 'submission' => $submission->id]) }}"
-        onsubmit="return confirm('{{ __('baobab::admin.form_submissions.delete_confirm_title') }}')"
-    >
-        @csrf
-        @method('DELETE')
-        <button type="submit" class="text-danger hover:underline">{{ __('baobab::admin.form_submissions.delete_action') }}</button>
-    </form>
+    <x-baobab::delete-action
+        name="delete-submission-{{ $submission->id }}"
+        :action="route('admin.forms.submissions.destroy', ['form' => $form->id, 'submission' => $submission->id])"
+        :title="__('baobab::admin.components.delete.submission_title', ['date' => $submission->created_at?->format('d/m/Y H:i')])"
+        :description="__('baobab::admin.components.delete.irreversible')"
+        :label="__('baobab::admin.form_submissions.delete_action')"
+    />
 </div>

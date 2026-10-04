@@ -37,9 +37,8 @@
     @stack('admin.topbar.before-user')
 
     @auth('baobab')
-        <div class="flex shrink-0 items-center gap-3">
+        <div class="relative flex shrink-0 items-center gap-3">
             <div
-                class="relative"
                 x-data="notificationCenter({
                     pollUrl: '{{ route('admin.notifications.poll') }}',
                     readBaseUrl: '{{ url('admin/notifications') }}',
@@ -64,7 +63,7 @@
                     ></span>
                 </button>
 
-                <x-baobab::dropdown state="open" width="w-80">
+                <x-baobab::dropdown state="open" width="w-[min(20rem,calc(100vw-2rem))]">
                     <template x-if="items.length === 0">
                         <p class="px-2 py-2 text-sm text-muted">{{ __('baobab::admin.notifications.empty') }}</p>
                     </template>
@@ -106,7 +105,7 @@
                 atteignable ailleurs, jamais une fuite d'accès.
             --}}
             @if ($quickActions->isNotEmpty())
-                <div class="relative" x-data="{ quickActionsOpen: false }">
+                <div x-data="{ quickActionsOpen: false }">
                     <button
                         type="button"
                         @click="quickActionsOpen = !quickActionsOpen"
@@ -137,7 +136,7 @@
                 </div>
             @endif
 
-            <div class="relative" x-data="{ userMenuOpen: false }">
+            <div x-data="{ userMenuOpen: false }">
                 <button
                     type="button"
                     @click="userMenuOpen = !userMenuOpen"

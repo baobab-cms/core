@@ -31,15 +31,13 @@
                                         </form>
 
                                         @if ($canPurge)
-                                            <form
-                                                method="POST"
-                                                action="{{ route('admin.content.force-destroy', ['contentType' => $group['slug'], 'entry' => $row->id]) }}"
-                                                onsubmit="return confirm('{{ __('baobab::admin.content.purge_confirm_title') }}')"
-                                            >
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-danger hover:underline">{{ __('baobab::admin.content.purge_action') }}</button>
-                                            </form>
+                                            <x-baobab::delete-action
+                                                name="purge-trash-{{ $group['slug'] }}-{{ $row->id }}"
+                                                :action="route('admin.content.force-destroy', ['contentType' => $group['slug'], 'entry' => $row->id])"
+                                                :title="__('baobab::admin.components.delete.purge_generic')"
+                                                :description="__('baobab::admin.components.delete.irreversible')"
+                                                :label="__('baobab::admin.content.purge_action')"
+                                            />
                                         @endif
 
                                         <a href="{{ route('admin.content.index', ['contentType' => $group['slug'], 'trashed' => 1]) }}" class="text-muted hover:underline">

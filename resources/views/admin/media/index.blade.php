@@ -145,14 +145,26 @@
                             {{ __('baobab::admin.media.bulk_restore_action') }}
                         </button>
                         <button
-                            type="submit"
-                            form="media-bulk-actions"
-                            formaction="{{ route('admin.media.bulk-force-destroy') }}"
-                            onclick="return confirm('{{ __('baobab::admin.media.bulk_purge_confirm_title') }}')"
+                            type="button"
+                            x-on:click="$dispatch('open-modal', 'bulk-purge-media')"
                             class="rounded-md border border-danger/30 bg-surface px-2 py-1 text-xs font-medium text-danger hover:bg-danger/5"
                         >
                             {{ __('baobab::admin.media.bulk_purge_action') }}
                         </button>
+
+                        <x-baobab::confirm name="bulk-purge-media" :title="__('baobab::admin.components.delete.bulk_purge_title')">
+                            <x-slot:description>{{ __('baobab::admin.components.delete.bulk_purge_description') }}</x-slot:description>
+
+                            <x-baobab::button
+                                type="submit"
+                                variant="danger"
+                                class="w-full justify-center"
+                                form="media-bulk-actions"
+                                formaction="{{ route('admin.media.bulk-force-destroy') }}"
+                            >
+                                {{ __('baobab::admin.media.bulk_purge_action') }}
+                            </x-baobab::button>
+                        </x-baobab::confirm>
                     @else
                         <select name="folder_id" form="media-bulk-actions" class="rounded-md border border-border bg-surface px-2 py-1 text-sm">
                             <option value="">{{ __('baobab::admin.media.root_folder') }}</option>
@@ -194,13 +206,13 @@
                                             {{ __('baobab::admin.media.restore_action') }}
                                         </button>
                                     </form>
-                                    <form method="POST" action="{{ route('admin.media.force-destroy', ['media' => $item->id]) }}" onsubmit="return confirm('{{ __('baobab::admin.media.purge_confirm_title') }}')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-xs font-medium text-danger hover:underline">
-                                            {{ __('baobab::admin.media.purge_action') }}
-                                        </button>
-                                    </form>
+                                    <x-baobab::delete-action
+                                        name="purge-media-{{ $item->id }}"
+                                        :action="route('admin.media.force-destroy', ['media' => $item->id])"
+                                        :title="__('baobab::admin.components.delete.purge_title', ['label' => $item->file_name])"
+                                        :description="__('baobab::admin.components.delete.irreversible')"
+                                        :label="__('baobab::admin.media.purge_action')"
+                                    />
                                 </div>
                             @else
                                 <a href="{{ route('admin.media.show', ['media' => $item->id]) }}" class="block" title="{{ __('baobab::admin.media.view_action') }}">

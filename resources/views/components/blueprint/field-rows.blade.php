@@ -143,7 +143,7 @@
 
                     <button
                         type="button"
-                        class="ml-auto rounded p-1 text-danger hover:bg-surface"
+                        class="ml-auto flex min-h-11 min-w-11 items-center justify-center rounded text-danger hover:bg-surface"
                         x-on:click="{{ $collection }}.splice(fieldIndex, 1)"
                         aria-label="{{ __('baobab::admin.studio.entities.remove_field') }}"
                         title="{{ __('baobab::admin.studio.entities.remove_field') }}"

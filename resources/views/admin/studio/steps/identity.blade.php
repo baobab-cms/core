@@ -77,11 +77,16 @@
         </x-baobab::card>
 
         @if ($draft && ! $draft->isGenerated())
-            <form method="POST" action="{{ route('admin.studio.destroy', $draft) }}" class="mt-4" onsubmit="return confirm('{{ __('baobab::admin.studio.confirm_delete') }}')">
-                @csrf
-                @method('DELETE')
-                <x-baobab::button type="submit" variant="danger">{{ __('baobab::admin.studio.delete_draft') }}</x-baobab::button>
-            </form>
+            <div class="mt-4">
+                <x-baobab::delete-action
+                    variant="button"
+                    name="delete-draft-identity-{{ $draft->id }}"
+                    :action="route('admin.studio.destroy', $draft)"
+                    :title="__('baobab::admin.components.delete.title', ['label' => $draft->title])"
+                    :description="__('baobab::admin.components.delete.irreversible')"
+                    :label="__('baobab::admin.studio.delete_draft')"
+                />
+            </div>
         @endif
 
         @if (! $draft)

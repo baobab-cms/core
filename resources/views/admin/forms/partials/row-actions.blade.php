@@ -11,13 +11,11 @@
         {{ __('baobab::admin.forms.export_action') }}
     </a>
 
-    <form
-        method="POST"
-        action="{{ route('admin.forms.destroy', ['form' => $form->id]) }}"
-        onsubmit="return confirm('{{ __('baobab::admin.forms.delete_confirm_title') }}')"
-    >
-        @csrf
-        @method('DELETE')
-        <button type="submit" class="text-danger hover:underline">{{ __('baobab::admin.forms.delete_action') }}</button>
-    </form>
+    <x-baobab::delete-action
+        name="delete-form-{{ $form->id }}"
+        :action="route('admin.forms.destroy', ['form' => $form->id])"
+        :title="__('baobab::admin.components.delete.title', ['label' => $form->title])"
+        :description="__('baobab::admin.components.delete.form')"
+        :label="__('baobab::admin.forms.delete_action')"
+    />
 </div>

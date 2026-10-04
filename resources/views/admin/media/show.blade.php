@@ -17,17 +17,14 @@
             </x-baobab::button>
 
             @if ($canDelete)
-                <form
-                    method="POST"
-                    action="{{ route('admin.media.destroy', ['media' => $media->id]) }}"
-                    onsubmit="return confirm('{{ __('baobab::admin.media.show.delete_confirm_title') }}')"
-                >
-                    @csrf
-                    @method('DELETE')
-                    <x-baobab::button type="submit" variant="danger">
-                        {{ __('baobab::admin.media.show.delete_action') }}
-                    </x-baobab::button>
-                </form>
+                <x-baobab::delete-action
+                    name="delete-media-{{ $media->id }}"
+                    :action="route('admin.media.destroy', ['media' => $media->id])"
+                    :title="__('baobab::admin.components.delete.title', ['label' => $media->file_name])"
+                    :description="__('baobab::admin.components.delete.to_trash')"
+                    :label="__('baobab::admin.media.show.delete_action')"
+                    variant="button"
+                />
             @endif
         </x-slot:actions>
 
@@ -42,19 +39,20 @@
                 </ul>
 
                 @if ($canDelete)
-                    <form
-                        method="POST"
-                        action="{{ route('admin.media.destroy', ['media' => $media->id]) }}"
-                        onsubmit="return confirm('{{ __('baobab::admin.media.show.delete_confirm_title') }}')"
-                        class="mt-4"
-                    >
-                        @csrf
-                        @method('DELETE')
-                        <input type="hidden" name="force" value="1">
-                        <x-baobab::button type="submit" variant="danger">
-                            {{ __('baobab::admin.media.show.delete_anyway_action') }}
-                        </x-baobab::button>
-                    </form>
+                    <div class="mt-4">
+                        <x-baobab::delete-action
+                            name="delete-media-forced-{{ $media->id }}"
+                            :action="route('admin.media.destroy', ['media' => $media->id])"
+                            :title="__('baobab::admin.components.delete.purge_title', ['label' => $media->file_name])"
+                            :description="__('baobab::admin.components.delete.irreversible')"
+                            :label="__('baobab::admin.media.show.delete_anyway_action')"
+                            variant="button"
+                        >
+                            <x-slot:fields>
+                                <input type="hidden" name="force" value="1">
+                            </x-slot:fields>
+                        </x-baobab::delete-action>
+                    </div>
                 @endif
             </x-baobab::card>
         @endif

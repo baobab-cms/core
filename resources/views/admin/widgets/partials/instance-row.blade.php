@@ -19,10 +19,12 @@
             {{ __('baobab::admin.widgets.edit_action') }}
         </a>
 
-        <form method="POST" action="{{ route('admin.widgets.destroy', ['instance' => $instance->id]) }}" onsubmit="return confirm('{{ __('baobab::admin.widgets.delete_confirm') }}')">
-            @csrf
-            @method('DELETE')
-            <button type="submit" class="text-danger hover:underline">{{ __('baobab::admin.widgets.delete_action') }}</button>
-        </form>
+        <x-baobab::delete-action
+            name="delete-widget-{{ $instance->id }}"
+            :action="route('admin.widgets.destroy', ['instance' => $instance->id])"
+            :title="__('baobab::admin.components.delete.title', ['label' => $widgetLabels[$instance->widget_key] ?? $instance->widget_key])"
+            :description="__('baobab::admin.components.delete.widget', ['zone' => $instance->zone_key])"
+            :label="__('baobab::admin.widgets.delete_action')"
+        />
     </div>
 </div>

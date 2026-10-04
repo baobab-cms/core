@@ -28,12 +28,12 @@
                                             </div>
 
                                             <div class="flex items-center gap-1 text-xs">
-                                                <button type="button" x-on:click="indent(index)" class="rounded px-1 hover:bg-surface-subtle" title="{{ __('baobab::admin.menus.indent_action') }}">&rarr;</button>
-                                                <button type="button" x-on:click="outdent(index)" class="rounded px-1 hover:bg-surface-subtle" title="{{ __('baobab::admin.menus.outdent_action') }}">&larr;</button>
-                                                <button type="button" x-on:click="moveUp(index)" class="rounded px-1 hover:bg-surface-subtle" title="{{ __('baobab::admin.menus.move_up_action') }}">&uarr;</button>
-                                                <button type="button" x-on:click="moveDown(index)" class="rounded px-1 hover:bg-surface-subtle" title="{{ __('baobab::admin.menus.move_down_action') }}">&darr;</button>
-                                                <button type="button" x-on:click="item.open = !item.open" class="rounded px-1 hover:bg-surface-subtle" title="{{ __('baobab::admin.menus.edit_item_action') }}">&#9881;</button>
-                                                <button type="button" x-on:click="removeItem(index)" class="rounded px-1 text-danger hover:bg-surface-subtle" title="{{ __('baobab::admin.menus.remove_item_action') }}">&#10005;</button>
+                                                <button type="button" x-on:click="indent(index)" class="flex min-h-11 min-w-11 items-center justify-center rounded hover:bg-surface-subtle" title="{{ __('baobab::admin.menus.indent_action') }}">&rarr;</button>
+                                                <button type="button" x-on:click="outdent(index)" class="flex min-h-11 min-w-11 items-center justify-center rounded hover:bg-surface-subtle" title="{{ __('baobab::admin.menus.outdent_action') }}">&larr;</button>
+                                                <button type="button" x-on:click="moveUp(index)" class="flex min-h-11 min-w-11 items-center justify-center rounded hover:bg-surface-subtle" title="{{ __('baobab::admin.menus.move_up_action') }}">&uarr;</button>
+                                                <button type="button" x-on:click="moveDown(index)" class="flex min-h-11 min-w-11 items-center justify-center rounded hover:bg-surface-subtle" title="{{ __('baobab::admin.menus.move_down_action') }}">&darr;</button>
+                                                <button type="button" x-on:click="item.open = !item.open" class="flex min-h-11 min-w-11 items-center justify-center rounded hover:bg-surface-subtle" title="{{ __('baobab::admin.menus.edit_item_action') }}">&#9881;</button>
+                                                <button type="button" x-on:click="removeItem(index)" class="flex min-h-11 min-w-11 items-center justify-center rounded text-danger hover:bg-surface-subtle" title="{{ __('baobab::admin.menus.remove_item_action') }}">&#10005;</button>
                                             </div>
                                         </div>
 

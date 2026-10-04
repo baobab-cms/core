@@ -36,9 +36,9 @@
                     </template>
 
                     <div class="flex items-center justify-between gap-1 border-t border-border p-1">
-                        <button type="button" x-bind:disabled="index === 0" x-on:click="moveUp(index)" class="rounded px-1 text-xs hover:bg-surface-subtle disabled:opacity-30" aria-label="{{ __('baobab::admin.media.gallery_move_up') }}">&uarr;</button>
-                        <button type="button" x-bind:disabled="index === items.length - 1" x-on:click="moveDown(index)" class="rounded px-1 text-xs hover:bg-surface-subtle disabled:opacity-30" aria-label="{{ __('baobab::admin.media.gallery_move_down') }}">&darr;</button>
-                        <button type="button" x-on:click="remove(index)" class="rounded px-1 text-xs text-danger hover:bg-surface-subtle" aria-label="{{ __('baobab::admin.media.picker_remove_action') }}">&#10005;</button>
+                        <button type="button" x-bind:disabled="index === 0" x-on:click="moveUp(index)" class="flex min-h-11 flex-1 items-center justify-center rounded text-xs hover:bg-surface-subtle disabled:opacity-30" aria-label="{{ __('baobab::admin.media.gallery_move_up') }}">&uarr;</button>
+                        <button type="button" x-bind:disabled="index === items.length - 1" x-on:click="moveDown(index)" class="flex min-h-11 flex-1 items-center justify-center rounded text-xs hover:bg-surface-subtle disabled:opacity-30" aria-label="{{ __('baobab::admin.media.gallery_move_down') }}">&darr;</button>
+                        <button type="button" x-on:click="remove(index)" class="flex min-h-11 flex-1 items-center justify-center rounded text-xs text-danger hover:bg-surface-subtle" aria-label="{{ __('baobab::admin.media.picker_remove_action') }}">&#10005;</button>
                     </div>
                 </div>
             </template>
