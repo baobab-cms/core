@@ -123,13 +123,14 @@
                         </a>
 
                         @if (in_array($role->id, $revocableRoleIds, true))
-                            <form method="POST" action="{{ route('admin.users.roles.destroy', ['user' => $user, 'role' => $role]) }}">
-                                @csrf
-                                @method('DELETE')
-                                <x-baobab::button type="submit" variant="danger">
-                                    {{ __('baobab::admin.users.roles.revoke_action') }}
-                                </x-baobab::button>
-                            </form>
+                            <x-baobab::delete-action
+                                variant="button"
+                                name="revoke-role-{{ $role->id }}"
+                                :title="__('baobab::admin.users.roles.revoke_confirm_title', ['role' => $role->name])"
+                                :description="__('baobab::admin.users.roles.revoke_confirm_description')"
+                                :label="__('baobab::admin.users.roles.revoke_action')"
+                                :action="route('admin.users.roles.destroy', ['user' => $user, 'role' => $role])"
+                            />
                         @endif
                     </div>
                 @empty
@@ -235,13 +236,14 @@
                     </div>
 
                     @if ($canManageAccess)
-                        <form method="POST" action="{{ route('admin.users.permissions.destroy', ['user' => $user, 'permission' => $grant->permission->name]) }}">
-                            @csrf
-                            @method('DELETE')
-                            <x-baobab::button type="submit" variant="danger">
-                                {{ __('baobab::admin.users.show.direct_permission_revoke_action') }}
-                            </x-baobab::button>
-                        </form>
+                        <x-baobab::delete-action
+                            variant="button"
+                            name="revoke-permission-{{ $grant->id }}"
+                            :title="__('baobab::admin.users.show.direct_permission_revoke_confirm_title', ['permission' => $grant->permission->name])"
+                            :description="__('baobab::admin.users.show.direct_permission_revoke_confirm_description')"
+                            :label="__('baobab::admin.users.show.direct_permission_revoke_action')"
+                            :action="route('admin.users.permissions.destroy', ['user' => $user, 'permission' => $grant->permission->name])"
+                        />
                     @endif
                 </div>
             @empty
