@@ -289,13 +289,14 @@
                     </div>
 
                     @if ($canImpersonate)
-                        <form method="POST" action="{{ route('admin.users.sessions.destroy', ['user' => $user, 'sessionId' => $activeSession['id']]) }}">
-                            @csrf
-                            @method('DELETE')
-                            <x-baobab::button type="submit" variant="danger">
-                                {{ __('baobab::admin.users.show.session_revoke_action') }}
-                            </x-baobab::button>
-                        </form>
+                        <x-baobab::delete-action
+                            variant="button"
+                            name="revoke-session-{{ $activeSession['id'] }}"
+                            :title="__('baobab::admin.users.show.session_revoke_confirm_title')"
+                            :description="__('baobab::admin.users.show.session_revoke_confirm_description')"
+                            :label="__('baobab::admin.users.show.session_revoke_action')"
+                            :action="route('admin.users.sessions.destroy', ['user' => $user, 'sessionId' => $activeSession['id']])"
+                        />
                     @endif
                 </div>
             @empty

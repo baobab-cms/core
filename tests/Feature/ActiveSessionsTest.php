@@ -78,7 +78,9 @@ it('shows active sessions and the revoke button on the user fiche when the actor
         ->get("/admin/users/{$target->id}")
         ->assertOk()
         ->assertSee('10.0.0.5')
-        ->assertSee(__('baobab::admin.users.show.session_revoke_action'));
+        ->assertSee(__('baobab::admin.users.show.session_revoke_action'))
+        ->assertSee(__('baobab::admin.users.show.session_revoke_confirm_title'))
+        ->assertSee(__('baobab::admin.users.show.session_revoke_confirm_description'));
 });
 
 it('hides the revoke button on the fiche when viewing a peer of the same level', function () {
