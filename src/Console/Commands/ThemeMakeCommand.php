@@ -15,6 +15,7 @@ use Baobab\Users\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 
 /**
  * `php artisan baobab:make:theme {name}` (spec 17 §1, §8, M8 point 5 Pass A) —
@@ -85,7 +86,8 @@ final class ThemeMakeCommand extends Command
                 $this->line("  Super-admin créé : <fg=cyan>{$adminEmail}</>");
 
                 if ($result->generatedPassword !== null) {
-                    $this->line("  Mot de passe généré : <fg=yellow>{$result->generatedPassword}</> (non récupérable)");
+                    $password = OutputFormatter::escape($result->generatedPassword);
+                    $this->line("  Mot de passe généré : <fg=yellow>{$password}</> (non récupérable)");
                 }
             }
         }

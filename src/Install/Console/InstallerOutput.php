@@ -99,7 +99,7 @@ final class InstallerOutput
         }
 
         $this->output->writeln(
-            '  <fg='.self::MUTED.'>Mot de passe généré :</> <fg='.self::GOLD.';options=bold>'.$password.'</>'
+            '  <fg='.self::MUTED.'>Mot de passe généré :</> <fg='.self::GOLD.';options=bold>'.OutputFormatter::escape($password).'</>'
             .' <fg='.self::MUTED.'>(non récupérable)</>'
         );
     }

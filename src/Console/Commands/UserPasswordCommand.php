@@ -11,6 +11,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 
 use function Laravel\Prompts\password;
 
@@ -83,7 +84,8 @@ final class UserPasswordCommand extends Command
         $this->line("  Compte : <fg=cyan>{$email}</>");
 
         if ($result->generatedPassword !== null) {
-            $this->line("  Mot de passe généré : <fg=yellow>{$result->generatedPassword}</> (non récupérable)");
+            $password = OutputFormatter::escape($result->generatedPassword);
+            $this->line("  Mot de passe généré : <fg=yellow>{$password}</> (non récupérable)");
         }
 
         $this->line('  <fg=gray>Sessions fermées ; 2FA et tokens API conservés.</>');

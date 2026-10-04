@@ -6,6 +6,7 @@ namespace Baobab\Console\Commands;
 
 use Baobab\Install\Actions\CreateSuperAdmin;
 use Illuminate\Console\Command;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 
 /**
  * Commande de secours console : crée ou complète un super-admin.
@@ -35,7 +36,8 @@ final class SuperAdminCommand extends Command
         $this->line("  E-mail : <fg=cyan>{$email}</>");
 
         if ($result->generatedPassword !== null) {
-            $this->line("  Mot de passe généré : <fg=yellow>{$result->generatedPassword}</> (non récupérable)");
+            $password = OutputFormatter::escape($result->generatedPassword);
+            $this->line("  Mot de passe généré : <fg=yellow>{$password}</> (non récupérable)");
         } else {
             $this->line('  <fg=gray>Utilisateur existant — rôle super-admin assigné.</>');
         }
