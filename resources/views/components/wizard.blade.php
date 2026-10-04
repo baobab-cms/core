@@ -6,7 +6,9 @@
     simple libellé, jamais un lien.
 --}}
 <nav aria-label="{{ __('baobab::admin.wizard.nav_label') }}" {{ $attributes->class(['mb-6']) }}>
-    <ol class="flex flex-wrap items-center gap-x-1 gap-y-3">
+    {{-- Vertical sous `md` (R7) : les jalons restent lisibles sur téléphone, même
+    avec des libellés longs ; en ligne à partir de `md`, comme avant. --}}
+    <ol class="flex flex-col items-start gap-2 md:flex-row md:flex-wrap md:items-center md:gap-x-1 md:gap-y-3">
         @foreach ($steps as $step)
             <li class="flex items-center">
                 @if ($step['url'])
@@ -35,7 +37,7 @@
             </li>
 
             @if (! $loop->last)
-                <li aria-hidden="true" class="hidden h-px w-4 bg-border sm:block"></li>
+                <li aria-hidden="true" class="hidden h-px w-4 bg-border md:block"></li>
             @endif
         @endforeach
     </ol>

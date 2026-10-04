@@ -42,8 +42,8 @@
         ])
     >
         <div class="flex flex-wrap items-center gap-1 border-b border-border bg-surface-subtle px-2 py-1">
-            <button type="button" x-on:click="toggleBold()" x-bind:class="{ 'bg-surface': active.bold }" class="rounded px-2 py-1 text-xs font-semibold hover:bg-surface">B</button>
-            <button type="button" x-on:click="toggleItalic()" x-bind:class="{ 'bg-surface': active.italic }" class="rounded px-2 py-1 text-xs italic hover:bg-surface">I</button>
+            <button type="button" x-on:click="toggleBold()" x-bind:class="{ 'bg-surface': active.bold }" class="rounded px-2 py-1 text-xs font-semibold hover:bg-surface max-md:min-h-11 max-md:min-w-11">B</button>
+            <button type="button" x-on:click="toggleItalic()" x-bind:class="{ 'bg-surface': active.italic }" class="rounded px-2 py-1 text-xs italic hover:bg-surface max-md:min-h-11 max-md:min-w-11">I</button>
             <button type="button" x-on:click="toggleUnderline()" x-bind:class="{ 'bg-surface': active.underline }" class="rounded px-2 py-1 text-xs underline hover:bg-surface">U</button>
             <button type="button" x-on:click="toggleStrike()" x-bind:class="{ 'bg-surface': active.strike }" class="rounded px-2 py-1 text-xs line-through hover:bg-surface">S</button>
             <button type="button" x-on:click="toggleHighlight()" x-bind:class="{ 'bg-surface': active.highlight }" class="rounded px-2 py-1 text-xs hover:bg-surface">
@@ -59,10 +59,10 @@
             <button type="button" x-on:click="setAlign('right')" x-bind:class="{ 'bg-surface': active.alignRight }" class="rounded px-2 py-1 text-xs hover:bg-surface" aria-label="{{ __('baobab::admin.components.richtext_align_right') }}">&#8678;</button>
             <button type="button" x-on:click="setAlign('justify')" x-bind:class="{ 'bg-surface': active.alignJustify }" class="rounded px-2 py-1 text-xs hover:bg-surface" aria-label="{{ __('baobab::admin.components.richtext_align_justify') }}">&#8679;</button>
             <span class="mx-1 h-4 w-px bg-border"></span>
-            <button type="button" x-on:click="toggleBulletList()" x-bind:class="{ 'bg-surface': active.bulletList }" class="rounded px-2 py-1 text-xs hover:bg-surface">
+            <button type="button" x-on:click="toggleBulletList()" x-bind:class="{ 'bg-surface': active.bulletList }" class="rounded px-2 py-1 text-xs hover:bg-surface max-md:min-h-11 max-md:min-w-11">
                 {{ __('baobab::admin.components.richtext_bullet_list') }}
             </button>
-            <button type="button" x-on:click="toggleOrderedList()" x-bind:class="{ 'bg-surface': active.orderedList }" class="rounded px-2 py-1 text-xs hover:bg-surface">
+            <button type="button" x-on:click="toggleOrderedList()" x-bind:class="{ 'bg-surface': active.orderedList }" class="rounded px-2 py-1 text-xs hover:bg-surface max-md:min-h-11 max-md:min-w-11">
                 {{ __('baobab::admin.components.richtext_ordered_list') }}
             </button>
             <button type="button" x-on:click="toggleBlockquote()" x-bind:class="{ 'bg-surface': active.blockquote }" class="rounded px-2 py-1 text-xs hover:bg-surface">&rdquo;</button>

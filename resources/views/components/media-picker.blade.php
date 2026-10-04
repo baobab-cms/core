@@ -47,7 +47,7 @@
         </div>
 
         <div
-            class="grid max-h-96 grid-cols-3 gap-2 overflow-y-auto rounded-md border border-border p-2 sm:grid-cols-4 md:grid-cols-5"
+            class="grid max-h-96 grid-cols-2 gap-2 overflow-y-auto rounded-md border border-border p-2 sm:grid-cols-3 md:grid-cols-5"
             x-bind:class="{ 'border-primary bg-surface-subtle': dragging }"
             x-bind:aria-busy="loading ? 'true' : 'false'"
             x-on:dragover.prevent="dragging = true"
