@@ -40,7 +40,7 @@ it('returns 403 creating without content.{type}.create', function () {
     $this->actingAs($actor, 'baobab')
         ->postJson('/api/v1/content/api-articles', ['brand' => 'Peugeot', 'slug' => 'peugeot'])
         ->assertStatus(403)
-        ->assertJsonPath('type', 'https://docs.baobabcms.com/errors/forbidden');
+        ->assertJsonPath('type', 'https://docs.baobab-cms.com/errors/forbidden');
 });
 
 it('returns 422 problem+json when a required field is missing on create', function () {
@@ -50,7 +50,7 @@ it('returns 422 problem+json when a required field is missing on create', functi
     $this->actingAs($actor, 'baobab')
         ->postJson('/api/v1/content/api-articles', ['slug' => 'no-brand'])
         ->assertStatus(422)
-        ->assertJsonPath('type', 'https://docs.baobabcms.com/errors/validation')
+        ->assertJsonPath('type', 'https://docs.baobab-cms.com/errors/validation')
         ->assertJsonPath('errors.brand.0', fn ($value) => is_string($value));
 });
 

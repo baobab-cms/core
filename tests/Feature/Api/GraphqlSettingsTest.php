@@ -26,7 +26,7 @@ it('responds 404 to GraphQL once graphql_enabled is turned off, independently of
 
     graphqlQuery('query { __typename }')
         ->assertStatus(404)
-        ->assertJsonPath('type', 'https://docs.baobabcms.com/errors/not-found');
+        ->assertJsonPath('type', 'https://docs.baobab-cms.com/errors/not-found');
 });
 
 it('keeps GraphQL available when only rest_enabled is turned off', function () {
@@ -67,7 +67,7 @@ it('applies the shared baobab-api rate limiter to GraphQL requests too', functio
 
     graphqlQuery('query { __typename }')
         ->assertStatus(429)
-        ->assertJsonPath('type', 'https://docs.baobabcms.com/errors/rate-limited');
+        ->assertJsonPath('type', 'https://docs.baobab-cms.com/errors/rate-limited');
 });
 
 it('allows introspection by default outside of production', function () {

@@ -31,7 +31,7 @@ it('responds 404 to every REST endpoint once rest_enabled is turned off globally
 
     $this->getJson('/api/v1/content/api-articles')
         ->assertStatus(404)
-        ->assertJsonPath('type', 'https://docs.baobabcms.com/errors/not-found');
+        ->assertJsonPath('type', 'https://docs.baobab-cms.com/errors/not-found');
 });
 
 it('responds 404 only for a content type with api_enabled disabled in its blueprint', function () {
@@ -61,7 +61,7 @@ it('returns 429 with an RFC 9457 body once the per-minute rate limit is exceeded
 
     $request()
         ->assertStatus(429)
-        ->assertJsonPath('type', 'https://docs.baobabcms.com/errors/rate-limited')
+        ->assertJsonPath('type', 'https://docs.baobab-cms.com/errors/rate-limited')
         ->assertJsonPath('status', 429);
 });
 

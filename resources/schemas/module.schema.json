@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://baobabcms.com/schemas/module.schema.json",
+    "$id": "https://baobab-cms.com/schemas/module.schema.json",
     "title": "Baobab CMS module manifest",
     "description": "Schema for module.json — the manifest of every Baobab package (module, theme, or content-type). Spec reference: docs/specs/01-modules.md §2.2, docs/specs/03-themes.md §2.1.",
     "type": "object",

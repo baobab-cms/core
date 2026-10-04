@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://baobabcms.com/schemas/module-blueprint.schema.json",
+    "$id": "https://baobab-cms.com/schemas/module-blueprint.schema.json",
     "title": "Baobab CMS Wizard Studio module blueprint",
     "description": "Schema for a Wizard Studio module blueprint (spec 17-modules §5.4). Describes a module's identity and its entities (fields/relations) independently of the generated package — spec reference: docs/specs/specification-modules.md §5. Extended incrementally as later passes add routes/policies/menus/widgets/hooks sections (M8 point 1, Pass B onward) — no additionalProperties:false at the root so this stays a non-breaking addition.",
     "type": "object",

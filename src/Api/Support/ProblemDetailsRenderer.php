@@ -65,7 +65,7 @@ final class ProblemDetailsRenderer
     private function problem(int $status, string $slug, string $title, array $errors = []): JsonResponse
     {
         $payload = [
-            'type' => "https://docs.baobabcms.com/errors/{$slug}",
+            'type' => "https://docs.baobab-cms.com/errors/{$slug}",
             'title' => $title,
             'status' => $status,
         ];

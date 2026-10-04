@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://baobabcms.com/schemas/content-type-blueprint.schema.json",
+    "$id": "https://baobab-cms.com/schemas/content-type-blueprint.schema.json",
     "title": "Baobab CMS Content Type blueprint",
     "description": "Schema for a Content Type blueprint (spec 02 §1.2, §9). Describes a Content Type's identity, fields and relations independently of the generated module — spec reference: docs/specs/specification-content-types.md.",
     "type": "object",

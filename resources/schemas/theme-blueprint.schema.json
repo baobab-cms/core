@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://baobabcms.com/schemas/theme-blueprint.schema.json",
+    "$id": "https://baobab-cms.com/schemas/theme-blueprint.schema.json",
     "title": "Baobab CMS theme blueprint",
     "description": "Schema for a theme.json blueprint (spec 17 §2) — the input consumed by the theme generator (baobab:make:theme), independent from module.json which describes an already-generated/installed theme (module.schema.json). Spec reference: docs/specs/specification-17-generateur-themes.md.",
     "type": "object",

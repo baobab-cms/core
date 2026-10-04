@@ -51,7 +51,7 @@ it('denies public read entirely when public_api_read is disabled on the type', f
 
     $this->getJson('/api/v1/content/api-articles')
         ->assertStatus(401)
-        ->assertJsonPath('type', 'https://docs.baobabcms.com/errors/unauthenticated')
+        ->assertJsonPath('type', 'https://docs.baobab-cms.com/errors/unauthenticated')
         ->assertJsonPath('status', 401);
 });
 
@@ -81,13 +81,13 @@ it('returns 401 without a session and 403 with a session lacking permission on a
     $this->actingAs($actor, 'baobab')
         ->getJson('/api/v1/content/api-internals')
         ->assertStatus(403)
-        ->assertJsonPath('type', 'https://docs.baobabcms.com/errors/forbidden');
+        ->assertJsonPath('type', 'https://docs.baobab-cms.com/errors/forbidden');
 });
 
 it('returns 404 RFC 9457 for an unknown content type', function () {
     $this->getJson('/api/v1/content/does-not-exist')
         ->assertStatus(404)
-        ->assertJsonPath('type', 'https://docs.baobabcms.com/errors/not-found')
+        ->assertJsonPath('type', 'https://docs.baobab-cms.com/errors/not-found')
         ->assertJsonPath('status', 404);
 });
 
@@ -140,7 +140,7 @@ it('rejects a filter on a field not marked exposed_in_api with a 422 problem+jso
 
     $this->getJson('/api/v1/content/api-articles?filter[internal_note]=secret')
         ->assertStatus(422)
-        ->assertJsonPath('type', 'https://docs.baobabcms.com/errors/validation')
+        ->assertJsonPath('type', 'https://docs.baobab-cms.com/errors/validation')
         ->assertJsonStructure(['type', 'title', 'status', 'errors']);
 });
 
@@ -197,7 +197,7 @@ it('includes a declared relation and rejects an undeclared one', function () {
 
     $this->getJson('/api/v1/content/related-vehicles?include=bogus')
         ->assertStatus(422)
-        ->assertJsonPath('type', 'https://docs.baobabcms.com/errors/validation');
+        ->assertJsonPath('type', 'https://docs.baobab-cms.com/errors/validation');
 });
 
 it('paginates page-based results and honours per_page', function () {
