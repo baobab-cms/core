@@ -35,7 +35,7 @@ final class Button extends Component
 
     /** @var array<string, string> */
     private const SIZES = [
-        'sm' => 'gap-1.5 px-2 py-1.5',
+        'sm' => 'gap-1.5 px-2 py-1.5 max-md:min-h-11',
         'default' => 'gap-2 px-3 py-2',
     ];
 
