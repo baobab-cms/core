@@ -82,6 +82,20 @@ it('renders the matrix with roles as columns', function () {
         ->assertSee('baobab.access.manage');
 });
 
+it('offers the same permissions role by role below md, with the warning', function () {
+    $user = User::create(['name' => 'Manager', 'email' => 'manager-stacked@example.com', 'password' => 'secret']);
+    app(GrantPermission::class)($user, 'baobab.admin.access');
+    app(GrantPermission::class)($user, 'baobab.access.manage');
+
+    $this->actingAs($user, 'baobab')
+        ->get('/admin/access')
+        ->assertOk()
+        ->assertSee(__('baobab::admin.access.mobile_warning'))
+        ->assertSee('md:hidden', false)
+        ->assertSee('<summary', false)
+        ->assertSee(__('baobab::admin.access.always_granted'));
+});
+
 it('toggles a permission for a role via POST and produces an audit entry', function () {
     $user = User::create(['name' => 'Manager', 'email' => 'manager2@example.com', 'password' => 'secret']);
     app(GrantPermission::class)($user, 'baobab.admin.access');

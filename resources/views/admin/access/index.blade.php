@@ -27,7 +27,11 @@
             </x-baobab::form>
         </x-baobab::card>
 
-        <div class="overflow-x-auto rounded-lg border border-border">
+        {{-- Sous `md`, la matrice est trop large pour une modification fiable (R3) :
+        un avertissement, puis la même matrice rôle par rôle plus bas. --}}
+        <p class="mb-3 text-sm text-muted md:hidden">{{ __('baobab::admin.access.mobile_warning') }}</p>
+
+        <div class="hidden overflow-x-auto rounded-lg border border-border md:block">
             <table class="w-full text-left text-sm">
                 <thead class="bg-surface-subtle text-xs uppercase text-muted">
                     <tr>
@@ -88,6 +92,50 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+
+        <div class="space-y-3 md:hidden">
+            @foreach ($roles as $role)
+                <details class="rounded-lg border border-border">
+                    <summary class="flex min-h-11 cursor-pointer items-center px-3 font-medium text-foreground">
+                        {{ $role->name }}
+                    </summary>
+
+                    @if ($role->name === 'super-admin')
+                        <p class="border-t border-border px-3 py-2 text-sm text-muted">{{ __('baobab::admin.access.always_granted') }}</p>
+                    @else
+                        @foreach ($groups as $group)
+                            <div class="border-t border-border px-3 py-2">
+                                <p class="text-sm font-medium text-foreground">
+                                    {{ $group['label'] }}
+
+                                    @unless ($group['active'])
+                                        <x-baobab::badge variant="neutral">
+                                            {{ __('baobab::admin.access.inactive_module') }}
+                                        </x-baobab::badge>
+                                    @endunless
+                                </p>
+
+                                @foreach ($group['permissions'] as $permission)
+                                    <form method="POST" action="{{ route('admin.access.toggle', ['role' => $role, 'permission' => $permission['name']]) }}">
+                                        @csrf
+                                        <label class="flex min-h-11 items-center gap-3 text-sm text-foreground">
+                                            <input
+                                                type="checkbox"
+                                                class="h-5 w-5 shrink-0"
+                                                x-on:change="$el.form.requestSubmit()"
+                                                @checked($grants[$role->id][$permission['name']] ?? false)
+                                                @disabled(! $group['active'])
+                                            >
+                                            {{ $permission['label'] }}
+                                        </label>
+                                    </form>
+                                @endforeach
+                            </div>
+                        @endforeach
+                    @endif
+                </details>
+            @endforeach
         </div>
     </x-baobab::page>
 @endsection

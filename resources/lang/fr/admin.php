@@ -1787,6 +1787,7 @@ return [
         'core_group' => 'Core',
         'inactive_module' => 'Module inactif',
         'always_granted' => 'Toujours accordé (Super Admin)',
+        'mobile_warning' => 'Sur téléphone, préférez une tablette ou un ordinateur pour modifier une matrice étendue. Ci-dessous, les permissions de chaque rôle, rôle par rôle.',
         'create_role_title' => 'Créer un rôle',
         'create_role_name' => 'Nom',
         'create_role_level' => 'Niveau',
